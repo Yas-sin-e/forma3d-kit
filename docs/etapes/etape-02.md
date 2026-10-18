@@ -4,16 +4,17 @@
 
 Installer la structure initiale du projet, préparer son suivi Git et ajouter une CI gratuite qui vérifie les documents essentiels sur chaque push et pull request.
 
-Résultat local vérifiable : le projet se trouve sous forma3d-studio/forma3d-kit-codex, le dépôt Git local est initialisé sur main, la structure documentaire existe et le workflow de CI décrit un contrôle concret. La création du dépôt GitHub distant et le premier push restent à confirmer par l’étudiante.
+Résultat vérifiable : le projet se trouve sous forma3d-studio/forma3d-kit-codex, le dépôt Git local est initialisé sur main, le dépôt GitHub privé existe et le workflow documentaire a réussi après le premier push.
 
 ## Décisions et périmètre
 
 - Le dossier demandé est forma3d-studio/forma3d-kit-codex afin de conserver le nom du projet.
-- Windows a refusé le déplacement direct car le dossier source est utilisé par la session Codex. Une copie de travail a donc été créée au nouvel emplacement et vérifiée par SHA-256 ; la source reste intacte.
+- Windows a refusé le déplacement direct car le dossier source est utilisé. La destination a été vérifiée par SHA-256 et contient tous les fichiers d’origine. Le dossier source de Downloads n’a pas pu être supprimé entièrement : Windows bloque son répertoire .agents et son dossier racine ; il ne reste là que .agents/skills/.gitkeep.
 - La structure initiale inclut les dossiers backend et frontend avec un README chacun. Le code applicatif sera créé aux étapes prévues, sans serveur ou fichier de code factice.
 - Le workflow GitHub Actions vérifie la présence des documents requis. Il ne lance pas de tests Python ou frontend avant l’existence des applications. Le dossier .agents/ et PROMPT-1.md restent locaux et sont exclus de Git.
 - Aucun déploiement continu n’est configuré à ce stade : le produit n’a pas encore d’application exécutable. Le déploiement sera cadré à l’étape 11.
-- Le dépôt distant et sa visibilité doivent être choisis avant sa création. Aucun contenu n’a été envoyé à GitHub.
+- Le dépôt GitHub privé `Yas-sin-e/forma3d-kit-codex` a été créé après autorisation de l’étudiante. Le commit initial `21e8869` est publié sur `origin/main`.
+- Les documents du projet sont donc présents dans un dépôt privé. Ne pas ajouter de collaborateur ni changer la visibilité sans demande explicite.
 
 ## Fichiers et dossiers
 
@@ -25,7 +26,7 @@ Résultat local vérifiable : le projet se trouve sous forma3d-studio/forma3d-ki
 | backend/README.md | Explique le rôle prévu du backend et reporte ses commandes à l’étape 4 |
 | frontend/README.md | Explique le rôle prévu du frontend et reporte ses commandes à l’étape 8 |
 | docs/etapes/etape-02.md | Explique les choix de structure, la CI et les limites de l’étape |
-| docs/ETAT.md | Suit l’avancement local et le travail distant restant |
+| docs/ETAT.md | Suit l’avancement local et distant, les décisions et la prochaine étape |
 
 Les fichiers AGENTS.md, PRODUCT.md, DESIGN.md et la documentation de l’étape 1 ont été conservés à l’identique dans la copie vérifiée.
 
@@ -37,10 +38,11 @@ Si un document manque, le job échoue immédiatement. Cette vérification est vo
 
 ## Lancement et vérification
 
-La CI s’exécutera sur GitHub après la création du dépôt distant et un push. Avant cette autorisation, vérifier localement :
+Le workflow `Project documentation` a réussi sur GitHub pour le commit initial (`21e8869`, exécution #1). Pour vérifier localement :
 
-- git status --short --branch : le dépôt local est sur main et montre les nouveaux fichiers.
+- git status --short --branch : le dépôt local est sur main et synchronisé avec `origin/main`.
 - git log -1 --oneline : le commit local initial existe.
+- git remote -v : `origin` pointe vers `https://github.com/Yas-sin-e/forma3d-kit-codex.git`.
 - git status --ignored --short : .agents/ et PROMPT-1.md sont ignorés.
 - Test-Path -LiteralPath '.github/workflows/ci.yml' : le workflow existe.
 - Répéter les commandes Test-Path des documents listés dans le workflow : toutes doivent retourner True.
@@ -56,4 +58,4 @@ Aucun serveur d’application ne peut être lancé à l’étape 2. Aucun test a
 
 ## État de l’étape
 
-Préparation locale terminée et commit initial créé. Le dépôt distant GitHub et le premier push restent en attente de confirmation de visibilité et d’autorisation.
+Étape 2 terminée : structure locale vérifiée, dépôt privé créé, commit initial poussé et CI documentaire réussie. Les runners GitHub Actions sur dépôt privé utilisent un quota de minutes incluses selon le plan ; surveiller l’usage et ne pas activer de dépassement payant afin de respecter la contrainte 100 % gratuite.
