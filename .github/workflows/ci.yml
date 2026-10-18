@@ -1,0 +1,29 @@
+name: Project documentation
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  required-documents:
+    name: Check required project documents
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Verify required files
+        run: |
+          set -euo pipefail
+          test -f README.md
+          test -f AGENTS.md
+          test -f PRODUCT.md
+          test -f DESIGN.md
+          test -f docs/ETAT.md
+          test -f docs/etapes/etape-01.md
+          test -f docs/etapes/etape-02.md
+          test -f backend/README.md
+          test -f frontend/README.md

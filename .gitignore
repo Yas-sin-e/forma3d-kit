@@ -1,0 +1,36 @@
+# Environment secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node.js
+node_modules/
+.next/
+out/
+dist/
+
+# Local databases and generated uploads
+*.db
+*.sqlite
+*.sqlite3
+backend/data/
+backend/storage/
+
+# Operating system and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Local assistant working material
+.agents/
+PROMPT-1.md
