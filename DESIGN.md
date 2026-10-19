@@ -1,81 +1,65 @@
-# Forma3D Studio — Design foundations
+# Forma3D Studio — Fondations visuelles v2
 
-## 1. Intention visuelle
+## 1. Intention
+L'interface du SaaS aide un vendeur à préparer et examiner une fiche produit. Elle donne la priorité au produit et au viewer. Elle doit inspirer confiance sans prétendre que le modèle est une mesure ou une reproduction parfaite.
 
-Forma3D Studio doit évoquer un atelier de conception calme et précis : des surfaces chaudes, des outils sobres et une scène 3D mise en valeur. L’interface privilégie la lisibilité et la confiance dans l’état réel de la génération.
-
-Éviter les décorations qui détournent l’attention du meuble ou laissent croire que le résultat est une mesure technique exacte.
+Le Sprint 1 ne comprend pas de tableau de bord SaaS complet. Ces fondations guident la page simple de génération et les futures interfaces sans imposer une bibliothèque frontend.
 
 ## 2. Couleurs
 
-| Jeton | Valeur | Usage |
+| Jeton | Valeur | Utilisation |
 |---|---|---|
-| Fond principal | #F6F5F1 | Fond général de l’application |
-| Surface | #FFFFFF | Cartes, panneaux et champs |
-| Texte principal | #252B27 | Titres et contenu principal |
-| Texte secondaire | #59635D | Aide, métadonnées et descriptions |
-| Primaire | #285C4D | Actions principales, liens et états sélectionnés |
-| Primaire au survol | #204B3F | Survol et pression du bouton principal |
-| Accent chaud | #D28A47 | Petits repères, illustrations et détails décoratifs |
-| Fond de scène 3D | #ECEBE5 | Espace visuel du viewer |
-| Bordure | #D9DDD8 | Limites de cartes, champs et séparateurs |
-| Erreur | #A43D35 | Erreurs accompagnées d’un message textuel |
-| Succès | #286247 | Confirmation textuelle de génération réussie |
-| Focus clavier | #8A5100 | Contour visible de focus, indépendant de la couleur de fond |
+| Fond principal | #F6F5F1 | Fond général |
+| Surface | #FFFFFF | Panneaux, cartes et champs |
+| Texte principal | #252B27 | Titres et contenu |
+| Texte secondaire | #59635D | Aide et métadonnées |
+| Primaire | #285C4D | Action principale, liens et sélection |
+| Primaire au survol | #204B3F | Survol et pression |
+| Accent chaud | #D28A47 | Repères ponctuels et détails décoratifs |
+| Fond de scène 3D | #ECEBE5 | Arrière-plan du viewer |
+| Bordure | #D9DDD8 | Limites et séparateurs |
+| Erreur | #A43D35 | État d'erreur avec texte explicatif |
+| Succès | #286247 | État réussi avec libellé |
+| Focus clavier | #8A5100 | Contour de focus visible |
 
-L’accent chaud ne doit pas porter seul un texte de petite taille. Les états d’erreur, de succès et de sélection doivent aussi utiliser un libellé ou une icône afin de ne pas dépendre uniquement de la couleur. Vérifier le contraste réel des combinaisons lors de l’implémentation.
+L'accent chaud ne porte pas seul un texte de petite taille. Les états ont aussi un libellé ou une icône. Le contraste réel est vérifié lors de l'implémentation.
 
 ## 3. Typographie
-
-Utiliser une pile de polices système afin de ne pas dépendre d’un service réseau ou d’une police téléchargée :
-
-- Famille : system-ui, Segoe UI, sans-serif.
-- Titres : graisse 600 ou 700, lignes courtes.
+- Famille système : system-ui, Segoe UI, sans-serif. Pas de police distante nécessaire au fonctionnement.
+- Titres : graisse 600 ou 700, formulation courte.
 - Texte courant : graisse 400, interligne confortable.
-- Étiquettes et aide : taille lisible, jamais réduite pour faire tenir un contenu.
+- Échelle de départ : métadonnées 12 px, aide 14 px, texte 16 px, sous-titre 20 px, titre de page 28 px, titre d'accueil 40 px.
+- Sur petit écran, adapter la taille et empiler les panneaux plutôt que couper le contenu.
 
-Échelle de départ : 12 px pour les métadonnées, 14 px pour les aides, 16 px pour le texte, 20 px pour les sous-titres, 28 px pour le titre de page et 40 px pour le titre d’accueil. Adapter les tailles sur petit écran plutôt que de couper le contenu.
-
-## 4. Composants et règles d’usage
-
-- **Barre supérieure :** nom du produit, accès à la création et liens de navigation essentiels.
-- **Bouton principal :** une seule action dominante par écran, par exemple choisir une photo ou lancer la génération lorsqu’elle est disponible.
-- **Bouton secondaire :** action complémentaire comme réinitialiser la caméra ou choisir une autre image.
-- **Zone de dépôt :** indique les formats et contraintes effectivement acceptés par l’implémentation ; permet aussi de parcourir les fichiers.
-- **État de génération :** affiche un statut réel et un texte compréhensible ; ne prétend pas connaître un pourcentage lorsque le backend n’en fournit pas.
-- **Message d’erreur :** explique ce qui s’est produit et propose une prochaine action quand elle existe.
-- **Viewer :** fournit une zone visuelle distincte et des commandes visibles et accessibles au clavier.
-- **État vide :** indique ce que la personne peut faire ensuite, sans afficher de faux objet généré.
-- **Modèle de démonstration :** porte un libellé explicite « modèle pré-généré » ou « objet de démonstration ».
-
-Les composants du canevas d’aménagement appartiennent à l’étape 10 et ne doivent pas être ajoutés au périmètre visuel du MVP sans décision de cadrage.
+## 4. Composants et règles
+- Navigation vendeur : marque et accès directs aux fonctions disponibles ; ne pas suggérer que des comptes sont déjà livrés au Sprint 1.
+- Action principale : une seule action dominante, par exemple choisir une photo ou lancer une génération.
+- Zone de dépôt : accepter uniquement les formats et tailles que l'API valide réellement.
+- État de génération : refléter l'état retourné par le backend, sans pourcentage inventé.
+- Erreur : expliquer le problème dans des termes compréhensibles.
+- Viewer produit : zone visuelle distincte, contrôles accessibles au clavier et alternatives visibles aux gestes.
+- Téléchargement : disponible seulement quand un GLB existe réellement.
+- État vide : indiquer l'action possible sans afficher un résultat fictif.
+- Objet de démonstration : porter la mention « modèle pré-généré » ou « objet de démonstration ».
+- Widget distribuable et boutique vitrine : réservés aux sprints ultérieurs.
 
 ## 5. Mise en page
-
-- Donner la priorité au viewer et au modèle lorsqu’un GLB est disponible.
-- Regrouper l’entrée photo, le statut et les explications dans des panneaux distincts.
-- Utiliser un espacement régulier et des bordures discrètes plutôt que des ombres fortes.
-- Sur petit écran, empiler les panneaux et conserver les commandes principales visibles.
-- Ne jamais masquer le statut d’échec, les contraintes d’image ou les commandes de caméra derrière une interaction au survol uniquement.
+- Donner l'espace principal au produit et au viewer.
+- Regrouper l'entrée photo, l'état du traitement et l'aide sans les confondre.
+- Préférer des bordures discrètes et un espacement régulier aux ombres fortes.
+- Sur petit écran, empiler les panneaux et garder l'action ainsi que les états visibles.
+- Ne jamais cacher une erreur ou une commande importante derrière le survol.
 
 ## 6. Mouvement et interactions
-
-- Les transitions d’interface sont courtes et fonctionnelles : environ 120 à 180 ms avec une courbe douce de sortie.
-- Ne pas utiliser de rebond, de parallaxe décorative ou d’animation en boucle qui détourne l’attention.
+- Transitions d'interface de 120 à 180 ms, courbe de sortie douce, seulement si elles clarifient un changement.
+- Pas de rebond, de parallaxe décorative ou d'animation répétée qui détourne l'attention.
 - Respecter la préférence système de réduction des animations.
-- La caméra 3D reste sous le contrôle de la personne ; aucune rotation automatique n’est activée par défaut.
-- Ne pas créer de fausse progression visuelle. Si la durée est inconnue, utiliser un statut d’attente sobre, sans pourcentage fictif.
-- Les commandes désactivées indiquent clairement pourquoi elles ne sont pas disponibles.
+- La caméra reste sous le contrôle de la personne ; rotation automatique désactivée par défaut.
+- Pas de fausse barre de progression : sans durée ou pourcentage fourni par le backend, afficher un statut d'attente sobre.
+- Un contrôle désactivé explique pourquoi il est indisponible.
 
-## 7. Accessibilité
-
-- Tous les contrôles ont un nom accessible et un état compréhensible.
-- Le parcours fonctionne au clavier, avec un focus visible.
-- Les erreurs et statuts ne sont pas communiqués uniquement par une couleur.
-- Les cibles tactiles restent faciles à sélectionner.
-- Les préférences de mouvement réduit sont respectées.
-- Les commandes du viewer disposent d’alternatives visibles aux gestes de souris.
-
-## 8. Évolution
-
-Ce fichier est la source de vérité visuelle. Toute modification d’interface doit mettre à jour les jetons ou règles concernés ici avant de diverger dans les composants. Les valeurs proposées sont les fondations de l’étape 1 ; leur rendu et leur contraste seront vérifiés lors de l’étape UI.
+## 7. Accessibilité et source de vérité
+- Donner un nom accessible à chaque contrôle ; prendre en charge clavier et focus visible.
+- Rendre erreurs et états compréhensibles sans dépendre seulement de la couleur.
+- Garder des cibles tactiles faciles à sélectionner et des commandes de caméra alternatives aux gestes.
+- DESIGN.md est la source de vérité visuelle. Mettre ce document à jour avant de modifier les règles dans le code.

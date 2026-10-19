@@ -1,4 +1,4 @@
-# Environment secrets
+# Configuration locale et secrets
 .env
 .env.*
 !.env.example
@@ -12,25 +12,27 @@ venv/
 .mypy_cache/
 .ruff_cache/
 
-# Node.js
+# Node.js (réservé à un futur sprint)
 node_modules/
 .next/
 out/
 dist/
 
-# Local databases and generated uploads
+# Bases locales et fichiers générés
 *.db
 *.sqlite
 *.sqlite3
 backend/data/
 backend/storage/
+storage/
 
-# Operating system and editor files
+# Système et éditeur
 .DS_Store
 Thumbs.db
+extension-debug.log
 .idea/
 .vscode/
 
-# Local assistant working material
+# Matériel local de Codex
 .agents/
 PROMPT-1.md

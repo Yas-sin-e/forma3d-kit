@@ -1,77 +1,66 @@
-# Forma3D Studio — Product brief
+# Forma3D Studio — Brief produit v2
 
 ## 1. Vision
+Forma3D Studio est un SaaS 3D pour le commerce en ligne. Un vendeur transmet la photo d'un produit et reçoit un fichier GLB interactif qu'il peut présenter dans sa boutique. À terme, le produit regroupe un service de génération, un visualiseur intégrable comme widget et un site vitrine qui démontre le parcours dans une boutique.
 
-Forma3D Studio aide une personne à partir d’une photo d’un petit meuble et à obtenir un modèle 3D consultable dans un navigateur. Le projet sert aussi de démonstrateur pédagogique : chaque choix technique doit pouvoir être expliqué pendant la soutenance.
+Le projet est réalisé pour une soutenance. Le code et les décisions d'architecture doivent rester simples à expliquer. Chaque fichier est documenté dans docs/STRUCTURE.md et dans le guide de son étape.
 
-## 2. Public visé et problème
+## 2. Utilisateurs et problème
+- **Vendeur en ligne :** veut présenter un produit sous plusieurs angles sans créer lui-même un modèle 3D.
+- **Acheteur :** veut examiner visuellement un article avant de le considérer.
+- **Étudiante et jury :** ont besoin d'un prototype compréhensible, reproductible et honnête sur ses limites.
 
-Le public principal est une personne qui souhaite visualiser un meuble simple dans un viewer 3D avant d’imaginer son aménagement. Le projet est réalisé et défendu par une étudiante ; les parcours et les explications doivent rester compréhensibles sans expertise en modélisation 3D.
-
-Le MVP cible les petits meubles simples : tabouret, chaise et table d’appoint. Cette sélection garde le lien avec l’aménagement tout en limitant le nombre de formes à évaluer au début.
+Le premier jeu d'essai vise le petit mobilier opaque : tabouret, chaise et table d'appoint. Ce choix borne les essais ; il ne signifie pas que le système sait reconstruire toutes les catégories de produits.
 
 ## 3. Promesse et limites
+À partir d'une photo exploitable, le prototype tente de produire un GLB avec un modèle image-vers-3D pré-entraîné. Le navigateur permet ensuite de tourner le modèle, déplacer le point de vue, zoomer et télécharger le fichier.
 
-À partir d’une photo appropriée, l’application tente de produire un fichier GLB avec un modèle image-vers-3D pré-entraîné, puis de l’afficher dans un viewer interactif.
+Une image unique ne révèle pas les faces cachées et ne garantit ni les dimensions, ni la géométrie exacte, ni un résultat utilisable pour la fabrication. Les résultats dépendent de l'image, du modèle et de la disponibilité du fournisseur.
 
-Le résultat est une visualisation de démonstration. Une seule photo ne permet pas de garantir des dimensions exactes, une géométrie fidèle sur les faces invisibles ou un modèle prêt pour la fabrication. La qualité dépend de la photo, du modèle pré-entraîné et de la disponibilité du fournisseur gratuit.
+Le SaaS commercial complet n'est pas livré au Sprint 1. Les comptes vendeurs, le catalogue, l'intégration marchande avec clé API, le widget distribuable et la boutique vitrine complète évoluent dans les sprints suivants. La boutique de démonstration ne sera pas présentée comme une place de marché réelle avec paiement.
 
-Aucune garantie de disponibilité, de délai ou de quota n’est associée aux services gratuits externes. Le produit doit afficher clairement les échecs et les limites observés.
+## 4. Parcours visé du Sprint 1
+1. Le vendeur sélectionne une photo de produit.
+2. L'API vérifie le format et la taille du fichier.
+3. Un fournisseur pré-entraîné produit un modèle 3D ; son intégration est isolée derrière Image3DProvider.
+4. L'API conserve le fichier et communique un état réel du traitement.
+5. Une page servie par FastAPI charge le GLB dans le composant model-viewer.
+6. Le vendeur manipule le modèle et télécharge le GLB.
 
-## 4. Parcours principal du MVP
+L'étape 1 de ce sprint ne met en place que le squelette FastAPI et son vrai endpoint GET /health. Les étapes suivantes ajoutent les fonctions du parcours dans l'ordre défini par AGENTS.md.
 
-1. La personne choisit une photo d’un meuble simple.
-2. L’application vérifie que le fichier peut être traité et explique les erreurs d’entrée.
-3. Le backend envoie l’image au fournisseur retenu, derrière l’interface Image3DProvider.
-4. L’application expose l’état réel du traitement et présente un message clair si le fournisseur est indisponible ou si la génération échoue.
-5. En cas de succès, le navigateur charge le GLB dans le viewer.
-6. La personne fait tourner le modèle, déplace la caméra autour de lui et zoome.
+## 5. Contraintes et périmètre
 
-Les états de chargement et de progression doivent provenir du traitement réel. L’interface ne simule pas une génération ou une progression.
+### Contraintes permanentes
+- Aucun entraînement ni ajustement de modèle : uniquement des modèles pré-entraînés.
+- Aucune API payante, carte bancaire ou abonnement.
+- Les quotas, files d'attente, périodes de veille et interruptions d'un service gratuit sont expliqués honnêtement.
+- Les photos envoyées à un Space public ne contiennent pas de données personnelles.
+- Les licences des modèles et services sont vérifiées avant tout usage autre que scolaire.
+- Un modèle pré-généré de démonstration est signalé comme pré-généré et ne remplace pas une génération réelle.
 
-## 5. Périmètre
+### Inclus dans le Sprint 1
+- Structure du backend et endpoint de santé.
+- Validation JPG, PNG et WebP avec une limite de 10 Mo.
+- Interface Image3DProvider et essai d'un Space Hugging Face à partir de ses paramètres réellement documentés.
+- Génération, stockage local et état de traitement.
+- Page HTML avec viewer interactif et téléchargement.
+- Essais réels avec 5 à 10 photos de petit mobilier opaque.
 
-### Inclus dans le MVP — étapes 1 à 9
+### Hors périmètre du Sprint 1
+- OpenCV, rembg, authentification et base de données.
+- Next.js, comptes vendeurs, catalogue commercial, widget distribuable, clés API et boutique vitrine complète.
+- Docker, Celery, Redis et MinIO.
+- Toute garantie de fidélité géométrique ou d'adéquation à la fabrication.
 
-- Une photo d’entrée à la fois pour les essais initiaux.
-- Le contrôle et le prétraitement de l’image nécessaires à la génération.
-- Un fournisseur image-vers-3D gratuit et pré-entraîné, choisi après un essai de faisabilité sur trois photos.
-- Un fichier GLB réellement généré par le fournisseur pour le parcours de génération.
-- Une interface de viewer avec rotation, déplacement de caméra, zoom et chargement d’objets de démonstration clairement identifiés.
-- Une documentation pédagogique qui explique le rôle et le fonctionnement des fichiers importants.
+## 6. Critères d'acceptation du produit final visé
+- Une photo acceptée suit un parcours réel de validation, génération, stockage et affichage.
+- L'application montre des erreurs utiles lorsque l'image ou le fournisseur ne convient pas.
+- Le fichier GLB affiché provient d'une génération réelle ; toute démo pré-générée est étiquetée.
+- Le viewer fournit rotation, déplacement de caméra, zoom et téléchargement.
+- Le modèle, sa licence et les limites du fournisseur sont documentés.
+- Aucun parcours ne requiert de paiement ou d'entraînement.
+- La documentation explique les fichiers réellement présents et les choix faits pour la soutenance.
 
-### Hors MVP — étape 10 et au-delà
-
-- Le canevas d’aménagement avec déplacement, rotation, redimensionnement, renommage et export.
-- La reconstruction précise de dimensions ou la conception de pièces fabriquables.
-- La prise en charge garantie de toutes les catégories d’objets, de photos ou de fournisseurs.
-- Toute API payante, tout abonnement ou toute carte bancaire.
-- Tout entraînement ou ajustement d’un modèle.
-
-Un modèle GLB pré-généré peut servir de repli fiable pour une démonstration, mais il doit être présenté comme pré-généré. Il ne remplace pas le parcours de génération réelle.
-
-## 6. Principes produit
-
-- **Gratuité :** ne pas dépendre d’un service payant ni d’une clé associée à une facturation.
-- **Aucun entraînement :** utiliser exclusivement des modèles pré-entraînés.
-- **Transparence :** distinguer génération en direct, échec du fournisseur et modèle pré-généré.
-- **Confidentialité :** ne pas envoyer de photo contenant des données personnelles à un Space public.
-- **Compréhension :** privilégier une architecture simple et expliquer les décisions pour la soutenance.
-- **Résilience :** rendre visibles les délais, files d’attente, indisponibilités et quotas des solutions gratuites.
-
-## 7. Critères d’acceptation du MVP
-
-Le MVP sera démontrable lorsque :
-
-- une photo de petit mobilier peut suivre le parcours de contrôle, génération et affichage ;
-- le fournisseur et le modèle employés sont identifiés et leurs licences sont vérifiées pour l’usage prévu ;
-- l’application peut afficher une erreur exploitable lorsque le fournisseur gratuit ne répond pas ;
-- un GLB réellement généré peut être chargé et manipulé dans le viewer ;
-- les gestes de rotation, déplacement de caméra et zoom sont compréhensibles ;
-- tout objet de secours pré-généré est étiqueté comme tel ;
-- aucune étape ne dépend d’un entraînement de modèle ou d’un service payant ;
-- la documentation permet à l’étudiante d’expliquer les fichiers réalisés.
-
-## 8. Contexte de réalisation
-
-Le suivi des tâches est prévu dans GitHub Projects. Le niveau déclaré de l’étudiante est avancé en Python et en React. La soutenance est estimée à environ deux semaines après le 18 octobre 2026, soit autour du 1er novembre 2026 ; la date exacte reste à confirmer.
+## 7. Organisation
+Le suivi des tâches utilise GitHub Projects. L'horizon communiqué pour la soutenance est de deux semaines ; la date précise reste à confirmer. Le niveau déclaré en Python et en React est avancé. Le Sprint 1 utilise une page HTML légère servie par FastAPI, sans introduire React avant d'en avoir besoin.

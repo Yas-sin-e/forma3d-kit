@@ -1,40 +1,42 @@
 # Forma3D Studio
 
-Forma3D Studio transforme la photo d’un petit meuble en modèle 3D GLB, puis l’affiche dans un viewer interactif. Le périmètre du MVP vise le tabouret, la chaise et la table d’appoint.
+Forma3D Studio est un SaaS 3D pour le commerce en ligne : le vendeur envoie une photo de produit, obtient un modèle GLB interactif et pourra l'intégrer dans sa boutique. Le produit complet prévoit un service de génération, un widget intégrable et une boutique de démonstration.
 
-## Contraintes du projet
+## Contraintes
+- Gratuit : aucun fournisseur payant, aucune carte bancaire et aucun abonnement.
+- Sans entraînement : uniquement des modèles pré-entraînés.
+- Transparent : expliquer les quotas des fournisseurs gratuits et étiqueter les modèles pré-générés.
+- Compréhensible : chaque fichier et dossier est expliqué dans docs/STRUCTURE.md.
 
-- Gratuit : aucune API payante, carte bancaire ou abonnement.
-- Sans entraînement : modèles image-vers-3D pré-entraînés uniquement.
-- Transparence : signaler les limites des fournisseurs gratuits et étiqueter tout modèle pré-généré.
-- Compréhension : expliquer les fichiers et décisions dans la documentation.
+## État actuel
+Sprint 1 : les fondations, la validation, le fournisseur Stable Fast 3D, le service de suivi, le stockage local et la page viewer sont implémentés. Cinq photos libres ont échoué sur le Space Stable Fast 3D ; le Space officiel TripoSR était en `RUNTIME_ERROR` avant l'inspection de son API. Aucun GLB réel n'a été obtenu. Le viewer permet maintenant d'ouvrir un GLB choisi localement, marqué comme non généré par l'application, mais son affichage et ses contrôles restent à vérifier avec un vrai modèle. Consultez `docs/ETAT.md` avant de présenter la faisabilité.
 
-## État
+Le Sprint 1 se concentre sur le trajet essentiel photo vers GLB, viewer et téléchargement, en commençant par le petit mobilier opaque : tabouret, chaise et table d'appoint. Les comptes vendeurs, la boutique vitrine et le widget distribuable relèvent des sprints suivants.
 
-L’étape 2 prépare la structure du dépôt et une vérification documentaire sur GitHub Actions. Aucun backend ou frontend applicatif n’est encore implémenté. Les étapes 4 et 8 introduiront respectivement l’API et l’interface.
+## Répertoires et documents
+- backend/app : application FastAPI, validation, service de génération, fournisseur et stockage local.
+- backend/tests : vérifications automatisées du backend sans appels à Hugging Face.
+- frontend : page HTML du Sprint 1 servie par FastAPI, sans Next.js.
+- docs : état, structure et explications de chaque étape.
+- docs/archive/v1 : historique de l'ancienne vision, conservé sans être la référence active.
+- .github/workflows : vérifications automatiques sur GitHub.
+- PRODUCT.md définit vision, périmètre et limites ; DESIGN.md fixe les règles visuelles ; AGENTS.md décrit les contraintes et le cycle de travail.
 
-## Structure
+## Installation et commandes — PowerShell Windows
+Depuis la racine du dépôt :
 
-- .github/workflows/ci.yml : contrôle des documents requis à chaque push et pull request.
-- backend/README.md : rôle prévu du backend avant son implémentation à l’étape 4.
-- frontend/README.md : rôle prévu du frontend avant son implémentation à l’étape 8.
-- docs/ : état du projet et guides des étapes.
-- AGENTS.md : contraintes et méthode de travail.
-- PRODUCT.md : périmètre et critères d’acceptation.
-- DESIGN.md : fondations visuelles.
+    cd backend
+    python -m venv --without-pip .venv
+    pip --python .venv\Scripts\python.exe install -r requirements.txt
+    .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
 
-## Stack prévue
+Ouvrez http://127.0.0.1:8000/ pour la page de génération. http://127.0.0.1:8000/health doit répondre avec le statut ok. La documentation interactive est sur http://127.0.0.1:8000/docs.
 
-Frontend : Next.js, TypeScript, Tailwind, React Three Fiber, drei et Zustand.
+Dans un second terminal :
 
-Backend : FastAPI, SQLAlchemy et SQLite au départ. Prétraitement avec OpenCV et rembg ; nettoyage de maillage avec trimesh.
+    cd backend
+    .\.venv\Scripts\python.exe -m pytest -q
 
-Le stockage local sera isolé derrière une interface. Celery, Redis et MinIO ne font pas partie du MVP.
+Résultat attendu : les tests automatisés du backend réussissent. Ils n'appellent pas Hugging Face afin d'éviter de consommer le quota en CI.
 
-## Commandes
-
-Les commandes de lancement seront ajoutées lorsque les applications existeront : backend à l’étape 4 et frontend à l’étape 8. Cette étape ne contient pas encore de serveur à lancer.
-
-## Vérifications
-
-La CI vérifie que les documents de projet requis existent. Elle ne prétend pas exécuter des tests backend ou frontend avant l’ajout de ces applications.
+Sur le poste utilisé pour ce projet, le Python 3.14 installé ne fournit pas ensurepip. La première commande crée donc le venv sans pip, puis le pip déjà disponible sur le poste installe les dépendances uniquement dans ce venv grâce à l'option --python.

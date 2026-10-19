@@ -1,102 +1,91 @@
-# Forma3D Studio — Instructions permanentes du projet
+# SaaS 3D pour l'e-commerce — Instructions permanentes du projet
 
 ## Mission
+Forma3D Studio aide un vendeur à partir d'une photo de produit pour obtenir un modèle 3D interactif. Le SaaS complet prévoit trois composants :
+1. Le service API : génère et conserve le modèle.
+2. Le widget intégrable : affiche le modèle dans une boutique existante.
+3. La boutique vitrine : démontre le parcours dans un catalogue de produits.
 
-Forma3D Studio transforme la photo d’un objet en modèle 3D GLB, l’affiche dans un viewer interactif avec rotation, déplacement de caméra et zoom, puis permettra de le placer dans un canevas d’aménagement.
+## Contraintes décidées par l'étudiante
+1. 100 % gratuit : aucune API payante, carte bancaire ou abonnement.
+2. Aucun entraînement : modèles image-vers-3D pré-entraînés uniquement.
+3. Projet de soutenance : chaque fichier et chaque dossier doivent être compréhensibles.
+4. Répondre toujours en français ; code, noms de fichiers et commandes en anglais.
+5. Signaler clairement les quotas, files d'attente, périodes de veille et instabilités des offres gratuites.
 
-## Contraintes du projet
+## Règle d'explication de chaque fichier et dossier
+Pour chaque fichier ou dossier créé :
+1. Ajouter une ligne à docs/STRUCTURE.md : chemin, rôle, raison du choix et moment d'utilisation.
+2. Ajouter un commentaire d'en-tête en français dans chaque fichier de code, indiquant son rôle et son exécution.
+3. Avant d'écrire du code, annoncer la liste des fichiers et leur intérêt, puis attendre l'accord de l'étudiante.
 
-1. **100 % gratuit :** aucune API payante, carte bancaire ou abonnement.
-2. **Aucun entraînement :** utiliser uniquement des modèles image-vers-3D pré-entraînés.
-3. **Compréhension :** le projet est défendu en soutenance ; expliquer le rôle et le fonctionnement des fichiers réalisés.
-4. **Langue :** répondre toujours en français ; code, noms de fichiers et commandes restent en anglais.
-5. **Limites :** expliquer clairement les quotas, files d’attente, indisponibilités et autres limites des solutions gratuites.
-6. **Périmètre confirmé :** le MVP cible le petit mobilier simple : tabouret, chaise et table d’appoint.
-7. **Suivi :** utiliser GitHub Projects pour suivre le travail.
-8. **Calendrier :** soutenance prévue dans environ deux semaines à compter du 18 octobre 2026, soit vers le 1er novembre 2026 ; date exacte à confirmer.
-9. **Niveau déclaré :** niveau avancé en Python et en React.
+## Découpage en six sprints de deux semaines
+1. De la photo au modèle 3D — sprint actif.
+2. Qualité et fiabilité : qualité d'image, arrière-plan, base de données, historique.
+3. Comptes vendeurs et produits.
+4. Boutique vitrine : catalogue et fiches produits 3D.
+5. Intégration : widget, code à copier, API avec clé.
+6. Finalisation : tests E2E, déploiement gratuit, soutenance.
 
-## Méthode — 11 étapes
+Ne jamais passer à une étape ou à un sprint suivant sans « OK » explicite.
+Avant chaque étape, rappeler l'objectif et le livrable vérifiable.
 
-1. **Cadrage et fondations :** cadrage produit, AGENTS.md, PRODUCT.md et DESIGN.md.
-2. **Dépôt et structure :** dépôt GitHub, organisation du projet et CI/CD ; Docker est facultatif.
-3. **Faisabilité 3D gratuite :** essayer trois photos avec Hugging Face Spaces ou Kaggle/Colab et décider du fournisseur.
-4. **Backend socle :** FastAPI, SQLite avec SQLAlchemy, configuration et tests.
-5. **Prétraitement :** contrôle de qualité OpenCV et suppression du fond.
-6. **Fournisseur 3D :** interface Image3DProvider et nettoyage du maillage avec trimesh.
-7. **Jobs et stockage :** traitements en arrière-plan, stockage et progression ; WebSocket seulement si utile.
-8. **Base frontend :** Next.js, TypeScript, Tailwind et système visuel décrit dans DESIGN.md.
-9. **Viewer 3D :** React Three Fiber, rotation, déplacement de caméra, zoom et objets de démonstration.
-10. **Canevas d’aménagement :** TransformControls, inspecteur et export.
-11. **Finalisation :** tests E2E, polissage, déploiement gratuit et documentation de soutenance.
+## Sprint 1 — périmètre essentiel
+Objectif : le vendeur envoie une photo, obtient un GLB via un fournisseur gratuit de modèle pré-entraîné, l'examine dans un viewer et peut le télécharger.
 
-Les étapes 1 à 9 constituent le MVP photo-vers-GLB-vers-viewer. L’étape 10 est une extension. L’étape 11 finalise le projet.
+Étapes, une à la fois :
+1. Structure, Git, premier test GET /health et documentation de structure.
+2. UploadValidator et POST /models : JPG, PNG ou WebP, 10 Mo maximum, avec tests.
+3. Interface Image3DProvider et fournisseur Hugging Face ; découvrir d'abord l'API réelle avec Client(space).view_api().
+4. GenerationService, stockage local et états PENDING/RUNNING/DONE/FAILED.
+5. Page HTML avec model-viewer, rotation, déplacement de caméra, zoom et téléchargement, servie par FastAPI.
+6. Essais réels sur 5 à 10 photos de petit mobilier opaque ; conserver des modèles de démonstration si les licences l'autorisent.
 
-**Ne jamais commencer une étape suivante sans le « OK » explicite de l’étudiante.** Avant chaque étape, rappeler l’objectif et le résultat vérifiable attendu. Ne pas dépasser le périmètre de l’étape autorisée.
+Ne pas faire au Sprint 1 : OpenCV, rembg, comptes, base de données, Next.js, Docker, Celery, Redis ou MinIO.
 
-## Cycle d’une étape
+## Hugging Face
+- Appeler un Space public avec gradio_client uniquement après inspection de son API réelle.
+- Le backend charge les secrets de `backend/.env` en priorité, puis ceux du `.env` racine ; les deux restent ignorés par Git.
+- Ne jamais inventer de nom de paramètre ou de chemin de sortie.
+- Prévoir délai maximal, relance limitée si le Space dort, erreurs explicites et isolation dans Image3DProvider.
+- Ne pas envoyer de photo contenant des données personnelles à un Space public.
+- Vérifier les licences avant tout usage autre que scolaire.
+- Expliquer les quotas et files d'attente gratuits observés ; ils peuvent rendre une démo non fiable.
+- Un GLB pré-généré est identifié honnêtement et ne compte pas comme génération en direct.
 
-MODE BRAINSTORM → plan validé par l’étudiante → MODE GHOST → MODE REVIEW → MODE EDIT si des corrections sont demandées → validation → mise à jour de docs/ETAT.md.
-
-- **MODE BRAINSTORM :** analyser les besoins et options avant de coder ; aucun fichier de code. Présenter 2 ou 3 options, une recommandation et un plan de tâches de 30 à 90 minutes.
-- **MODE GHOST :** écrire les fichiers complets directement dans le projet, sans coller leur contenu dans le chat. Réponse courte avec chemins, rôle, commandes de lancement et de vérification, résultat attendu.
-- **MODE REVIEW :** relire sans corriger ; classer les remarques bloquant, important ou mineur.
-- **MODE EDIT :** effectuer la modification ciblée la plus petite possible, expliquer le diff et relancer les vérifications pertinentes.
-- **MODE ASK :** poser une seule question à la fois, avec 2 à 4 choix et une recommandation lorsque cela s’applique.
+## Modes de travail
+- MODE BRAINSTORM : analyser avant le code ; proposer 2 ou 3 options, une recommandation et un plan de 30 à 90 minutes.
+- MODE GHOST : écrire les fichiers complets directement ; expliquer les fichiers, les commandes et le résultat.
+- MODE REVIEW : rechercher les défauts, classés bloquant / important / mineur, sans corriger.
+- MODE EDIT : réaliser le plus petit changement ciblé puis relancer les vérifications concernées.
+- MODE ASK : une question à la fois, avec 2 à 4 choix.
 
 ## Exigences de livraison
+1. Aucun fichier incomplet, aucun TODO non résolu et aucun faux résultat de génération.
+2. Documenter chaque étape dans docs/etapes/etape-XX.md : rôle des fichiers, logique, lancement, test et justification pour la soutenance.
+3. Ajouter des tests pytest pour toute nouvelle fonction Python.
+4. À la fin d'une étape, lister les fichiers créés ou modifiés, donner les commandes de vérification et mettre à jour docs/ETAT.md.
 
-1. Fichiers complets, sans coupure, sans points de suspension simulant du contenu et sans TODO incomplet.
-2. Aucun code simulé (par exemple setTimeout, faux modèles ou données fictives), sauf accord explicite et indication visible.
-3. Pour chaque étape, documenter pas à pas dans docs/etapes/etape-XX.md : rôle des fichiers, logique, exécution, vérification et raison des choix pour la soutenance.
-4. Ajouter des tests automatiques aux nouvelles fonctions ; utiliser pytest côté Python. Une étape de documentation seule n’ajoute pas de fonction et ne nécessite pas de test logiciel.
-5. À la fin d’une étape, lister les fichiers modifiés, donner les commandes pertinentes et mettre à jour docs/ETAT.md.
+## Stack Sprint 1
+- Python 3.11 ou plus récent, FastAPI, Uvicorn, gradio_client, HTTPX et pytest.
+- Page HTML simple avec model-viewer, servie par FastAPI.
+- Stockage local derrière LocalStorage ; métadonnées sans base de données.
+- Dépendances payantes interdites. Ajouter une bibliothèque seulement quand une étape l'exige.
 
-## Architecture de génération 3D
+## Sécurité
+- Secrets seulement dans .env, jamais dans Git ; garder .env.example à jour lorsque du code lit une variable.
+- Demander confirmation avant suppression de fichiers, migration de données, installation de dépendances lourdes, action réseau inhabituelle, ajout d'une skill ou d'un serveur MCP.
+- Lire le contenu d'une skill ou d'un serveur tiers avant de l'activer.
 
-L’interface de fournisseur est :
-
-    Image3DProvider.generate(image_path) -> bytes au format GLB
-
-Implémentations prévues :
-
-- **HuggingFaceSpaceProvider :** appelle un Space public via gradio_client. Découvrir les paramètres réels avec Client(space).view_api() ; ne jamais les deviner. Prévoir une relance temporisée pour un Space endormi, une durée maximale, un message d’erreur clair et un cache basé sur le hash de la photo.
-- **KaggleProvider (facultatif) :** modèle open source exécuté dans un notebook GPU gratuit et exposé par une petite API.
-- **PrecomputedProvider :** vrais GLB pré-générés et conservés pour une démonstration fiable ; les présenter honnêtement comme pré-générés.
-
-Vérifier la licence de chaque modèle avant tout usage autre que scolaire. Ne pas transmettre de photo contenant des données personnelles à un Space public. Aucun fournisseur gratuit ne garantit disponibilité, délai ou quota.
-
-## Stack visée
-
-- **Frontend :** Next.js, TypeScript, Tailwind, React Three Fiber, drei et Zustand.
-- **Backend :** FastAPI, SQLAlchemy, Alembic et SQLite au départ ; PostgreSQL seulement si un besoin apparaît.
-- **Stockage :** dossier local derrière une interface Storage, remplaçable ultérieurement.
-- **Vision :** OpenCV et rembg.
-- **Maillage :** trimesh.
-- **DevOps :** GitHub et GitHub Actions ; Docker facultatif.
-- Pas de Celery, Redis ni MinIO au MVP ; les ajouter uniquement si un besoin réel le justifie.
-
-## Commandes de référence
-
-- API : cd backend && uvicorn app.main:app --reload
-- Tests backend : cd backend && pytest -q
-- Frontend : cd frontend && npm run dev
-
-Compléter ces commandes au fil des étapes, en conservant des commandes réalisables avec la structure réellement présente.
-
-## Sécurité et autorisations
-
-- Les secrets résident uniquement dans .env, jamais dans Git ; maintenir .env.example à jour.
-- Demander confirmation avant toute suppression de fichiers, migration de base de données, installation de dépendances lourdes, commande sur un serveur distant, ajout d’un serveur MCP ou ajout d’une skill tierce.
-- Lire le contenu d’une skill ou d’un serveur MCP tiers avant de l’activer.
-- Les photos envoyées à un Space public ne doivent contenir aucune donnée personnelle.
-
-## Skills du projet
-
-Skills visées : taste-skill et impeccable pour l’interface, playwright-cli pour les essais navigateur et img2threejs pour des objets de démonstration ou un repli procédural. Elles ne sont pas garanties disponibles dans chaque session. Vérifier le catalogue de la session et signaler celles qui manquent ; ne jamais prétendre avoir utilisé une skill indisponible.
-
-DESIGN.md est la source de vérité du design et doit être lu avant tout changement d’interface. Si taste-skill et impeccable sont disponibles, suivre la demande de critique puis de polish à la fin de l’étape UI. img2threejs n’est pas le pipeline principal de génération.
+## État de référence au 19 octobre 2026
+- Vision active : service de génération SaaS, futur widget et boutique vitrine de démonstration.
+- Produit MVP initial : petit mobilier opaque, notamment tabouret, chaise et table d'appoint.
+- Outil de suivi choisi : GitHub Projects.
+- Horizon de soutenance communiqué : deux semaines ; la date exacte reste à confirmer.
+- Niveau déclaré : avancé en Python et React.
+- Hugging Face est un fournisseur candidat dont la faisabilité et les limites doivent encore être vérifiées.
+- La vision v1 est conservée dans docs/archive/v1/ ; elle ne définit plus le produit actif.
+- L'état de travail courant est résumé dans docs/ETAT.md.
 
 ## Mémoire du projet
-
-Au début de chaque session, lire AGENTS.md et docs/ETAT.md et résumer l’état en cinq lignes. Après chaque étape, actualiser docs/ETAT.md : fait, en cours, bloqué, décisions et prochaine étape.
+Au début de chaque session, lire AGENTS.md, docs/ETAT.md et docs/STRUCTURE.md, puis résumer l'avancement en cinq lignes. Après chaque étape, mettre à jour docs/ETAT.md.

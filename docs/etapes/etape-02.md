@@ -1,61 +1,61 @@
-# Étape 2 — Dépôt, structure et CI
+# Sprint 1 — Étape 2 : valider l'upload
 
-## Objectif et résultat vérifiable
+## Objectif et résultat
 
-Installer la structure initiale du projet, préparer son suivi Git et ajouter une CI gratuite qui vérifie les documents essentiels sur chaque push et pull request.
+Recevoir une photo avec POST /models, n'accepter que les formats JPG, PNG et WebP, limiter sa taille à 10 Mo et expliquer les refus. Le résultat vérifiable est une réponse VALIDATED pour une signature reconnue, ou un code d'erreur et un message clair pour une entrée invalide.
 
-Résultat vérifiable : le projet se trouve sous forma3d-studio/forma3d-kit-codex, le dépôt Git local est initialisé sur main, le dépôt GitHub privé existe et le workflow documentaire a réussi après le premier push.
+Cette route ne conserve pas l'image et ne lance pas de génération. Son message le précise. Le stockage et la génération arrivent aux étapes suivantes.
 
-## Décisions et périmètre
+Cette documentation décrit le jalon de l'étape 2. À l'étape 4, le même `POST /models` a été étendu : il conserve maintenant la photo localement, lance une tâche de fond et renvoie HTTP 202 avec un identifiant de suivi. Le contrat HTTP actuel est expliqué dans `docs/etapes/etape-04.md`.
 
-- Le dossier demandé est forma3d-studio/forma3d-kit-codex afin de conserver le nom du projet.
-- Windows a refusé le déplacement direct car le dossier source est utilisé. La destination a été vérifiée par SHA-256 et contient tous les fichiers d’origine. Le dossier source de Downloads n’a pas pu être supprimé entièrement : Windows bloque son répertoire .agents et son dossier racine ; il ne reste là que .agents/skills/.gitkeep.
-- La structure initiale inclut les dossiers backend et frontend avec un README chacun. Le code applicatif sera créé aux étapes prévues, sans serveur ou fichier de code factice.
-- Le workflow GitHub Actions vérifie la présence des documents requis. Il ne lance pas de tests Python ou frontend avant l’existence des applications. Le dossier .agents/ et PROMPT-1.md restent locaux et sont exclus de Git.
-- Aucun déploiement continu n’est configuré à ce stade : le produit n’a pas encore d’application exécutable. Le déploiement sera cadré à l’étape 11.
-- Le dépôt GitHub privé `Yas-sin-e/forma3d-kit-codex` a été créé après autorisation de l’étudiante. Le commit initial `21e8869` est publié sur `origin/main`.
-- Les documents du projet sont donc présents dans un dépôt privé. Ne pas ajouter de collaborateur ni changer la visibilité sans demande explicite.
+## Fichiers de code
 
-## Fichiers et dossiers
+### backend/app/services/upload_validator.py
 
-| Élément | Rôle |
-|---|---|
-| README.md | Présente le produit, ses contraintes, sa structure et son état réel |
-| .gitignore | Exclut secrets, environnements locaux, caches, données générées et artefacts d’assistant locaux |
-| .github/workflows/ci.yml | Vérifie les documents requis sur push et pull request |
-| backend/README.md | Explique le rôle prévu du backend et reporte ses commandes à l’étape 4 |
-| frontend/README.md | Explique le rôle prévu du frontend et reporte ses commandes à l’étape 8 |
-| docs/etapes/etape-02.md | Explique les choix de structure, la CI et les limites de l’étape |
-| docs/ETAT.md | Suit l’avancement local et distant, les décisions et la prochaine étape |
+UploadValidator vérifie successivement que le contenu n'est pas vide, que sa taille reste sous la limite, que le nom de fichier est présent, que l'extension et le type MIME correspondent et que les premiers octets ont la signature attendue. Le nom est réduit au dernier segment pour ne pas renvoyer un chemin fourni par le navigateur. Les erreurs portent un code HTTP et un message.
 
-Les fichiers AGENTS.md, PRODUCT.md, DESIGN.md et la documentation de l’étape 1 ont été conservés à l’identique dans la copie vérifiée.
+La signature identifie le format du conteneur ; elle ne décode pas les pixels et ne certifie pas que tout le fichier est une image complète. Le prétraitement ou le fournisseur détectera d'autres corruptions éventuelles aux étapes suivantes.
 
-## Logique de la CI
+### backend/app/schemas.py
 
-Le workflow se déclenche sur push et pull request. Il s’exécute sur un runner Ubuntu hébergé par GitHub, récupère le dépôt avec l’action officielle actions/checkout, puis vérifie chaque fichier requis avec la commande test.
+UploadValidationResponse définit la réponse JSON : état VALIDATED, nom nettoyé, type reconnu, taille et message de transparence. Les limites de la taille sont aussi contraintes dans le schéma.
 
-Si un document manque, le job échoue immédiatement. Cette vérification est volontairement limitée au contenu déjà présent ; les tests du backend et du frontend seront ajoutés quand leur code sera créé.
+### backend/app/routers/models.py
 
-## Lancement et vérification
+La route POST /models lit au maximum 10 Mo plus un octet, appelle UploadValidator puis renvoie le schéma. L'octet supplémentaire permet de distinguer un fichier trop grand sans charger le reste en mémoire. Le fichier uploadé est fermé dans tous les cas. Une erreur de validation devient une réponse HTTP correspondante.
 
-Le workflow `Project documentation` a réussi sur GitHub pour le commit initial (`21e8869`, exécution #1). Pour vérifier localement :
+### backend/app/main.py
 
-- git status --short --branch : le dépôt local est sur main et synchronisé avec `origin/main`.
-- git log -1 --oneline : le commit local initial existe.
-- git remote -v : `origin` pointe vers `https://github.com/Yas-sin-e/forma3d-kit-codex.git`.
-- git status --ignored --short : .agents/ et PROMPT-1.md sont ignorés.
-- Test-Path -LiteralPath '.github/workflows/ci.yml' : le workflow existe.
-- Répéter les commandes Test-Path des documents listés dans le workflow : toutes doivent retourner True.
+L'application branche le routeur models en plus de GET /health. Elle reste le point unique importé par Uvicorn.
 
-Aucun serveur d’application ne peut être lancé à l’étape 2. Aucun test applicatif n’est ajouté puisque cette étape ne crée pas de fonction d’application.
+### backend/tests/test_upload_validator.py
+
+Les tests vérifient les signatures des trois formats, le nettoyage du nom, le fichier vide, l'extension inconnue, le MIME incohérent, la signature incorrecte, le dépassement de taille et les réponses HTTP de POST /models. Les corps de test sont des octets de fixture servant uniquement à vérifier les signatures, pas des sorties 3D.
+
+## Configuration
+
+backend/requirements.txt ajoute python-multipart, utilisé par FastAPI pour parser un formulaire multipart. Il n'ajoute pas de fournisseur 3D ni de bibliothèque de prétraitement.
+
+## Lancer et tester sous PowerShell
+
+Depuis backend, si l'environnement virtuel doit être créé sur le poste Python 3.14 actuel :
+
+    python -m venv --without-pip .venv
+    pip --python .venv\Scripts\python.exe install -r requirements.txt
+    .\.venv\Scripts\python.exe -m pytest -q
+
+Résultat vérifié : 12 tests réussis sous Python 3.14.2.
+
+Pour lancer le serveur :
+
+    .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload
+
+POST /models attend un formulaire multipart avec le champ file. La documentation interactive à /docs permet d'essayer le contrat HTTP après lancement local.
 
 ## Pourquoi ces choix
 
-- Une structure courte laisse les étapes 4 et 8 créer le backend et le frontend au moment prévu.
-- Une CI documentaire est réellement exécutable aujourd’hui et ne prétend pas tester du code inexistant.
-- Le workflow n’utilise qu’une action officielle et des commandes shell fournies par le runner.
-- Le déploiement est différé jusqu’à ce qu’une application existe ; cela évite un pipeline de publication sans produit à publier.
-
-## État de l’étape
-
-Étape 2 terminée : structure locale vérifiée, dépôt privé créé, commit initial poussé et CI documentaire réussie. Les runners GitHub Actions sur dépôt privé utilisent un quota de minutes incluses selon le plan ; surveiller l’usage et ne pas activer de dépassement payant afin de respecter la contrainte 100 % gratuite.
+- Contrôler signature, extension et MIME ensemble limite l'acceptation d'un mauvais format déclaré.
+- Limiter la lecture à la taille maximale plus un octet garde le coût mémoire borné.
+- Séparer route, schéma et validateur rend chaque décision explicable et testable.
+- Une réponse de validation ne prétend pas que le fichier est stocké ou converti.
+- La validation reste locale : les photos ne partent pas vers Hugging Face à cette étape.
