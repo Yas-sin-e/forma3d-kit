@@ -24,7 +24,7 @@ dist/
 *.sqlite3
 backend/data/
 backend/storage/
-storage/
+/storage/
 
 # Système et éditeur
 .DS_Store
