@@ -57,7 +57,7 @@ Depuis le dossier backend sous PowerShell :
 
 Les tests locaux doivent simuler le client et ne pas appeler de fournisseur distant. Les tests complets du dépôt sont également exécutés en CI GitHub. L'environnement Windows actuel a présenté un blocage dans la création du socket local de Starlette TestClient ; le diagnostic et le résultat final local sont à consigner dans la session de travail.
 
-Lors de la préparation de l'étape 6, 31 tests locaux hors des trois modules qui démarrent TestClient ont réussi. Ces modules ne peuvent pas être exécutés dans le sandbox Windows actuel : la boucle asyncio attend un socket local pendant le démarrage de TestClient. Ce blocage de l'environnement n'est pas déclaré comme une régression du code ; la CI GitHub doit vérifier la suite complète.
+Lors de la préparation de l'étape 6, 31 tests locaux hors des trois modules qui démarrent TestClient ont réussi. Ces modules ne peuvent pas être exécutés dans le sandbox Windows actuel : la boucle asyncio attend un socket local pendant le démarrage de TestClient. Ce blocage de l'environnement n'est pas déclaré comme une régression du code. La CI GitHub « Project checks » a exécuté la suite complète avec succès sur le commit 59033ebffaf3fa6f5cd5b8c6177293cae7a816e3 le 20 octobre 2026.
 
 ## Prochaine action recommandée
 
