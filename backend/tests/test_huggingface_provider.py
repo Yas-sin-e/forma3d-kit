@@ -3,6 +3,9 @@
 """Tests locaux du contrat et des garde-fous du fournisseur Hugging Face."""
 
 from pathlib import Path
+import json
+import struct
+from typing import Any
 
 import pytest
 
@@ -13,7 +16,7 @@ from app.providers.huggingface import (
 )
 
 
-def _observed_api_description() -> dict[str, object]:
+def _observed_sf3d_api_description() -> dict[str, object]:
     """Décrit la forme observée par view_api() ; aucun appel réseau n'est effectué."""
     return {
         "named_endpoints": {
@@ -58,37 +61,340 @@ def _observed_api_description() -> dict[str, object]:
     }
 
 
-def test_api_contract_uses_the_observed_parameter_defaults_and_model_output() -> None:
-    contract = HuggingFaceSpaceProvider._read_api_contract(_observed_api_description())
-
-    assert contract == {
-        "endpoint": "/run_button",
-        "inputs": {
-            "foreground_ratio": 0.85,
-            "vertex_count": -1,
-            "texture_size": 1024,
-            "remesh_option": "None",
+def _triposr_combined_api_description() -> dict[str, object]:
+    """Décrit un endpoint de clic qui expose toute la chaîne et les trois sorties."""
+    return {
+        "named_endpoints": {
+            "/submit": {
+                "parameters": [
+                    {
+                        "parameter_name": "input_image",
+                        "label": "Input Image",
+                        "component": "Image",
+                        "parameter_has_default": False,
+                    },
+                    {
+                        "parameter_name": "do_remove_background",
+                        "label": "Remove Background",
+                        "component": "Checkbox",
+                        "parameter_has_default": True,
+                        "parameter_default": True,
+                    },
+                    {
+                        "parameter_name": "foreground_ratio",
+                        "label": "Foreground Ratio",
+                        "component": "Slider",
+                        "parameter_has_default": True,
+                        "parameter_default": 0.85,
+                    },
+                    {
+                        "parameter_name": "mc_resolution",
+                        "label": "Marching Cubes Resolution",
+                        "component": "Slider",
+                        "parameter_has_default": True,
+                        "parameter_default": 256,
+                    },
+                ],
+                "returns": [
+                    {
+                        "label": "Processed Image",
+                        "component": "Image",
+                        "python_type": {"type": "filepath"},
+                    },
+                    {
+                        "label": "Output Model (OBJ Format)",
+                        "component": "Model3D",
+                        "python_type": {"type": "filepath"},
+                    },
+                    {
+                        "label": "Output Model (GLB Format)",
+                        "component": "Model3D",
+                        "python_type": {"type": "filepath"},
+                    },
+                ],
+            },
+            "/run_example": {
+                "parameters": [
+                    {
+                        "parameter_name": "image_pil",
+                        "label": "Image",
+                        "component": "Image",
+                        "parameter_has_default": False,
+                    }
+                ],
+                "returns": [
+                    {
+                        "label": "Output Model (OBJ Format)",
+                        "component": "Model3D",
+                        "python_type": {"type": "filepath"},
+                    },
+                    {
+                        "label": "Output Model (GLB Format)",
+                        "component": "Model3D",
+                        "python_type": {"type": "filepath"},
+                    },
+                ],
+            },
         },
-        "model_output_index": 1,
-        "output_count": 2,
+        "unnamed_endpoints": {},
     }
 
 
+def _triposr_separate_api_description() -> dict[str, object]:
+    """Décrit les fonctions publiées séparément par une version de Gradio."""
+    return {
+        "named_endpoints": {
+            "/check_input_image": {
+                "parameters": [
+                    {
+                        "parameter_name": "input_image",
+                        "component": "Image",
+                        "parameter_has_default": False,
+                    }
+                ],
+                "returns": [],
+            },
+            "/preprocess": {
+                "parameters": [
+                    {
+                        "parameter_name": "input_image",
+                        "component": "Image",
+                        "parameter_has_default": False,
+                    },
+                    {
+                        "parameter_name": "do_remove_background",
+                        "component": "Checkbox",
+                        "parameter_has_default": True,
+                        "parameter_default": True,
+                    },
+                    {
+                        "parameter_name": "foreground_ratio",
+                        "component": "Slider",
+                        "parameter_has_default": True,
+                        "parameter_default": 0.85,
+                    },
+                ],
+                "returns": [
+                    {
+                        "label": "Processed Image",
+                        "component": "Image",
+                        "python_type": {"type": "filepath"},
+                    }
+                ],
+            },
+            "/generate": {
+                "parameters": [
+                    {
+                        "parameter_name": "image",
+                        "component": "Image",
+                        "parameter_has_default": False,
+                    },
+                    {
+                        "parameter_name": "mc_resolution",
+                        "component": "Slider",
+                        "parameter_has_default": True,
+                        "parameter_default": 256,
+                    },
+                ],
+                "returns": [
+                    {
+                        "label": "Output Model (OBJ Format)",
+                        "component": "Model3D",
+                        "python_type": {"type": "filepath"},
+                    },
+                    {
+                        "label": "Output Model (GLB Format)",
+                        "component": "Model3D",
+                        "python_type": {"type": "filepath"},
+                    },
+                ],
+            },
+        },
+        "unnamed_endpoints": {},
+    }
+
+
+def _minimal_glb_20_bytes() -> bytes:
+    """Construit uniquement une fixture de conteneur GLB pour tester son lecteur."""
+    document = json.dumps({"asset": {"version": "2.0"}}, separators=(",", ":")).encode()
+    document += b" " * (-len(document) % 4)
+    chunk = struct.pack("<I4s", len(document), b"JSON") + document
+    return struct.pack("<4sII", b"glTF", 2, 12 + len(chunk)) + chunk
+
+
+class _CompletedJob:
+    """Remplace Job.result dans les tests locaux sans contacter de serveur."""
+
+    def __init__(self, result: Any) -> None:
+        self._result = result
+
+    def result(self, timeout: float) -> Any:
+        assert timeout > 0
+        return self._result
+
+    def cancel(self) -> None:
+        return None
+
+
+class _TemporaryDownloadDirectory:
+    """Remplace le dossier temporaire système bloqué par le dossier de pytest."""
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+
+    def __enter__(self) -> str:
+        return str(self.path)
+
+    def __exit__(self, exc_type: Any, exc: Any, traceback: Any) -> None:
+        return None
+
+
+def test_api_contract_uses_the_observed_parameter_defaults_and_model_output() -> None:
+    contract = HuggingFaceSpaceProvider._read_sf3d_api_contract(
+        _observed_sf3d_api_description()
+    )
+
+    assert contract["strategy"] == "single"
+    assert contract["selector"] == {"api_name": "/run_button"}
+    assert contract["model_output_index"] == 1
+    assert len(contract["inputs"]) == 5
+    assert contract["inputs"][1:] == [0.85, "None", -1, 1024]
+
+
 def test_api_contract_refuses_unexpected_parameter_names() -> None:
-    description = _observed_api_description()
+    description = _observed_sf3d_api_description()
     parameters = description["named_endpoints"]["/run_button"]["parameters"]
     parameters[-1]["parameter_name"] = "unknown_texture_option"
 
-    with pytest.raises(ProviderError, match="paramètres du Space ont changé"):
-        HuggingFaceSpaceProvider._read_api_contract(description)
+    with pytest.raises(ProviderError, match="paramètres de Stable Fast 3D ont changé"):
+        HuggingFaceSpaceProvider._read_sf3d_api_contract(description)
 
 
 def test_api_contract_refuses_missing_glb_output() -> None:
-    description = _observed_api_description()
+    description = _observed_sf3d_api_description()
     description["named_endpoints"]["/run_button"]["returns"][1]["label"] = "Other output"
 
     with pytest.raises(ProviderError, match="sortie fichier 3D"):
-        HuggingFaceSpaceProvider._read_api_contract(description)
+        HuggingFaceSpaceProvider._read_sf3d_api_contract(description)
+
+
+def test_triposr_api_contract_selects_the_observed_generation_chain() -> None:
+    contract = HuggingFaceSpaceProvider._read_triphosr_api_contract(
+        _triposr_combined_api_description()
+    )
+
+    assert contract["strategy"] == "single"
+    assert contract["selector"] == {"api_name": "/submit"}
+    assert contract["model_output_index"] == 2
+    assert contract["inputs"][1:] == [True, 0.85, 256]
+
+
+def test_triposr_api_contract_finds_separate_functions_without_guessing_indexes() -> None:
+    contract = HuggingFaceSpaceProvider._read_triphosr_api_contract(
+        _triposr_separate_api_description()
+    )
+
+    assert contract["strategy"] == "separate"
+    assert contract["check_step"]["selector"] == {"api_name": "/check_input_image"}
+    assert contract["preprocess_step"]["selector"] == {"api_name": "/preprocess"}
+    assert contract["generate_step"]["selector"] == {"api_name": "/generate"}
+    assert contract["model_output_index"] == 1
+
+
+def test_provider_uses_url_view_api_and_does_not_send_hf_token_to_gradio_share(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    input_path = tmp_path / "furniture.png"
+    input_path.write_bytes(b"image test")
+    glb_path = tmp_path / "generated.glb"
+    glb_path.write_bytes(_minimal_glb_20_bytes())
+    observations: dict[str, Any] = {}
+
+    class FakeClient:
+        def view_api(self, **kwargs: Any) -> dict[str, object]:
+            observations["view_api"] = kwargs
+            return _triposr_combined_api_description()
+
+        def submit(self, *args: Any, **kwargs: Any) -> _CompletedJob:
+            observations["submit_args"] = args
+            observations["submit_kwargs"] = kwargs
+            return _CompletedJob(["processed.png", "model.obj", {"path": str(glb_path)}])
+
+    def fake_client_factory(src: str, **kwargs: Any) -> FakeClient:
+        observations["src"] = src
+        observations["client_kwargs"] = kwargs
+        return FakeClient()
+
+    provider = HuggingFaceSpaceProvider(
+        settings=Settings(
+            hf_space_id="https://my-tripodemo.gradio.live",
+            hf_token="private-test-token",
+            hf_timeout_seconds=20,
+            hf_max_attempts=1,
+        ),
+        client_factory=fake_client_factory,
+    )
+    monkeypatch.setattr(
+        "app.providers.huggingface.TemporaryDirectory",
+        lambda **kwargs: _TemporaryDownloadDirectory(tmp_path),
+    )
+
+    result = provider.generate(input_path)
+
+    assert result == _minimal_glb_20_bytes()
+    assert observations["src"] == "https://my-tripodemo.gradio.live"
+    assert observations["client_kwargs"]["token"] is False
+    assert observations["view_api"] == {
+        "print_info": False,
+        "return_format": "dict",
+    }
+    assert observations["submit_kwargs"] == {"api_name": "/submit"}
+    assert observations["submit_args"][1:] == (True, 0.85, 256)
+
+
+def test_provider_executes_separate_triposr_steps_in_source_order(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    input_path = tmp_path / "furniture.png"
+    input_path.write_bytes(b"image test")
+    processed_path = tmp_path / "processed.png"
+    processed_path.write_bytes(b"processed test image")
+    glb_path = tmp_path / "generated.glb"
+    glb_path.write_bytes(_minimal_glb_20_bytes())
+    calls: list[str] = []
+
+    class FakeClient:
+        def view_api(self, **kwargs: Any) -> dict[str, object]:
+            return _triposr_separate_api_description()
+
+        def submit(self, *args: Any, **kwargs: Any) -> _CompletedJob:
+            endpoint = kwargs["api_name"]
+            calls.append(endpoint)
+            if endpoint == "/preprocess":
+                return _CompletedJob({"path": str(processed_path)})
+            if endpoint == "/generate":
+                return _CompletedJob(["model.obj", {"path": str(glb_path)}])
+            return _CompletedJob(None)
+
+    provider = HuggingFaceSpaceProvider(
+        settings=Settings(
+            hf_space_id="https://my-tripodemo.gradio.live",
+            hf_timeout_seconds=20,
+            hf_max_attempts=1,
+        ),
+        client_factory=lambda src, **kwargs: FakeClient(),
+    )
+    monkeypatch.setattr(
+        "app.providers.huggingface.TemporaryDirectory",
+        lambda **kwargs: _TemporaryDownloadDirectory(tmp_path),
+    )
+
+    result = provider.generate(input_path)
+
+    assert result == _minimal_glb_20_bytes()
+    assert calls == ["/check_input_image", "/preprocess", "/generate"]
 
 
 def test_model_output_path_selects_the_actual_file_and_requires_glb(tmp_path: Path) -> None:
@@ -111,12 +417,22 @@ def test_model_output_path_selects_the_actual_file_and_requires_glb(tmp_path: Pa
 
 def test_glb_reader_checks_version_and_declared_length(tmp_path: Path) -> None:
     model_path = tmp_path / "header.glb"
-    model_path.write_bytes(b"glTF" + (2).to_bytes(4, "little") + (12).to_bytes(4, "little"))
+    valid_glb = _minimal_glb_20_bytes()
+    model_path.write_bytes(valid_glb)
 
-    assert HuggingFaceSpaceProvider._read_glb(model_path) == model_path.read_bytes()
+    assert HuggingFaceSpaceProvider._read_glb(model_path) == valid_glb
 
-    model_path.write_bytes(b"glTF" + (1).to_bytes(4, "little") + (12).to_bytes(4, "little"))
+    invalid_version = bytearray(valid_glb)
+    invalid_version[4:8] = (1).to_bytes(4, "little")
+    model_path.write_bytes(invalid_version)
     with pytest.raises(ProviderError, match="incomplet ou incompatible"):
+        HuggingFaceSpaceProvider._read_glb(model_path)
+
+    invalid_json = bytearray(valid_glb)
+    json_length = int.from_bytes(valid_glb[12:16], "little")
+    invalid_json[20 : 20 + json_length] = b"x" * json_length
+    model_path.write_bytes(invalid_json)
+    with pytest.raises(ProviderError, match="chunk JSON"):
         HuggingFaceSpaceProvider._read_glb(model_path)
 
 
@@ -139,6 +455,25 @@ def test_settings_reads_backend_env_before_root_env(monkeypatch, tmp_path: Path)
 
     assert settings.hf_space_id == "stabilityai/TripoSR"
     assert settings.hf_token == "backend-test-token"
+
+
+def test_settings_accepts_a_public_gradio_url_without_credentials_or_query() -> None:
+    settings = Settings(hf_space_id="https://my-tripodemo.gradio.live/")
+
+    assert settings.hf_space_id == "https://my-tripodemo.gradio.live/"
+
+
+@pytest.mark.parametrize(
+    "target",
+    [
+        "https://user:password@demo.gradio.live",
+        "https://demo.gradio.live/?token=secret",
+        "ftp://demo.gradio.live",
+    ],
+)
+def test_settings_rejects_unsafe_or_unsupported_urls(target: str) -> None:
+    with pytest.raises(ValueError, match="URL HTTP"):
+        Settings(hf_space_id=target)
 
 
 def test_settings_rejects_more_than_two_attempts() -> None:

@@ -8,9 +8,9 @@ Le backend est le service HTTP de Forma3D Studio. Il sert la page sur GET /, exp
 - app/schemas.py fixe le format JSON de l'état de génération.
 - app/services/upload_validator.py vérifie extension, MIME, signature et taille maximale.
 - app/services/generation_service.py coordonne les états, le fournisseur et le stockage.
-- app/config.py charge les paramètres Hugging Face locaux et les valide.
+- app/config.py charge les paramètres locaux ; HF_SPACE_ID accepte un identifiant de Space ou une URL HTTP(S) Gradio.
 - app/providers/base.py définit le contrat commun Image3DProvider.
-- app/providers/huggingface.py inspecte le Space puis soumet une photo et contrôle la sortie GLB.
+- app/providers/huggingface.py appelle view_api() à chaque génération, choisit les fonctions et paramètres publiés par Gradio, puis valide le conteneur GLB 2.0.
 - app/storage/base.py définit l'interface de stockage.
 - app/storage/local_storage.py enregistre les photos et GLB sous backend/storage/.
 - app/models.py représente les états et métadonnées uniquement en mémoire.
@@ -33,6 +33,6 @@ Dans un second terminal placé dans backend :
 
     .\.venv\Scripts\python.exe -m pytest -q
 
-Pour configurer HF_SPACE_ID, le jeton facultatif et les délais, copiez `.env.example` vers `backend/.env` (prioritaire) ou vers `.env` à la racine. Ces fichiers sont ignorés par Git. Sans jeton, l'accès anonyme dépend du quota gratuit partagé. Le registre des états disparaît au redémarrage ; les photos et modèles restent sous `backend/storage/`. Les essais de Stable Fast 3D et le blocage runtime de TripoSR sont détaillés dans `docs/etapes/etape-03.md`, `docs/etapes/etape-06.md` et `docs/ETAT.md`.
+Pour configurer HF_SPACE_ID, le jeton facultatif et les délais, copiez .env.example vers backend/.env (prioritaire) ou vers .env à la racine. Ces fichiers sont ignorés par Git. La variable accepte un identifiant de Space ou une URL complète Gradio. Le jeton Hugging Face n'est utilisé que pour contacter Hugging Face ; il n'est pas transmis à une URL externe. Le registre des états disparaît au redémarrage ; les photos et modèles restent sous backend/storage/. Les essais précédents et la préparation du serveur Colab sont détaillés dans docs/etapes/etape-03.md, docs/etapes/etape-06.md, docs/etapes/etape-06-colab.md et docs/ETAT.md.
 
 Sur le poste actuel, Python 3.14 ne fournit pas ensurepip ; le venv est créé sans pip puis le pip global cible explicitement le venv. Les paquets restent isolés de Python global.

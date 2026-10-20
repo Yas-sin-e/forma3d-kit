@@ -1,10 +1,11 @@
-# Rôle : charge et valide les réglages du fournisseur Hugging Face.
+# Rôle : charge et valide les réglages d'un Space Hugging Face ou d'un serveur Gradio.
 # Exécution : appelé à la première génération ; jamais besoin d'un secret pour démarrer l'API.
 """Configuration locale du fournisseur image-vers-3D."""
 
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from dotenv import load_dotenv
 
@@ -13,7 +14,7 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 @dataclass(frozen=True)
 class Settings:
-    """Réglages du Space public et des limites d'attente."""
+    """Réglages d'un Space ou serveur Gradio et des limites d'attente."""
 
     hf_space_id: str = "stabilityai/stable-fast-3d"
     hf_token: str | None = None
@@ -22,9 +23,24 @@ class Settings:
     hf_retry_delay_seconds: float = 5.0
 
     def __post_init__(self) -> None:
-        """Refuse une configuration vide ou des délais non positifs."""
-        if not self.hf_space_id.strip():
+        """Refuse une cible distante invalide ou des délais non positifs."""
+        target = self.hf_space_id.strip()
+        if not target:
             raise ValueError("HF_SPACE_ID ne peut pas être vide.")
+        if "://" in target:
+            parsed = urlsplit(target)
+            if (
+                parsed.scheme.casefold() not in {"http", "https"}
+                or not parsed.hostname
+                or parsed.username
+                or parsed.password
+                or parsed.query
+                or parsed.fragment
+            ):
+                raise ValueError(
+                    "HF_SPACE_ID doit être un identifiant de Space ou une URL HTTP(S) "
+                    "sans identifiants, paramètres ni fragment."
+                )
         if self.hf_timeout_seconds <= 0:
             raise ValueError("HF_TIMEOUT_SECONDS doit être positif.")
         if self.hf_max_attempts < 1 or self.hf_max_attempts > 2:
