@@ -1,6 +1,6 @@
 # Structure expliquée — Forma3D Studio
 
-Mis à jour le 19 octobre 2026. Les tableaux décrivent les fichiers du projet qui existent et les dossiers locaux ignorés par Git. L'étape 6 est documentée comme bloquée : le Space testé n'a pas produit de GLB.
+Mis à jour le 20 octobre 2026. Les tableaux décrivent les fichiers du projet qui existent et les dossiers locaux ignorés par Git. L'étape 6 prépare un serveur TripoSR sur Colab ; aucun appel réel à ce serveur ni aucun GLB n'a encore été obtenu.
 
 ## Racine et documents de cadrage
 
@@ -12,7 +12,7 @@ Mis à jour le 19 octobre 2026. Les tableaux décrivent les fichiers du projet q
 | `README.md` | Démarrage du dépôt, état et commandes Windows | Point d'entrée pour l'étudiante et le jury | Au clonage et au lancement |
 | `PROMPT-1.md` | Prompt local de démarrage de session v2 | Rappelle les règles au travail quotidien | Au début d'une session Codex ; ignoré par Git |
 | `.gitignore` | Exclut secrets, environnements, caches, uploads et sorties générées | Évite de versionner les données locales ou sensibles | Avant chaque commit |
-| `.env.example` | Noms des variables Hugging Face sans secret, à copier vers `backend/.env` ou `.env` | Rend la configuration explicite et sans exposer de jeton | Avant un essai du fournisseur |
+| `.env.example` | Noms des variables de fournisseur sans secret ; HF_SPACE_ID accepte un identifiant de Space ou une URL Gradio | Rend la configuration explicite sans exposer l'URL privée ni le jeton | Avant un essai du fournisseur |
 | `sprint-1-v2-saas-3d-ecommerce.docx` | Cahier des charges remis pour le sprint | Conserve la référence de départ et ses exigences | Au cadrage et à la soutenance |
 | `.github/` | Configuration destinée au dépôt GitHub | Sépare l'automatisation distante des sources | Sur GitHub |
 | `.github/workflows/` | Répertoire des workflows CI | Range les vérifications reproductibles | À chaque push ou pull request |
@@ -21,6 +21,14 @@ Mis à jour le 19 octobre 2026. Les tableaux décrivent les fichiers du projet q
 | `.agents/skills/` | Emplacement local des skills | N'ajoute pas de dépendance au produit | Quand une skill locale est installée |
 | `.agents/skills/.gitkeep` | Marqueur local du répertoire de skills | Rend visible l'emplacement réservé même s'il est vide | Dans le dossier de travail local |
 | `.github/workflows/ci.yml` | Vérifie les documents et exécute pytest en CI | Détecte une régression avant la soutenance | Lors d'un push ou d'une pull request |
+
+## Serveur temporaire TripoSR
+
+| Chemin | À quoi ça sert | Pourquoi ce choix | Quand on l'utilise |
+|---|---|---|---|
+| `tools/` | Regroupe les outils de développement hors de l'application | Le notebook serveur ne fait pas partie du backend livré | Pour lancer le fournisseur dans un environnement GPU distant |
+| `tools/colab/` | Range le notebook destiné à Google Colab | Isole les cellules qui installent TripoSR temporairement dans le runtime distant | Quand l'étudiante prépare son serveur pour un essai |
+| `tools/colab/triposr_server.ipynb` | Vérifie un GPU T4, clone le dépôt officiel, installe ses dépendances dans Colab et lance gradio_app.py avec un lien public | Évite toute installation PyTorch, CUDA ou TripoSR sur le PC ; toutes les cellules de code sont commentées en français | Dans Google Colab, avant de fournir HF_SPACE_ID au backend |
 
 ## Backend Python
 
@@ -46,7 +54,7 @@ Mis à jour le 19 octobre 2026. Les tableaux décrivent les fichiers du projet q
 | `backend/app/services/generation_service.py` | Orchestre états, appel du fournisseur et stockage | Centralise un cycle testable en dehors des routes | Après un téléversement valide |
 | `backend/app/providers/__init__.py` | Marque le paquet d'adaptateurs | Isole les fournisseurs externes | À l'import fournisseur |
 | `backend/app/providers/base.py` | Définit `Image3DProvider.generate(Path) -> bytes` et l'erreur commune | Permet de remplacer Hugging Face sans réécrire le service | Dans GenerationService et les adaptateurs |
-| `backend/app/providers/huggingface.py` | Lit `view_api()`, appelle l'endpoint observé et vérifie le GLB 2.0 | N'invente pas le contrat et refuse une réponse qui n'est pas un modèle valide | Pour une vraie génération Hugging Face |
+| `backend/app/providers/huggingface.py` | Appelle `view_api()` à chaque génération, lit les paramètres publiés, exécute une chaîne Gradio TripoSR ou l'endpoint observé Stable Fast 3D et valide le conteneur GLB 2.0 | N'invente pas les fonctions, index, défauts ou sorties ; garde les fournisseurs derrière Image3DProvider | Pour une génération distante via identifiant de Space ou URL Gradio |
 | `backend/app/storage/__init__.py` | Marque le paquet des adaptateurs de stockage | Sépare les fichiers de persistance du métier | À l'import du stockage |
 | `backend/app/storage/base.py` | Définit le contrat `Storage` pour photos et GLB | Permet de changer la persistance derrière une interface | Dans GenerationService et ses tests |
 | `backend/app/storage/local_storage.py` | Écrit de façon atomique avec des noms UUID créés par le serveur | Démarre sans service payant et évite les chemins du client | À l'acceptation et à la fin d'une génération |
@@ -66,7 +74,7 @@ Mis à jour le 19 octobre 2026. Les tableaux décrivent les fichiers du projet q
 | `backend/tests/` | Contient la suite pytest du backend | Regroupe les vérifications sans appeler le fournisseur en continu | En local et sur GitHub |
 | `backend/tests/test_health.py` | Vérifie le résultat HTTP de `/health` | Protège le premier contrat du serveur | À chaque suite pytest |
 | `backend/tests/test_upload_validator.py` | Couvre formats, taille, signatures et erreurs | Empêche les uploads mal formés sans réseau | À chaque suite pytest |
-| `backend/tests/test_huggingface_provider.py` | Vérifie l'interprétation de la description API et le contrôle GLB avec des données de test locales | Ne consomme pas le quota public en CI | À chaque suite pytest |
+| `backend/tests/test_huggingface_provider.py` | Vérifie les contrats Stable Fast 3D et TripoSR, l'ordre de la chaîne, la sécurité du jeton et la lecture GLB avec un client simulé et une fixture de conteneur | Ne consomme pas de quota et ne prétend pas générer un vrai modèle en CI | À chaque suite pytest |
 | `backend/tests/test_generation_service.py` | Vérifie la création et les transitions d'état sans prétendre créer un vrai modèle | Isole le métier du Space | À chaque suite pytest |
 | `backend/tests/test_local_storage.py` | Contrôle écritures atomiques, noms et garde-fous de chemin | Protège le stockage local contre un chemin client | À chaque suite pytest |
 | `backend/tests/test_models_api.py` | Vérifie les réponses d'upload, de suivi, les erreurs et le refus de téléchargement prématuré | Stabilise le contrat HTTP sans appeler le fournisseur | À chaque suite pytest |
@@ -86,7 +94,8 @@ Mis à jour le 19 octobre 2026. Les tableaux décrivent les fichiers du projet q
 | `docs/etapes/etape-03.md` | Décrit l'API Hugging Face inspectée, les photos, la licence et les erreurs observées | Distingue l'implémentation de sa faisabilité non démontrée | Pour revoir le fournisseur ou expliquer l'essai au jury |
 | `docs/etapes/etape-04.md` | Explique statuts, service, stockage et routes | Rend le cycle de génération explicable fichier par fichier | Pour réviser l'étape 4 |
 | `docs/etapes/etape-05.md` | Explique le formulaire, le suivi, le viewer et ses limites de test | Relie l'interface aux routes backend | Pour présenter ou modifier l'étape 5 |
-| `docs/etapes/etape-06.md` | Consigne l'essai de faisabilité incomplet et les critères non satisfaits | Évite de déclarer le sprint terminé sans GLB réel | Pour décider comment débloquer l'étape 6 |
+| `docs/etapes/etape-06.md` | Consigne les essais précédents, la préparation Colab et les critères non satisfaits | Évite de déclarer le sprint terminé sans GLB réel | Pour suivre les essais et préparer la soutenance |
+| `docs/etapes/etape-06-colab.md` | Explique le démarrage Colab, les options vérifiées, les risques du GPU gratuit et le parcours après réception du lien | Rend l'installation distante compréhensible et explicite qu'elle n'est pas encore testée sur Colab | Avant de démarrer TripoSR ou pour expliquer les limites au jury |
 | `docs/etapes/.gitkeep` | Marqueur ancien du dossier de guides | Conservé sans rôle d'exécution | Au clonage du dépôt |
 | `docs/archive/` et `docs/archive/v1/` | Isolent les documents remplacés | Préservent l'historique tout en gardant les instructions v2 à la racine | Pour consulter l'ancienne vision |
 | `docs/archive/v1/etapes/` | Contient les guides des étapes v1 archivés | Évite de les confondre avec le Sprint 1 v2 | Consultation historique |

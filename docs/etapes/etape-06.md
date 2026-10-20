@@ -22,7 +22,7 @@ Les cinq requêtes ont échoué avec le message Gradio indiquant que l'applicati
 
 Le candidat suivant est le Space officiel `stabilityai/TripoSR`. Son dépôt de Space et sa page du modèle indiquent une licence MIT. Cela décrit la licence du modèle et du Space ; cela ne garantit ni la disponibilité du calcul gratuit, ni l'absence de quota, ni un droit automatique sur les photos de tiers.
 
-Le code source officiel courant `app.py` a été consulté. Il chaîne `check_input_image`, `preprocess`, puis `generate`. Le code retourne le chemin OBJ puis le chemin GLB. Le client installé est `gradio_client` 2.7.2 ; `inspect.signature(Client)` confirme un argument `token` (pas `hf_token`).
+Lors de l'essai antérieur, le code app.py livré par le Space a été consulté. Il enchaînait check_input_image, preprocess, puis generate et retournait le chemin OBJ puis le chemin GLB. La nouvelle préparation s'appuie sur le dépôt officiel courant, dont gradio_app.py et les options de lancement sont documentés plus bas. Le client installé est gradio_client 2.7.2 ; inspect.signature(Client) confirme un argument token (pas hf_token).
 
 L'appel demandé `Client("stabilityai/TripoSR", token=False).view_api(return_format="dict")` n'a pas pu lire le contrat : le constructeur `Client` s'arrête avant `view_api()` parce que le Space est signalé en erreur runtime. Trois inspections réseau ont abouti au même résultat. Aucun nom d'endpoint ni paramètre de requête n'a été inventé et aucune photo n'a été envoyée.
 
@@ -42,6 +42,16 @@ La page possède maintenant le bouton « Ouvrir un GLB local ». Il crée une UR
 
 Le dossier `backend/data/feasibility-results/` est vide. Aucun GLB réel n'est disponible ; le bouton peut être utilisé plus tard avec un fichier `.glb` véritable placé dans ce dossier, mais la rotation, le déplacement, le zoom et le chargement 3D n'ont donc pas encore été validés avec un modèle.
 
+## Préparation du serveur TripoSR dans Colab
+
+Le dépôt officiel TripoSR a maintenant été relu dans ses fichiers README.md, requirements.txt, gradio_app.py et run.py. Le dépôt et ses poids pré-entraînés sont sous licence MIT. Le README demande Python 3.8 ou plus, PyTorch/CUDA compatibles, setuptools à jour et les dépendances de requirements.txt ; il donne aussi une procédure de réinstallation de torchmcubes en cas d'erreur CUDA. Le notebook utilise PyTorch fourni par Colab et ne modifie ni l'environnement local ni backend/requirements.txt.
+
+Le lanceur officiel expose réellement --share, --port (7860 par défaut), --username et --password. Il configure auth uniquement si username et password sont tous deux fournis. Le notebook exécute gradio_app.py avec --share, --port 7860 et --queuesize 1 sans identifiants : le serveur est donc accessible à toute personne connaissant le lien temporaire. La cellule reste active pendant le serveur.
+
+La signature installée de gradio_client 2.7.2 est inspectée localement : Client reçoit src et token ; sa documentation accepte un Space ID ou l'URL complète d'une application Gradio. Le fournisseur accepte désormais les deux. Il appelle view_api() à chaque génération, choisit une chaîne complète ou les étapes séparées selon les entrées/sorties observées, puis sélectionne la sortie portant le format GLB. Un jeton Hugging Face ne part jamais vers un serveur Gradio externe.
+
+Le notebook et son guide sont non testés sur Colab. Le serveur n'a pas encore fourni son vrai contrat view_api(), aucun POST /models n'a été exécuté contre lui, et aucun modèle GLB réel n'a été reçu. Le guide docs/etapes/etape-06-colab.md décrit la suite après réception de l'URL. Google rappelle que la disponibilité GPU, les limites d'utilisation, les types de GPU et les délais d'inactivité de Colab varient et ne sont pas garantis. Les photos doivent être libres de droits et ne contenir personne ni donnée personnelle.
+
 ## Fichiers modifiés : rôle, lancement et justification
 
 | Fichier | Rôle et logique | Lancer ou vérifier | Pourquoi ce choix |
@@ -56,6 +66,15 @@ Le dossier `backend/data/feasibility-results/` est vide. Aucun GLB réel n'est d
 | `docs/ETAT.md` | Consigne l'état réel du Sprint 1 et le blocage TripoSR | Lecture au début de chaque session | Évite de déclarer la génération ou le sprint validés à tort |
 | `docs/etapes/etape-06.md` | Conserve les essais, l'exception et le mode d'emploi du test local | Lecture pour refaire la faisabilité et préparer la soutenance | Assure la traçabilité du résultat négatif/non concluant |
 | `.env.example` | Indique les variables à copier dans `backend/.env` ou `.env` sans inclure de jeton | Copie locale uniquement ; ne pas commiter le fichier créé `.env` | Rend la configuration reproductible sans secret dans Git |
+
+## Fichiers de préparation Colab et fournisseur
+
+| Fichier | Rôle et logique | Lancer ou vérifier | Pourquoi ce choix |
+|---|---|---|---|
+| tools/colab/triposr_server.ipynb | Vérifie T4, récupère le dépôt officiel, installe dans Colab et lance le serveur Gradio public | Ouvrir dans Colab et exécuter les cellules dans l'ordre ; non testé sur Colab | Le modèle pré-entraîné tourne dans un GPU distant temporaire sans PyTorch local |
+| backend/app/providers/huggingface.py | Inspecte view_api à l'exécution, gère les IDs et URLs Gradio, prend la sortie GLB et contrôle la structure GLB 2.0 | Les tests simulés sont lancés par pytest depuis backend ; l'essai réseau attend l'URL | L'interface métier reste indépendante des détails du fournisseur et des chemins API supposés |
+| backend/tests/test_huggingface_provider.py | Simule les contrats Gradio combiné et séparé, l'ordre des appels, la protection du jeton et le format GLB | pytest depuis backend, sans réseau | Vérifie l'adaptateur sans faire passer une fixture de test pour une génération réelle |
+| docs/etapes/etape-06-colab.md | Explique le notebook, les options exactes, les risques gratuits et les prochaines validations réelles | À consulter avant de lancer Colab | Rend le serveur reproductible tout en décrivant ses limites |
 
 ## Vérifications
 
@@ -72,4 +91,4 @@ Puis ouvrir `http://127.0.0.1:8000/`. Une sélection locale valide doit afficher
 
 L'étape 6 n'est pas validée : Stable Fast 3D a échoué cinq fois ; TripoSR est en `RUNTIME_ERROR` avant inspection de son API ; aucun GLB réel n'a été produit. Le projet ne contient aucun modèle fictif. Le viewer comporte maintenant une voie locale honnête pour pouvoir tester un futur GLB.
 
-La suite consiste à attendre le retour du Space, refaire `view_api(return_format="dict")`, créer l'adaptateur TripoSR uniquement à partir du contrat observé, puis tester une photo sûre. Si le Space reste indisponible, consigner le blocage à la soutenance et décider ensuite si un autre fournisseur gratuit pré-entraîné mérite une étude.
+La suite consiste à lancer le notebook Colab et transmettre son lien à l'application. L'API réelle doit ensuite être inspectée avec view_api(), puis une photo sûre doit être envoyée par POST /models. L'étape 6 ne sera validée qu'après les statuts réels, la réception d'un GLB valide, l'affichage contrôlé dans le viewer et le téléchargement ; les 5 à 10 photos et les notes de qualité viendront après cette preuve initiale. Si Colab ne fournit pas le T4 ou interrompt la session, consigner le blocage sans prétendre que la génération a réussi.

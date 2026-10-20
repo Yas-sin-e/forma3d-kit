@@ -45,6 +45,8 @@ Ne pas faire au Sprint 1 : OpenCV, rembg, comptes, base de données, Next.js, Do
 
 ## Hugging Face
 - Appeler un Space public avec gradio_client uniquement après inspection de son API réelle.
+- HF_SPACE_ID accepte un identifiant de Space ou une URL HTTP(S) complète d'application Gradio ; appeler view_api() au moment de la génération et sélectionner uniquement les fonctions, paramètres et sorties présents dans le contrat renvoyé.
+- Ne jamais transmettre HF_TOKEN à une URL Gradio externe ; il est destiné à l'accès Hugging Face.
 - Le backend charge les secrets de `backend/.env` en priorité, puis ceux du `.env` racine ; les deux restent ignorés par Git.
 - Ne jamais inventer de nom de paramètre ou de chemin de sortie.
 - Prévoir délai maximal, relance limitée si le Space dort, erreurs explicites et isolation dans Image3DProvider.

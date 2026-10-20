@@ -11,13 +11,14 @@ Forma3D Studio est un SaaS 3D pour le commerce en ligne : le vendeur envoie une 
 ## État actuel
 Sprint 1 : les fondations, la validation, le fournisseur Stable Fast 3D, le service de suivi, le stockage local et la page viewer sont implémentés. Cinq photos libres ont échoué sur le Space Stable Fast 3D ; le Space officiel TripoSR était en `RUNTIME_ERROR` avant l'inspection de son API. Aucun GLB réel n'a été obtenu. Le viewer permet maintenant d'ouvrir un GLB choisi localement, marqué comme non généré par l'application, mais son affichage et ses contrôles restent à vérifier avec un vrai modèle. Consultez `docs/ETAT.md` avant de présenter la faisabilité.
 
-Le Sprint 1 se concentre sur le trajet essentiel photo vers GLB, viewer et téléchargement, en commençant par le petit mobilier opaque : tabouret, chaise et table d'appoint. Les comptes vendeurs, la boutique vitrine et le widget distribuable relèvent des sprints suivants.
+Le Sprint 1 se concentre sur le trajet essentiel photo vers GLB, viewer et téléchargement, en commençant par le petit mobilier opaque : tabouret, chaise et table d'appoint. L'étape 6 prépare un serveur TripoSR exécuté par l'étudiante sur Colab ; son URL, l'inspection live de l'API et une génération réelle sont encore attendues. Aucun GLB réel n'a été obtenu. Le mode d'emploi est dans docs/etapes/etape-06-colab.md. Les comptes vendeurs, la boutique vitrine et le widget distribuable relèvent des sprints suivants.
 
 ## Répertoires et documents
 - backend/app : application FastAPI, validation, service de génération, fournisseur et stockage local.
 - backend/tests : vérifications automatisées du backend sans appels à Hugging Face.
 - frontend : page HTML du Sprint 1 servie par FastAPI, sans Next.js.
 - docs : état, structure et explications de chaque étape.
+- tools/colab/triposr_server.ipynb : notebook Colab de démarrage du serveur TripoSR, à exécuter sur un runtime GPU temporaire.
 - docs/archive/v1 : historique de l'ancienne vision, conservé sans être la référence active.
 - .github/workflows : vérifications automatiques sur GitHub.
 - PRODUCT.md définit vision, périmètre et limites ; DESIGN.md fixe les règles visuelles ; AGENTS.md décrit les contraintes et le cycle de travail.
