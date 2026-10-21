@@ -1,6 +1,6 @@
 # Structure expliquée — Forma3D Studio
 
-Mis à jour le 20 octobre 2026. Les tableaux décrivent les fichiers du projet qui existent et les dossiers locaux ignorés par Git. L'étape 6 prépare un serveur TripoSR sur Colab ; aucun appel réel à ce serveur ni aucun GLB n'a encore été obtenu.
+Mis à jour le 21 octobre 2026. Les tableaux décrivent les fichiers du projet qui existent et les dossiers locaux ignorés par Git. L'étape 6 a été testée partiellement sur Colab : trois essais de l'image récente ont échoué ; dans le runtime Python 3.12, la commande de secours torchmcubes a aussi échoué au code 1 sans afficher son stderr interne. Le runtime historique 2025.10 a été contrôlé (Python 3.12.12, T4, CUDA 12.6). La cellule de secours a été mise à jour d'après le README officiel actuel de torchmcubes et reste à tester. Le serveur n'a pas démarré et aucun GLB n'a été obtenu.
 
 ## Racine et documents de cadrage
 
@@ -28,7 +28,7 @@ Mis à jour le 20 octobre 2026. Les tableaux décrivent les fichiers du projet q
 |---|---|---|---|
 | `tools/` | Regroupe les outils de développement hors de l'application | Le notebook serveur ne fait pas partie du backend livré | Pour lancer le fournisseur dans un environnement GPU distant |
 | `tools/colab/` | Range le notebook destiné à Google Colab | Isole les cellules qui installent TripoSR temporairement dans le runtime distant | Quand l'étudiante prépare son serveur pour un essai |
-| `tools/colab/triposr_server.ipynb` | Vérifie un GPU T4, clone le dépôt officiel, installe ses dépendances dans Colab et lance gradio_app.py avec un lien public | Évite toute installation PyTorch, CUDA ou TripoSR sur le PC ; toutes les cellules de code sont commentées en français | Dans Google Colab, avant de fournir HF_SPACE_ID au backend |
+| `tools/colab/triposr_server.ipynb` | Vérifie un GPU T4, clone le dépôt officiel, installe ses dépendances dans Colab et lance gradio_app.py avec un lien public | Évite toute installation PyTorch, CUDA ou TripoSR sur le PC ; toutes les cellules de code sont commentées en français. Le contrôle T4/Python 3.12 du runtime 2025.10 est réussi ; une capture montre une commande d'installation personnalisée en échec, mais la runtime et la cause ne sont pas identifiés | Après vérification du runtime et de l'erreur pip, avant de fournir l'URL Gradio au backend |
 
 ## Backend Python
 
@@ -95,7 +95,7 @@ Mis à jour le 20 octobre 2026. Les tableaux décrivent les fichiers du projet q
 | `docs/etapes/etape-04.md` | Explique statuts, service, stockage et routes | Rend le cycle de génération explicable fichier par fichier | Pour réviser l'étape 4 |
 | `docs/etapes/etape-05.md` | Explique le formulaire, le suivi, le viewer et ses limites de test | Relie l'interface aux routes backend | Pour présenter ou modifier l'étape 5 |
 | `docs/etapes/etape-06.md` | Consigne les essais précédents, la préparation Colab et les critères non satisfaits | Évite de déclarer le sprint terminé sans GLB réel | Pour suivre les essais et préparer la soutenance |
-| `docs/etapes/etape-06-colab.md` | Explique le démarrage Colab, les options vérifiées, les risques du GPU gratuit et le parcours après réception du lien | Rend l'installation distante compréhensible et explicite qu'elle n'est pas encore testée sur Colab | Avant de démarrer TripoSR ou pour expliquer les limites au jury |
+| `docs/etapes/etape-06-colab.md` | Explique le démarrage Colab, les options vérifiées, les risques du GPU gratuit et le parcours après réception du lien | Rend l'installation distante reproductible et consigne le test réel partiel ainsi que le blocage des dépendances | Avant de reprendre l'installation TripoSR ou pour expliquer les limites au jury |
 | `docs/etapes/.gitkeep` | Marqueur ancien du dossier de guides | Conservé sans rôle d'exécution | Au clonage du dépôt |
 | `docs/archive/` et `docs/archive/v1/` | Isolent les documents remplacés | Préservent l'historique tout en gardant les instructions v2 à la racine | Pour consulter l'ancienne vision |
 | `docs/archive/v1/etapes/` | Contient les guides des étapes v1 archivés | Évite de les confondre avec le Sprint 1 v2 | Consultation historique |

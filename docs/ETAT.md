@@ -1,10 +1,10 @@
 # État du projet — Forma3D Studio
 
-Dernière mise à jour : 20 octobre 2026.
+Dernière mise à jour : 21 octobre 2026.
 
 ## Résumé d'avancement
 
-Sprint 1 — photo vers GLB affiché et téléchargeable. Les étapes 1 à 5 sont implémentées. L'étape 6 est en cours de préparation : un serveur TripoSR officiel sera démarré par l'étudiante sur Colab, puis appelé par Forma3D via une URL Gradio publique. Le notebook est non testé sur Colab. Aucun GLB réel n'a encore été obtenu ; le Sprint 1 et l'US3 ne sont pas déclarés terminés.
+Sprint 1 — SaaS e-commerce : photo vers GLB affiché et téléchargeable. Les étapes 1 à 5 sont implémentées. L'étape 6 reste bloquée à l'installation Colab : une capture montre un `pip install` d'une liste sans `torchmcubes` en échec (code 1), puis une trace Python 3.12 confirme que la commande de secours `pip install git+...torchmcubes.git` échoue aussi (code 1). Dans les deux cas, le message pip interne manque. Le runtime historique `2025.10` a été vérifié avec Python 3.12.12, Tesla T4 et CUDA 12.6. Aucun serveur, lien public ni GLB réel n'a été obtenu. Le Sprint 1 et l'US3 ne sont pas déclarés terminés.
 
 ## Fait
 
@@ -28,15 +28,20 @@ Sprint 1 — photo vers GLB affiché et téléchargeable. Les étapes 1 à 5 son
 - Ces échecs ne prouvent ni un quota épuisé ni une file d'attente ; les messages n'en donnaient pas la cause.
 - Le code officiel TripoSR a été consulté dans README.md, requirements.txt, gradio_app.py et run.py. Le dépôt et les poids sont sous licence MIT.
 - gradio_app.py expose --share, --port (7860 par défaut), --username et --password. auth est activé uniquement quand les deux identifiants sont donnés. Le notebook démarre sans authentification et demande un lien temporaire public.
+- Le 21 octobre 2026, le vrai runtime Colab a détecté Tesla T4 et a cloné le dépôt officiel dans /content/TripoSR. Trois essais d'installation ont échoué avant le démarrage de Gradio : les deux premiers sur la préparation de métadonnées de torchmcubes ; le troisième, après séparation de torchmcubes, sur la construction de Pillow==10.1.0 depuis son archive source (« Getting requirements to build wheel » : erreur, code 1). La sortie disponible ne révèle pas l'exception interne de Pillow ; aucune cause plus précise n'est affirmée. La limite de trois tentatives est atteinte.
+- Les notes officielles Colab datées du 16 septembre 2026 annoncent Python 3.13.15 sur les images runtime. PyPI publie Pillow 10.1.0 avec des wheels CPython au plus pour 3.12 et aucun wheel cp313. Cela correspond au téléchargement de l'archive source observé, mais la version du noyau de cette session n'a pas été imprimée ; la compatibilité est une hypothèse étayée, pas une cause prouvée.
+- Pour tester une image runtime antérieure, la version Colab `2025.10` a été sélectionnée en gardant T4. Après l'arrêt de l'ancienne session, le nouveau runtime s'est connecté le 21 octobre 2026. La cellule GPU y a confirmé Python 3.12.12, Tesla T4 et PyTorch CUDA 12.6. Le clonage et les dépendances doivent être repris dans cette session neuve ; le dossier `/content/TripoSR` de l'ancien runtime n'y est pas considéré comme présent.
 
-## En cours et bloqué par l'URL Colab
+## Bloqué : dépendances dans Colab
 
-- La disponibilité du GPU T4, l'installation dans Colab, le lancement Gradio et la création effective du lien n'ont pas été vérifiés. Le notebook est explicitement marqué « non testé sur Colab ».
+- Dans l'image Colab récente, le GPU Tesla T4 et le clonage sont vérifiés ; l'installation échoue à Pillow==10.1.0 après trois tentatives. Aucune quatrième tentative n'est lancée dans cette piste.
+- Dans le runtime historique Colab `2025.10`, le contrôle GPU est réussi (Python 3.12.12, Tesla T4, PyTorch CUDA 12.6). Une première capture d'installation personnalisée sans `torchmcubes` montre un code 1, sans runtime clairement visible. Une trace ultérieure avec `/usr/lib/python3.12/subprocess.py` confirme que la commande de secours TripoSR `pip install git+https://github.com/tatsy/torchmcubes.git` a aussi échoué avec le code 1 ; `CalledProcessError` ne contient pas le stderr interne de pip.
+- La cellule de serveur n'a pas été exécutée : aucune URL Gradio publique n'existe à communiquer et le serveur TripoSR n'est pas disponible.
 - Aucun contrat view_api() du serveur Colab n'a été lu ; seuls des tests locaux simulant Client couvrent les deux formes de contrat.
 - Aucune photo n'a été envoyée à ce serveur, aucun statut PENDING/RUNNING/DONE n'a été observé et aucun GLB ne se trouve dans backend/data/feasibility-results/.
 - Le viewer et le téléchargement n'ont pas été validés avec un GLB réel. Aucun tableau de 5 à 10 résultats TripoSR ni note de qualité de l'étudiante n'existe encore.
-- Il faut attendre l'URL publique que l'étudiante communiquera. Elle sera écrite uniquement dans backend/.env et restera ignorée par Git.
-- Après réception de l'URL : inspecter le vrai view_api(), envoyer une photo sûre via POST /models, suivre les statuts, valider et afficher le GLB, essayer le téléchargement, puis seulement étendre l'essai à 5–10 photos. L'étudiante attribuera les notes bon/moyen/mauvais.
+- La cellule de secours du notebook versionné a été adaptée au README actuel de `tatsy/torchmcubes` : installer `scikit-build-core`, `pybind11` et `cmake`, puis construire avec `--no-build-isolation`, en affichant stdout/stderr complet. Ce changement est **non testé sur Colab**. Exécuter la cellule corrigée au plus une fois dans le runtime Python 3.12 ; si elle échoue, conserver stdout/stderr et arrêter les tentatives avant de choisir la suite.
+- Une fois le serveur démarré et son URL communiquée : l'écrire uniquement dans backend/.env, inspecter le vrai view_api(), envoyer une photo sûre via POST /models, suivre les statuts, valider et afficher le GLB, essayer le téléchargement, puis seulement étendre l'essai à 5–10 photos. L'étudiante attribuera les notes bon/moyen/mauvais.
 
 ## Décisions et limites
 
@@ -59,6 +64,8 @@ Les tests locaux doivent simuler le client et ne pas appeler de fournisseur dist
 
 Lors de la préparation de l'étape 6, 31 tests locaux hors des trois modules qui démarrent TestClient ont réussi. Ces modules ne peuvent pas être exécutés dans le sandbox Windows actuel : la boucle asyncio attend un socket local pendant le démarrage de TestClient. Ce blocage de l'environnement n'est pas déclaré comme une régression du code. La CI GitHub « Project checks » a exécuté la suite complète avec succès sur le commit 59033ebffaf3fa6f5cd5b8c6177293cae7a816e3 le 20 octobre 2026.
 
+Vérification locale du 21 octobre : les 15 tests de `tests/test_huggingface_provider.py` passent avec `--basetemp=data\.pytest-scratch` (aucun appel réseau). La suite complète a été lancée, mais elle n'a pas produit de résultat dans ce sandbox et a été interrompue ; elle n'est donc pas déclarée verte localement. La CI doit confirmer la suite complète après le push.
+
 ## Prochaine action recommandée
 
-Ouvrir le guide docs/etapes/etape-06-colab.md, lancer le notebook avec le GPU T4 si Colab le propose, puis transmettre le lien sous la forme URL : https://....gradio.live. Ne déclarer l'étape 6 réussie qu'après réception et vérification d'un vrai GLB par le parcours de l'application.
+Vérifier le runtime de la capture Colab et récupérer l'erreur pip complète avant un nouvel essai d'installation. Ne déclarer l'étape 6 réussie qu'après démarrage du serveur, inspection réelle de `view_api()`, réception d'un vrai GLB par le parcours de l'application, affichage et téléchargement.
