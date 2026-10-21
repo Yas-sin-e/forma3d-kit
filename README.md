@@ -9,9 +9,9 @@ Forma3D Studio est un SaaS 3D pour le commerce en ligne : le vendeur envoie une 
 - Compréhensible : chaque fichier et dossier est expliqué dans docs/STRUCTURE.md.
 
 ## État actuel
-Sprint 1 : les fondations, la validation, le fournisseur Stable Fast 3D, le service de suivi, le stockage local et la page viewer sont implémentés. Cinq photos libres ont échoué sur le Space Stable Fast 3D ; le Space officiel TripoSR était en `RUNTIME_ERROR` avant l'inspection de son API. Aucun GLB réel n'a été obtenu. Le viewer permet maintenant d'ouvrir un GLB choisi localement, marqué comme non généré par l'application, mais son affichage et ses contrôles restent à vérifier avec un vrai modèle. Consultez `docs/ETAT.md` avant de présenter la faisabilité.
+Sprint 1 : les fondations photo vers GLB et le viewer sont implémentés. Le Space Stable Fast 3D a échoué sur cinq photos, mais le serveur officiel TripoSR lancé dans Colab a ensuite produit cinq GLB réels via l'API Forma3D. Les fichiers ont été validés GLB 2.0. Le viewer et ses contrôles ont déjà été vérifiés sur un GLB réel avec des paramètres d'exemple basse résolution ; l'affichage des cinq nouveaux modèles aux paramètres normaux reste à revoir. Consultez docs/ETAT.md pour les mesures et les limites.
 
-Le Sprint 1 se concentre sur le trajet essentiel photo vers GLB, viewer et téléchargement, en commençant par le petit mobilier opaque : tabouret, chaise et table d'appoint. L'étape 6 prépare un serveur TripoSR exécuté par l'étudiante sur Colab ; son URL, l'inspection live de l'API et une génération réelle sont encore attendues. Aucun GLB réel n'a été obtenu. Le mode d'emploi est dans docs/etapes/etape-06-colab.md. Les comptes vendeurs, la boutique vitrine et le widget distribuable relèvent des sprints suivants.
+Le Sprint 1 se concentre sur le trajet essentiel photo vers GLB, viewer et téléchargement, en commençant par le petit mobilier opaque : tabouret, chaise et table d'appoint. Cinq essais TripoSR ont atteint DONE ; les notes qualitatives bon/moyen/mauvais restent à donner par l'étudiante après examen. Le guide de lancement Colab est dans docs/etapes/etape-06-colab.md. Les comptes vendeurs, la boutique vitrine et le widget distribuable relèvent des sprints suivants.
 
 ## Répertoires et documents
 - backend/app : application FastAPI, validation, service de génération, fournisseur et stockage local.

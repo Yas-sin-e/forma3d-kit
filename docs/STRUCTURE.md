@@ -1,6 +1,6 @@
 # Structure expliquée — Forma3D Studio
 
-Mis à jour le 21 octobre 2026. Les tableaux décrivent les fichiers du projet qui existent et les dossiers locaux ignorés par Git. L'étape 6 a été testée partiellement sur Colab : trois essais de l'image récente ont échoué ; dans le runtime Python 3.12, la commande de secours torchmcubes a aussi échoué au code 1 sans afficher son stderr interne. Le runtime historique 2025.10 a été contrôlé (Python 3.12.12, T4, CUDA 12.6). La cellule de secours a été mise à jour d'après le README officiel actuel de torchmcubes et reste à tester. Le serveur n'a pas démarré et aucun GLB n'a été obtenu.
+Mis à jour le 21 octobre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le backend Forma3D et le serveur TripoSR dans Colab. Les évaluations visuelles restent à faire par l'étudiante.
 
 ## Racine et documents de cadrage
 
@@ -28,7 +28,7 @@ Mis à jour le 21 octobre 2026. Les tableaux décrivent les fichiers du projet q
 |---|---|---|---|
 | `tools/` | Regroupe les outils de développement hors de l'application | Le notebook serveur ne fait pas partie du backend livré | Pour lancer le fournisseur dans un environnement GPU distant |
 | `tools/colab/` | Range le notebook destiné à Google Colab | Isole les cellules qui installent TripoSR temporairement dans le runtime distant | Quand l'étudiante prépare son serveur pour un essai |
-| `tools/colab/triposr_server.ipynb` | Vérifie un GPU T4, clone le dépôt officiel, installe ses dépendances dans Colab et lance gradio_app.py avec un lien public | Évite toute installation PyTorch, CUDA ou TripoSR sur le PC ; toutes les cellules de code sont commentées en français. Le contrôle T4/Python 3.12 du runtime 2025.10 est réussi ; une capture montre une commande d'installation personnalisée en échec, mais la runtime et la cause ne sont pas identifiés | Après vérification du runtime et de l'erreur pip, avant de fournir l'URL Gradio au backend |
+| tools/colab/triposr_server.ipynb | Contrôle un T4, clone TripoSR, installe les dépendances et lance Gradio avec un lien temporaire | Tout s'exécute dans Colab ; le notebook a été réellement lancé, cinq générations ont réussi et les sorties sont effacées du fichier versionné | Au démarrage d'une session Colab ou d'une démonstration |
 
 ## Backend Python
 
@@ -44,17 +44,17 @@ Mis à jour le 21 octobre 2026. Les tableaux décrivent les fichiers du projet q
 | `backend/requirements.txt` | Déclare FastAPI, Uvicorn, HTTPX2, pytest, multipart, Gradio Client et python-dotenv | Recrée les dépendances dans le venv | À l'installation et en CI |
 | `backend/app/__init__.py` | Marque `app` comme paquet Python | Rend les imports déterministes | Au démarrage et pendant les tests |
 | `backend/app/main.py` | Construit FastAPI, sert la page `/`, configure le service et branche les routes | Fournit un point d'entrée unique | Quand Uvicorn démarre ou TestClient importe l'application |
-| `backend/app/config.py` | Charge d'abord `backend/.env`, puis `.env` racine, et vérifie le Space, le jeton facultatif et les délais | Garde les secrets hors du code et permet le fichier local demandé pour les essais | Au démarrage du service de génération |
+| backend/.env | Configuration locale, dont l'URL temporaire du serveur Gradio | Fichier ignoré par Git ; ne jamais copier son contenu dans un document ou un commit | Pour connecter le backend au serveur Colab actif |
 | `backend/app/models.py` | Définit états et fiche de génération en mémoire | Représente le cycle sans installer une base au Sprint 1 | Pendant la vie du serveur |
 | `backend/app/schemas.py` | Fixe le JSON public de l'état de génération | Stabilise les réponses et la documentation OpenAPI | Sur POST et GET `/models` |
 | `backend/app/routers/__init__.py` | Marque le paquet des routes | Clarifie l'organisation Python | À l'import des routes |
 | `backend/app/routers/models.py` | Valide la photo, crée la tâche, donne l'état et sert le GLB terminé | Sépare HTTP de l'orchestration métier | À l'envoi, au suivi et au téléchargement |
 | `backend/app/services/__init__.py` | Marque le paquet métier | Clarifie les imports de services | À l'import du validateur et du service |
 | `backend/app/services/upload_validator.py` | Contrôle extension, MIME, signature et plafond de 10 Mo | Le nom ou le type annoncé seul ne suffit pas | Avant d'enregistrer une photo |
-| `backend/app/services/generation_service.py` | Orchestre états, appel du fournisseur et stockage | Centralise un cycle testable en dehors des routes | Après un téléversement valide |
+| backend/app/services/generation_service.py | Orchestre les états, le fournisseur et le stockage ; journalise type/repr/cause et masque les secrets | Facilite le diagnostic sans divulguer le jeton ni l'URL configurée | Après un upload valide ou en cas d'échec fournisseur |
 | `backend/app/providers/__init__.py` | Marque le paquet d'adaptateurs | Isole les fournisseurs externes | À l'import fournisseur |
 | `backend/app/providers/base.py` | Définit `Image3DProvider.generate(Path) -> bytes` et l'erreur commune | Permet de remplacer Hugging Face sans réécrire le service | Dans GenerationService et les adaptateurs |
-| `backend/app/providers/huggingface.py` | Appelle `view_api()` à chaque génération, lit les paramètres publiés, exécute une chaîne Gradio TripoSR ou l'endpoint observé Stable Fast 3D et valide le conteneur GLB 2.0 | N'invente pas les fonctions, index, défauts ou sorties ; garde les fournisseurs derrière Image3DProvider | Pour une génération distante via identifiant de Space ou URL Gradio |
+| backend/app/providers/huggingface.py | Découvre le contrat avec view_api, lit les valeurs courantes de client.config, exécute les étapes TripoSR et valide GLB 2.0 | Évite d'interpréter les exemples comme des valeurs par défaut et prend la vraie sortie GLB | À chaque génération distante |
 | `backend/app/storage/__init__.py` | Marque le paquet des adaptateurs de stockage | Sépare les fichiers de persistance du métier | À l'import du stockage |
 | `backend/app/storage/base.py` | Définit le contrat `Storage` pour photos et GLB | Permet de changer la persistance derrière une interface | Dans GenerationService et ses tests |
 | `backend/app/storage/local_storage.py` | Écrit de façon atomique avec des noms UUID créés par le serveur | Démarre sans service payant et évite les chemins du client | À l'acceptation et à la fin d'une génération |
@@ -74,8 +74,8 @@ Mis à jour le 21 octobre 2026. Les tableaux décrivent les fichiers du projet q
 | `backend/tests/` | Contient la suite pytest du backend | Regroupe les vérifications sans appeler le fournisseur en continu | En local et sur GitHub |
 | `backend/tests/test_health.py` | Vérifie le résultat HTTP de `/health` | Protège le premier contrat du serveur | À chaque suite pytest |
 | `backend/tests/test_upload_validator.py` | Couvre formats, taille, signatures et erreurs | Empêche les uploads mal formés sans réseau | À chaque suite pytest |
-| `backend/tests/test_huggingface_provider.py` | Vérifie les contrats Stable Fast 3D et TripoSR, l'ordre de la chaîne, la sécurité du jeton et la lecture GLB avec un client simulé et une fixture de conteneur | Ne consomme pas de quota et ne prétend pas générer un vrai modèle en CI | À chaque suite pytest |
-| `backend/tests/test_generation_service.py` | Vérifie la création et les transitions d'état sans prétendre créer un vrai modèle | Isole le métier du Space | À chaque suite pytest |
+| backend/tests/test_huggingface_provider.py | Simule view_api et client.config pour tester la découverte d'endpoints, les vrais défauts lus dans config et la validation GLB | Aucun réseau ni GPU dans les tests | À chaque suite pytest |
+| backend/tests/test_generation_service.py | Vérifie les transitions d'état et le masquage du jeton et de l'URL dans les logs d'erreur | Protège le diagnostic des secrets locaux | À chaque suite pytest |
 | `backend/tests/test_local_storage.py` | Contrôle écritures atomiques, noms et garde-fous de chemin | Protège le stockage local contre un chemin client | À chaque suite pytest |
 | `backend/tests/test_models_api.py` | Vérifie les réponses d'upload, de suivi, les erreurs et le refus de téléchargement prématuré | Stabilise le contrat HTTP sans appeler le fournisseur | À chaque suite pytest |
 | `backend/tests/test_frontend.py` | Vérifie la page, le contrôle GLB local et l'absence d'envoi réseau depuis son gestionnaire | Protège le parcours local sans fournisseur et sans navigateur externe | À chaque suite pytest |
@@ -87,15 +87,15 @@ Mis à jour le 21 octobre 2026. Les tableaux décrivent les fichiers du projet q
 |---|---|---|---|
 | `docs/` | Regroupe l'état, la structure et les guides | Sépare les explications du code exécutable | Tout au long du projet |
 | `docs/etapes/` | Contient un guide par étape du Sprint 1 | Permet de comprendre l'évolution sans mélanger les étapes | Pour apprendre et préparer la soutenance |
-| `docs/ETAT.md` | Résume fait, en cours, blocages et prochaine action | Transmet l'état réel d'une session à l'autre | Avant de reprendre et après une étape |
+| docs/ETAT.md | Résume l'étape 6, les cinq résultats réels, les contrôles effectués et les points encore à valider | Évite de perdre la distinction entre preuve technique et note de qualité | Au début et à la fin d'une session |
 | `docs/STRUCTURE.md` | Explique chaque élément du dépôt | Aide l'étudiante à défendre les choix | À chaque ajout ou changement de structure |
 | `docs/etapes/etape-01.md` | Explique FastAPI et GET `/health` | Garde une trace pédagogique du premier socle | Pour réviser l'étape 1 |
 | `docs/etapes/etape-02.md` | Explique le validateur et le contrat d'upload historique | Documente l'évolution de POST `/models` au fil du sprint | Pour réviser l'étape 2 |
 | `docs/etapes/etape-03.md` | Décrit l'API Hugging Face inspectée, les photos, la licence et les erreurs observées | Distingue l'implémentation de sa faisabilité non démontrée | Pour revoir le fournisseur ou expliquer l'essai au jury |
 | `docs/etapes/etape-04.md` | Explique statuts, service, stockage et routes | Rend le cycle de génération explicable fichier par fichier | Pour réviser l'étape 4 |
 | `docs/etapes/etape-05.md` | Explique le formulaire, le suivi, le viewer et ses limites de test | Relie l'interface aux routes backend | Pour présenter ou modifier l'étape 5 |
-| `docs/etapes/etape-06.md` | Consigne les essais précédents, la préparation Colab et les critères non satisfaits | Évite de déclarer le sprint terminé sans GLB réel | Pour suivre les essais et préparer la soutenance |
-| `docs/etapes/etape-06-colab.md` | Explique le démarrage Colab, les options vérifiées, les risques du GPU gratuit et le parcours après réception du lien | Rend l'installation distante reproductible et consigne le test réel partiel ainsi que le blocage des dépendances | Avant de reprendre l'installation TripoSR ou pour expliquer les limites au jury |
+| docs/etapes/etape-06.md | Consigne le contrat observé, les cinq appels, les temps, les tailles et les limites de visualisation | Fournit une trace exacte et pédagogique pour reproduire la soutenance | Pour analyser les résultats et attribuer les notes visuelles |
+| docs/etapes/etape-06-colab.md | Explique l'installation testée, le démarrage Gradio et les limites du runtime gratuit | Permet de redémarrer le service sans PyTorch local et sans divulguer le lien temporaire | Avant de préparer une autre démonstration |
 | `docs/etapes/.gitkeep` | Marqueur ancien du dossier de guides | Conservé sans rôle d'exécution | Au clonage du dépôt |
 | `docs/archive/` et `docs/archive/v1/` | Isolent les documents remplacés | Préservent l'historique tout en gardant les instructions v2 à la racine | Pour consulter l'ancienne vision |
 | `docs/archive/v1/etapes/` | Contient les guides des étapes v1 archivés | Évite de les confondre avec le Sprint 1 v2 | Consultation historique |
@@ -109,10 +109,10 @@ Mis à jour le 21 octobre 2026. Les tableaux décrivent les fichiers du projet q
 | Chemin | À quoi ça sert | Pourquoi ce choix | Quand on l'utilise |
 |---|---|---|---|
 | `backend/.venv/` | Environnement Python local et ses paquets | Évite les dépendances globales ; ne se partage pas dans Git | Au lancement et aux tests locaux |
-| `backend/.env` | Réglages secrets locaux du backend, notamment `HF_TOKEN` ; absent lors du dernier contrôle | Le fournisseur public ne reçoit aucun jeton commité | Lorsqu'un essai authentifié est explicitement nécessaire |
+| backend/.env | Configuration locale, dont l'URL temporaire du serveur Gradio | Fichier ignoré par Git ; ne jamais copier son contenu dans un document ou un commit | Pour connecter le backend au serveur Colab actif |
 | `backend/data/` | Stocke les entrées et sorties locales des essais | Garde les médias hors de Git | Pendant la faisabilité |
 | `backend/data/feasibility-inputs/` | Photos libres choisies pour les essais ; trois autres photos écartées ne doivent pas être envoyées car elles montrent des personnes | Garde une provenance et protège les personnes visibles | Pendant les essais réels |
-| `backend/data/feasibility-results/` | Destination locale des résultats de faisabilité réellement obtenus | Un GLB n'y est conservé qu'après retour réel et vérification ; aucun résultat n'est présent actuellement | Après une génération réussie ; le sélecteur du viewer peut ouvrir le fichier depuis le navigateur |
+| backend/data/feasibility-results/ | Contient les cinq GLB réellement téléchargés par l'application et validés GLB 2.0 | Les sorties de faisabilité ne sont pas versionnées ; aucune n'est simulée | Pour examiner les résultats ou les ouvrir dans un viewer |
 | `backend/storage/` | Dossier de runtime pour les photos et modèles des demandes | Conserve les uploads en dehors des sources | Créé automatiquement au premier upload |
 | `backend/storage/images/` | Photos reçues à l'exécution | Conserve les entrées hors du dépôt | Après un vrai upload |
 | `backend/storage/models/` | GLB reçus du fournisseur | Conserve les modèles générés hors du dépôt | Après une vraie génération réussie |
