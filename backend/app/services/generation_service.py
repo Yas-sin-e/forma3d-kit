@@ -76,13 +76,42 @@ class GenerationService:
             model_bytes = self._provider.generate(running_record.image_path)
             model_path = self._storage.save_model(generation_id, model_bytes)
         except ProviderError as error:
+            provider_settings = getattr(self._provider, "settings", None)
+            protected_values = (
+                getattr(provider_settings, "hf_token", None),
+                getattr(provider_settings, "hf_space_id", None),
+            )
+
+            def redact(text: str) -> str:
+                """Masque le jeton et l'adresse configurée avant toute exposition."""
+                for protected_value in protected_values:
+                    if isinstance(protected_value, str) and protected_value:
+                        text = text.replace(protected_value, "[valeur masquée]")
+                return text
+
+            def safe_repr(value: object) -> str:
+                """Masque le jeton et l'adresse temporaire dans les diagnostics locaux."""
+                return redact(repr(value))
+
             failed_record = replace(
                 running_record,
                 status=GenerationStatus.FAILED,
                 updated_at=datetime.now(UTC),
-                error_message=str(error),
+                error_message=redact(str(error)),
             )
-            logger.warning("Generation %s failed in image provider", generation_id)
+
+            cause = error.__cause__
+            nested_cause = cause.__cause__ if cause is not None else None
+            logger.warning(
+                "Generation %s failed in image provider: error_type=%s error_repr=%s "
+                "cause_type=%s cause_repr=%s nested_cause_repr=%s",
+                generation_id,
+                type(error).__name__,
+                safe_repr(error),
+                type(cause).__name__ if cause is not None else None,
+                safe_repr(cause) if cause is not None else None,
+                safe_repr(nested_cause) if nested_cause is not None else None,
+            )
         except Exception as error:
             failed_record = replace(
                 running_record,

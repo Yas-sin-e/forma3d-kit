@@ -34,6 +34,7 @@ _BUILDING_STAGES = {
 }
 _PAUSED_STAGES = {"PAUSED", "SLEEPING", "STOPPED"}
 _JSON_CHUNK_TYPE = 0x4E4F534A
+_MISSING_COMPONENT_VALUE = object()
 
 
 class HuggingFaceSpaceProvider:
@@ -135,7 +136,6 @@ class HuggingFaceSpaceProvider:
                 verbose=False,
                 analytics_enabled=False,
                 download_files=download_dir,
-                httpx_kwargs={"timeout": max(1.0, deadline - time.monotonic())},
             )
             api_description = client.view_api(
                 print_info=False,
@@ -155,7 +155,10 @@ class HuggingFaceSpaceProvider:
                     deadline,
                 )
             else:
-                contract = self._read_triphosr_api_contract(api_description)
+                contract = self._read_triphosr_api_contract(
+                    api_description,
+                    getattr(client, "config", None),
+                )
                 result = self._run_triphosr_contract(
                     client,
                     contract,
@@ -343,8 +346,12 @@ class HuggingFaceSpaceProvider:
         }
 
     @classmethod
-    def _read_triphosr_api_contract(cls, api_description: Any) -> dict[str, Any]:
-        """Trouve la chaîne TripoSR à partir des entrées et sorties de view_api()."""
+    def _read_triphosr_api_contract(
+        cls,
+        api_description: Any,
+        client_config: Any = None,
+    ) -> dict[str, Any]:
+        """Trouve la chaîne d'API et lit les valeurs réelles des composants Gradio."""
         endpoints = cls._all_endpoints(api_description)
         direct_candidates = []
         preprocess_candidates = []
@@ -364,6 +371,11 @@ class HuggingFaceSpaceProvider:
             has_foreground = cls._has_foreground_control(parameters)
             has_resolution = cls._has_resolution_control(parameters)
             glb_index = cls._find_glb_output(outputs)
+            component_values = cls._client_component_values(
+                client_config,
+                selector,
+                len(parameters),
+            )
 
             if glb_index is not None and has_background and has_foreground and has_resolution:
                 direct_candidates.append(
@@ -372,6 +384,7 @@ class HuggingFaceSpaceProvider:
                         parameters,
                         image_index,
                         glb_index,
+                        component_values,
                     )
                 )
             elif glb_index is not None and has_resolution:
@@ -381,13 +394,18 @@ class HuggingFaceSpaceProvider:
                         parameters,
                         image_index,
                         glb_index,
+                        component_values,
                     )
                 )
             elif has_background and has_foreground and cls._find_image_output(outputs) is not None:
                 preprocess_candidates.append(
                     {
                         "selector": selector,
-                        "inputs": cls._defaulted_inputs(parameters, image_index),
+                        "inputs": cls._defaulted_inputs(
+                            parameters,
+                            image_index,
+                            component_values,
+                        ),
                         "input_index": image_index,
                         "output_index": cls._find_image_output(outputs),
                     }
@@ -396,7 +414,11 @@ class HuggingFaceSpaceProvider:
                 check_candidates.append(
                     {
                         "selector": selector,
-                        "inputs": cls._defaulted_inputs(parameters, image_index),
+                        "inputs": cls._defaulted_inputs(
+                            parameters,
+                            image_index,
+                            component_values,
+                        ),
                         "input_index": image_index,
                     }
                 )
@@ -435,10 +457,15 @@ class HuggingFaceSpaceProvider:
         parameters: list[dict[str, Any]],
         image_index: int,
         model_output_index: int,
+        component_values: list[Any] | None = None,
     ) -> dict[str, Any]:
         return {
             "selector": selector,
-            "inputs": cls._defaulted_inputs(parameters, image_index),
+            "inputs": cls._defaulted_inputs(
+                parameters,
+                image_index,
+                component_values,
+            ),
             "input_index": image_index,
             "model_output_index": model_output_index,
         }
@@ -448,18 +475,74 @@ class HuggingFaceSpaceProvider:
         cls,
         parameters: list[dict[str, Any]],
         image_index: int,
+        component_values: list[Any] | None = None,
     ) -> list[Any]:
+        """Prend les défauts de view_api ou les valeurs configurées dans Client.config."""
         values = []
         for index, parameter in enumerate(parameters):
             if index == image_index:
                 values.append(_ImageInput())
-            elif parameter.get("parameter_has_default"):
+            elif (
+                parameter.get("parameter_has_default")
+                and "parameter_default" in parameter
+            ):
                 values.append(parameter.get("parameter_default"))
+            elif (
+                component_values is not None
+                and index < len(component_values)
+                and component_values[index] is not _MISSING_COMPONENT_VALUE
+            ):
+                values.append(component_values[index])
             else:
                 name = cls._parameter_name(parameter) or f"position {index + 1}"
                 raise ProviderError(
-                    f"view_api() ne donne aucune valeur par défaut vérifiée pour {name}."
+                    f"Aucune valeur par défaut vérifiable dans view_api() ou Client.config "
+                    f"pour le paramètre {name}."
                 )
+        return values
+
+    @staticmethod
+    def _client_component_values(
+        client_config: Any,
+        selector: dict[str, Any],
+        parameter_count: int,
+    ) -> list[Any] | None:
+        """Associe un endpoint observé aux valeurs de ses composants dans la config Gradio."""
+        if not isinstance(client_config, dict):
+            return None
+        api_name = selector.get("api_name")
+        dependencies = client_config.get("dependencies")
+        components = client_config.get("components")
+        if not isinstance(api_name, str) or not isinstance(dependencies, list):
+            return None
+        if not isinstance(components, list):
+            return None
+
+        matching_dependencies = [
+            dependency
+            for dependency in dependencies
+            if isinstance(dependency, dict)
+            and isinstance(dependency.get("api_name"), str)
+            and dependency["api_name"].strip("/") == api_name.strip("/")
+            and isinstance(dependency.get("inputs"), list)
+            and len(dependency["inputs"]) == parameter_count
+        ]
+        if len(matching_dependencies) != 1:
+            return None
+
+        component_by_id = {
+            component.get("id"): component
+            for component in components
+            if isinstance(component, dict) and "id" in component
+        }
+        values = []
+        for component_id in matching_dependencies[0]["inputs"]:
+            component = component_by_id.get(component_id)
+            props = component.get("props") if isinstance(component, dict) else None
+            if isinstance(props, dict) and "value" in props:
+                values.append(props["value"])
+            else:
+                values.append(_MISSING_COMPONENT_VALUE)
         return values
 
     @staticmethod

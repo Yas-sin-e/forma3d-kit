@@ -3,6 +3,7 @@
 """Tests du cycle d'état qui n'ont pas besoin d'un Space Hugging Face."""
 
 from pathlib import Path
+from types import SimpleNamespace
 from uuid import uuid4
 
 from app.models import GenerationStatus
@@ -51,6 +52,42 @@ def test_run_records_provider_failure_without_creating_a_model(tmp_path: Path) -
     assert updated.status is GenerationStatus.FAILED
     assert updated.error_message == "Space indisponible dans ce test."
     assert service.get_model_path(record.id) is None
+
+
+def test_run_logs_provider_cause_while_masking_remote_credentials(
+    tmp_path: Path,
+    caplog,
+) -> None:
+    class DetailedUnavailableProvider:
+        settings = SimpleNamespace(
+            hf_token="test-token-never-log",
+            hf_space_id="https://temporary-space.gradio.live",
+        )
+
+        def generate(self, image_path: Path) -> bytes:
+            raise ProviderError(
+                "Échec avec le jeton test-token-never-log"
+            ) from TimeoutError(
+                "écriture en échec pour https://temporary-space.gradio.live"
+            )
+
+    service = GenerationService(
+        DetailedUnavailableProvider(),
+        LocalStorage(tmp_path),
+    )
+    record = service.create_generation(_validated_upload(), b"\xff\xd8\xffphoto")
+
+    service.run(record.id)
+
+    assert "error_type=ProviderError" in caplog.text
+    assert "cause_type=TimeoutError" in caplog.text
+    assert "test-token-never-log" not in caplog.text
+    assert "temporary-space.gradio.live" not in caplog.text
+    result = service.get_generation(record.id)
+    assert result is not None
+    assert result.error_message is not None
+    assert "test-token-never-log" not in result.error_message
+    assert "temporary-space.gradio.live" not in result.error_message
 
 
 def test_run_ignores_unknown_generation_ids(tmp_path: Path) -> None:

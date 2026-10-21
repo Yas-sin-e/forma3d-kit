@@ -141,7 +141,7 @@ def _triposr_combined_api_description() -> dict[str, object]:
 
 
 def _triposr_separate_api_description() -> dict[str, object]:
-    """Décrit les fonctions publiées séparément par une version de Gradio."""
+    """Reproduit les endpoints et examples_input observés sur le Space officiel."""
     return {
         "named_endpoints": {
             "/check_input_image": {
@@ -149,7 +149,7 @@ def _triposr_separate_api_description() -> dict[str, object]:
                     {
                         "parameter_name": "input_image",
                         "component": "Image",
-                        "parameter_has_default": False,
+                        "example_input": "https://raw.githubusercontent.com/gradio-app/gradio/main/test/test_files/bus.png",
                     }
                 ],
                 "returns": [],
@@ -159,19 +159,17 @@ def _triposr_separate_api_description() -> dict[str, object]:
                     {
                         "parameter_name": "input_image",
                         "component": "Image",
-                        "parameter_has_default": False,
+                        "example_input": "https://raw.githubusercontent.com/gradio-app/gradio/main/test/test_files/bus.png",
                     },
                     {
                         "parameter_name": "do_remove_background",
                         "component": "Checkbox",
-                        "parameter_has_default": True,
-                        "parameter_default": True,
+                        "example_input": True,
                     },
                     {
                         "parameter_name": "foreground_ratio",
                         "component": "Slider",
-                        "parameter_has_default": True,
-                        "parameter_default": 0.85,
+                        "example_input": 0.5,
                     },
                 ],
                 "returns": [
@@ -187,13 +185,12 @@ def _triposr_separate_api_description() -> dict[str, object]:
                     {
                         "parameter_name": "image",
                         "component": "Image",
-                        "parameter_has_default": False,
+                        "example_input": "https://raw.githubusercontent.com/gradio-app/gradio/main/test/test_files/bus.png",
                     },
                     {
                         "parameter_name": "mc_resolution",
                         "component": "Slider",
-                        "parameter_has_default": True,
-                        "parameter_default": 256,
+                        "example_input": 32,
                     },
                 ],
                 "returns": [
@@ -211,6 +208,24 @@ def _triposr_separate_api_description() -> dict[str, object]:
             },
         },
         "unnamed_endpoints": {},
+    }
+
+
+def _triposr_gradio_config() -> dict[str, object]:
+    """Valeurs de composants et liens de paramètres observés dans Client.config."""
+    return {
+        "dependencies": [
+            {"api_name": "check_input_image", "inputs": [5]},
+            {"api_name": "preprocess", "inputs": [5, 9, 10]},
+            {"api_name": "generate", "inputs": [6, 11]},
+        ],
+        "components": [
+            {"id": 5, "type": "image", "props": {"label": "Input Image"}},
+            {"id": 6, "type": "image", "props": {"label": "Processed Image"}},
+            {"id": 9, "type": "checkbox", "props": {"label": "Remove Background", "value": True}},
+            {"id": 10, "type": "slider", "props": {"label": "Foreground Ratio", "value": 0.85}},
+            {"id": 11, "type": "slider", "props": {"label": "Marching Cubes Resolution", "value": 256}},
+        ],
     }
 
 
@@ -291,7 +306,8 @@ def test_triposr_api_contract_selects_the_observed_generation_chain() -> None:
 
 def test_triposr_api_contract_finds_separate_functions_without_guessing_indexes() -> None:
     contract = HuggingFaceSpaceProvider._read_triphosr_api_contract(
-        _triposr_separate_api_description()
+        _triposr_separate_api_description(),
+        _triposr_gradio_config(),
     )
 
     assert contract["strategy"] == "separate"
@@ -299,6 +315,21 @@ def test_triposr_api_contract_finds_separate_functions_without_guessing_indexes(
     assert contract["preprocess_step"]["selector"] == {"api_name": "/preprocess"}
     assert contract["generate_step"]["selector"] == {"api_name": "/generate"}
     assert contract["model_output_index"] == 1
+
+
+def test_triposr_contract_uses_component_values_instead_of_examples() -> None:
+    description = _triposr_separate_api_description()
+
+    with pytest.raises(ProviderError, match="Client.config"):
+        HuggingFaceSpaceProvider._read_triphosr_api_contract(description)
+
+    contract = HuggingFaceSpaceProvider._read_triphosr_api_contract(
+        description,
+        _triposr_gradio_config(),
+    )
+
+    assert contract["preprocess_step"]["inputs"][1:] == [True, 0.85]
+    assert contract["generate_step"]["inputs"][1:] == [256]
 
 
 def test_provider_uses_url_view_api_and_does_not_send_hf_token_to_gradio_share(
@@ -345,6 +376,7 @@ def test_provider_uses_url_view_api_and_does_not_send_hf_token_to_gradio_share(
     assert result == _minimal_glb_20_bytes()
     assert observations["src"] == "https://my-tripodemo.gradio.live"
     assert observations["client_kwargs"]["token"] is False
+    assert "httpx_kwargs" not in observations["client_kwargs"]
     assert observations["view_api"] == {
         "print_info": False,
         "return_format": "dict",
@@ -366,6 +398,8 @@ def test_provider_executes_separate_triposr_steps_in_source_order(
     calls: list[str] = []
 
     class FakeClient:
+        config = _triposr_gradio_config()
+
         def view_api(self, **kwargs: Any) -> dict[str, object]:
             return _triposr_separate_api_description()
 
