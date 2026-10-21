@@ -45,9 +45,9 @@ Les tailles ont été mesurées sur les photos et GLB présents localement. Les 
 
 - Les tests ciblés du fournisseur et du service passent : 20 tests sans réseau, avec client simulé.
 - La suite pytest complète passe : 38 tests en 1,12 s. Elle a été lancée avec l'accès local nécessaire aux tests TestClient ; les tests ne contactent aucun fournisseur distant.
-- La CI GitHub après le prochain push reste à vérifier. Ne pas annoncer une CI verte avant l'observation de son résultat.
+- Les commits ont été poussés sur main. Le résultat de la CI déclenchée par le push n'est pas visible depuis cette session : le CLI gh est absent et la page publique ne peut pas lire ce dépôt privé. Consulter Actions dans GitHub avant d'annoncer la CI verte.
 - Vérifier avant commit que backend/.env, les cinq GLB, les photos et le cahier des charges DOCX utilisateur restent hors de l'index Git.
 
 ## Prochaine action recommandée
 
-Attribuer une note bon, moyen ou mauvais à chacun des cinq GLB après les avoir examinés, puis relire le diff et vérifier la CI après push.
+Attribuer une note bon, moyen ou mauvais à chacun des cinq GLB après les avoir examinés, puis consulter le résultat de la CI dans GitHub Actions.
