@@ -31,7 +31,10 @@
         <a href="#studio" aria-current="page">Studio</a>
         <a href="#gallery">Modèles de démonstration</a>
       </nav>
-      <span class="prototype-label"><span class="status-dot" aria-hidden="true"></span> Prototype · Sprint 1</span>
+      <span class="provider-badge" id="provider-badge" data-status="checking" role="status" aria-live="polite">
+        <span class="status-dot" aria-hidden="true"></span>
+        <span id="provider-label">Serveur 3D : vérification en cours</span>
+      </span>
     </header>
 
     <main id="main-content">
@@ -72,6 +75,22 @@
               <span aria-hidden="true">→</span>
             </button>
           </form>
+
+          <aside class="provider-notice" id="provider-notice" aria-labelledby="provider-notice-title" hidden>
+            <h2 id="provider-notice-title">Le serveur 3D est hors ligne</h2>
+            <p id="provider-message">Le serveur 3D (Colab) est arrêté ou son lien a expiré (72 h). Relance le notebook, copie la nouvelle ligne dans backend/.env, redémarre le serveur.</p>
+            <button class="button button-secondary" id="open-demo-model" type="button">Ouvrir un modèle de démonstration</button>
+          </aside>
+
+          <aside class="photo-guidance" aria-labelledby="photo-guidance-title">
+            <h2 id="photo-guidance-title">Conseils photo</h2>
+            <ul>
+              <li>Photographiez un seul objet sur un fond uni.</li>
+              <li>Choisissez une lumière douce et une vue de trois quarts.</li>
+              <li>Faites occuper environ 70 % de l’image par l’objet.</li>
+              <li>Utilisez une vraie photo, jamais une capture d’écran.</li>
+            </ul>
+          </aside>
 
           <section class="panel progress-panel" id="progress-panel" aria-labelledby="progress-title" aria-busy="false">
             <div class="section-heading compact-heading">
@@ -132,9 +151,14 @@
             </div>
           </div>
 
-          <div class="viewer-stage" id="viewer-stage">
-            <div class="stage-grid" aria-hidden="true"></div>
-            <div class="empty-state" id="empty-state">
+          <div class="viewer-comparison" id="viewer-comparison">
+            <figure class="source-photo-preview" id="source-photo-preview" hidden>
+              <figcaption>Photo source</figcaption>
+              <img id="source-photo-image" alt="Photo source du produit">
+            </figure>
+            <div class="viewer-stage" id="viewer-stage">
+              <div class="stage-grid" aria-hidden="true"></div>
+              <div class="empty-state" id="empty-state">
               <span class="empty-cube" aria-hidden="true">
                 <svg viewBox="0 0 48 48" fill="none">
                   <path d="m24 5 17 9.5v19L24 43 7 33.5v-19L24 5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
@@ -143,10 +167,11 @@
               </span>
               <h3>Votre modèle apparaîtra ici</h3>
               <p>Envoyez une photo ou ouvrez l’un des cinq modèles réels de la galerie.</p>
+              </div>
+              <model-viewer id="model-viewer" alt="Modèle 3D du produit affiché dans le viewer" camera-controls touch-action="pan-y" interaction-prompt="none" shadow-intensity="0.8" exposure="1" loading="eager" hidden>
+                <button class="ar-button" id="ar-button" slot="ar-button" type="button" hidden>Voir chez moi en AR</button>
+              </model-viewer>
             </div>
-            <model-viewer id="model-viewer" alt="Modèle 3D du produit affiché dans le viewer" camera-controls touch-action="pan-y" interaction-prompt="none" shadow-intensity="0.8" exposure="1" loading="eager" hidden>
-              <button class="ar-button" id="ar-button" slot="ar-button" type="button" hidden>Voir chez moi en AR</button>
-            </model-viewer>
           </div>
 
           <p class="stage-hint" id="stage-hint" hidden>Glisser pour tourner <span aria-hidden="true">·</span> Maj + glisser pour déplacer <span aria-hidden="true">·</span> Molette pour zoomer</p>
@@ -197,7 +222,7 @@
 
       <aside class="honesty-note">
         <span class="note-mark" aria-hidden="true">i</span>
-        <p>Un modèle reconstruit à partir d’une seule photo reste une approximation visuelle. Il ne garantit ni les dimensions exactes ni une géométrie adaptée à la fabrication.</p>
+        <p>Modèle approximatif créé à partir d’une seule photo. Il ne garantit ni les dimensions exactes ni une géométrie adaptée à la fabrication.</p>
       </aside>
     </main>
 

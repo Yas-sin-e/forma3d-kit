@@ -108,5 +108,14 @@ export function setupGallery(onOpenModel) {
   }
 
   void load();
-  return { reload: load };
+  return {
+    reload: load,
+    async openFirstModel() {
+      if (!models.length) await load();
+      const model = models[0];
+      if (!model) return false;
+      onOpenModel(model);
+      return true;
+    },
+  };
 }

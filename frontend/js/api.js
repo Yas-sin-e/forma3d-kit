@@ -47,3 +47,11 @@ export async function listGalleryModels() {
   });
   return readResponse(response, "Impossible de charger les modèles de démonstration.");
 }
+
+export async function getProviderHealth() {
+  const response = await fetch("/health/provider", {
+    cache: "no-store",
+    headers: { Accept: "application/json" },
+  });
+  return readResponse(response, "Le contrôle du serveur 3D est indisponible.");
+}

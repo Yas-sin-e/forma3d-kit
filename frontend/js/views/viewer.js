@@ -9,18 +9,29 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
   const cameraControls = document.querySelector("#camera-controls");
   const downloadLink = document.querySelector("#download-link");
   const originBadge = document.querySelector("#origin-badge");
+  const comparison = document.querySelector("#viewer-comparison");
+  const sourcePhotoFigure = document.querySelector("#source-photo-preview");
+  const sourcePhotoImage = document.querySelector("#source-photo-image");
   const announcement = document.querySelector("#viewer-announcement");
   const openLocalButton = document.querySelector("#open-local-glb");
   const localInput = document.querySelector("#local-glb-input");
   const autoRotateButton = document.querySelector("#auto-rotate");
   const arButton = document.querySelector("#ar-button");
   let localObjectUrl = null;
+  let sourcePhotoObjectUrl = null;
   let activeModel = null;
 
   function releaseLocalObjectUrl() {
     if (localObjectUrl !== null) {
       URL.revokeObjectURL(localObjectUrl);
       localObjectUrl = null;
+    }
+  }
+
+  function releaseSourcePhotoObjectUrl() {
+    if (sourcePhotoObjectUrl !== null) {
+      URL.revokeObjectURL(sourcePhotoObjectUrl);
+      sourcePhotoObjectUrl = null;
     }
   }
 
@@ -41,6 +52,10 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
     viewer.removeAttribute("auto-rotate");
     viewer.removeAttribute("src");
     releaseLocalObjectUrl();
+    releaseSourcePhotoObjectUrl();
+    sourcePhotoImage.removeAttribute("src");
+    sourcePhotoFigure.hidden = true;
+    comparison.classList.remove("has-source-photo");
     activeModel = null;
     viewer.hidden = true;
     emptyState.hidden = false;
@@ -53,7 +68,7 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
     announce("");
   }
 
-  function showModel({ url, filename, source, downloadUrl = null }) {
+  function showModel({ url, filename, source, downloadUrl = null, sourcePhoto = null }) {
     clear();
     if (source === "local") {
       localObjectUrl = URL.createObjectURL(url);
@@ -66,6 +81,20 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
         ? "Généré par l’application · modèle d’essai"
         : "Généré par l’application";
       announce(filename ? "Chargement du modèle : " + filename + "." : "Chargement du GLB fourni par le serveur.");
+    }
+
+    if (sourcePhoto) {
+      if (sourcePhoto instanceof File) {
+        sourcePhotoObjectUrl = URL.createObjectURL(sourcePhoto);
+        sourcePhotoImage.src = sourcePhotoObjectUrl;
+      } else {
+        sourcePhotoImage.src = sourcePhoto;
+      }
+      sourcePhotoImage.alt = filename
+        ? "Photo source du modèle " + filename
+        : "Photo source du produit envoyé";
+      sourcePhotoFigure.hidden = false;
+      comparison.classList.add("has-source-photo");
     }
 
     activeModel = { source, filename };

@@ -28,6 +28,7 @@ export function setupUploader(onSubmit) {
   const openLocalButton = document.querySelector("#open-local-glb");
   let selectedPhoto = null;
   let busy = false;
+  let providerAvailable = false;
 
   function setFeedback(message = "") {
     uploadFeedback.textContent = message;
@@ -44,7 +45,7 @@ export function setupUploader(onSubmit) {
       return;
     }
     const error = validatePhoto(selectedPhoto);
-    submitButton.disabled = busy || Boolean(error);
+    submitButton.disabled = busy || !providerAvailable || Boolean(error);
     if (error) setFeedback(error);
   }
 
@@ -52,7 +53,7 @@ export function setupUploader(onSubmit) {
     busy = isBusy;
     photoInput.disabled = isBusy;
     openLocalButton.disabled = isBusy;
-    submitButton.disabled = isBusy || !selectedPhoto || Boolean(validatePhoto(selectedPhoto));
+    submitButton.disabled = isBusy || !providerAvailable || !selectedPhoto || Boolean(validatePhoto(selectedPhoto));
     submitButton.setAttribute("aria-busy", isBusy ? "true" : "false");
     const label = submitButton.querySelector(".button-label");
     label.textContent = isBusy ? "Génération en cours" : "Créer le modèle 3D";
@@ -102,5 +103,9 @@ export function setupUploader(onSubmit) {
     getSelectedPhoto: () => selectedPhoto,
     setBusy,
     setError: setFeedback,
+    setProviderAvailable(isAvailable) {
+      providerAvailable = isAvailable;
+      submitButton.disabled = busy || !providerAvailable || !selectedPhoto || Boolean(validatePhoto(selectedPhoto));
+    },
   };
 }
