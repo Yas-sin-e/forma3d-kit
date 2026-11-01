@@ -1,0 +1,79 @@
+# Rôle : vérifie que l'API ne publie et ne sert que les GLB réels de la liste autorisée.
+# Exécution : Pytest prépare des fichiers GLB temporaires et appelle les routes sans réseau.
+"""Tests locaux du catalogue de modèles de démonstration."""
+
+import json
+import struct
+from pathlib import Path
+
+from fastapi.testclient import TestClient
+
+from app.main import app
+from app.routers.models import get_demo_gallery
+from app.services.demo_gallery import DemoGallery
+
+
+def _minimal_glb_20() -> bytes:
+    """Construit un conteneur glTF 2.0 minimal pour tester le contrat local."""
+    document = json.dumps({"asset": {"version": "2.0"}}, separators=(",", ":")).encode()
+    document += b" " * (-len(document) % 4)
+    json_chunk = struct.pack("<I4s", len(document), b"JSON") + document
+    return struct.pack("<4sII", b"glTF", 2, 12 + len(json_chunk)) + json_chunk
+
+
+def test_gallery_lists_only_existing_valid_allowlisted_glb_files(tmp_path: Path) -> None:
+    valid_glb = _minimal_glb_20()
+    (tmp_path / "chair-bentwood.glb").write_bytes(valid_glb)
+    (tmp_path / "chair-met-01.glb").write_bytes(b"not a GLB")
+    (tmp_path / "unlisted-chair.glb").write_bytes(valid_glb)
+    app.dependency_overrides[get_demo_gallery] = lambda: DemoGallery(tmp_path)
+    try:
+        response = TestClient(app).get("/models/gallery")
+    finally:
+        app.dependency_overrides.pop(get_demo_gallery, None)
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "items": [
+            {
+                "id": "chair-bentwood",
+                "name": "Chaise en bois cintré",
+                "filename": "chair-bentwood.glb",
+                "category": "chair",
+                "source": "generated_by_app",
+                "size_bytes": len(valid_glb),
+                "model_url": "/models/gallery/chair-bentwood",
+            }
+        ]
+    }
+
+
+def test_gallery_download_serves_the_real_allowlisted_glb(tmp_path: Path) -> None:
+    valid_glb = _minimal_glb_20()
+    (tmp_path / "stool-met-01.glb").write_bytes(valid_glb)
+    app.dependency_overrides[get_demo_gallery] = lambda: DemoGallery(tmp_path)
+    try:
+        response = TestClient(app).get("/models/gallery/stool-metal-01")
+    finally:
+        app.dependency_overrides.pop(get_demo_gallery, None)
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("model/gltf-binary")
+    assert response.content == valid_glb
+
+
+def test_gallery_refuses_unknown_or_invalid_models(tmp_path: Path) -> None:
+    (tmp_path / "chair-bentwood.glb").write_bytes(b"not a GLB")
+    app.dependency_overrides[get_demo_gallery] = lambda: DemoGallery(tmp_path)
+    try:
+        client = TestClient(app)
+        listing = client.get("/models/gallery")
+        unknown = client.get("/models/gallery/../../secret")
+        invalid = client.get("/models/gallery/chair-bentwood")
+    finally:
+        app.dependency_overrides.pop(get_demo_gallery, None)
+
+    assert listing.status_code == 200
+    assert listing.json()["items"] == []
+    assert unknown.status_code == 404
+    assert invalid.status_code == 404

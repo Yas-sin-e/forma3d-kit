@@ -1,737 +1,209 @@
 <!--
-  Rôle : fournit la page simple d'envoi d'une photo, de suivi et de visualisation GLB.
-  Exécution : FastAPI sert ce fichier sur GET / ; aucun serveur frontend séparé n'est nécessaire.
+  Rôle : structure accessible du studio photo-vers-3D, du viewer et de la galerie réelle.
+  Exécution : FastAPI sert cette page sur GET / ; les feuilles et modules viennent de /static/.
 -->
 <!doctype html>
 <html lang="fr">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#f6f5f1">
-    <meta name="description" content="Transformez la photo d'un meuble en modèle 3D interactif.">
-    <title>Forma3D Studio — aperçu produit 3D</title>
+    <meta name="theme-color" content="#0E1218">
+    <meta name="description" content="Transformez la photo d'un meuble en modèle 3D interactif avec Forma3D Studio.">
+    <title>Forma3D Studio — atelier 3D</title>
+    <link rel="stylesheet" href="/static/css/theme.css">
+    <link rel="stylesheet" href="/static/css/components.css">
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.4.0/model-viewer.min.js"></script>
-    <style>
-      :root {
-        color-scheme: light;
-        font-family: system-ui, "Segoe UI", sans-serif;
-        font-synthesis: none;
-        text-rendering: optimizeLegibility;
-        --page: #f6f5f1;
-        --surface: #ffffff;
-        --ink: #252b27;
-        --muted: #59635d;
-        --primary: #285c4d;
-        --primary-hover: #204b3f;
-        --accent: #d28a47;
-        --stage: #ecebe5;
-        --line: #d9ddd8;
-        --danger: #a43d35;
-        --success: #286247;
-        --focus: #8a5100;
-        --radius-card: 20px;
-      }
-
-      * { box-sizing: border-box; }
-
-      body {
-        min-width: 320px;
-        min-height: 100vh;
-        margin: 0;
-        color: var(--ink);
-        background: var(--page);
-      }
-
-      button, input { font: inherit; }
-
-      button:focus-visible, a:focus-visible, input:focus-visible {
-        outline: 3px solid var(--focus);
-        outline-offset: 3px;
-      }
-
-      .site-header {
-        display: flex;
-        min-height: 72px;
-        align-items: center;
-        justify-content: space-between;
-        padding: 16px clamp(20px, 5vw, 72px);
-        border-bottom: 1px solid var(--line);
-        background: var(--surface);
-      }
-
-      .brand {
-        display: inline-flex;
-        align-items: center;
-        gap: 11px;
-        color: var(--ink);
-        font-size: 18px;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-        text-decoration: none;
-      }
-
-      .brand-mark {
-        display: grid;
-        width: 34px;
-        height: 34px;
-        place-items: center;
-        border-radius: 11px;
-        color: white;
-        background: var(--primary);
-      }
-
-      .prototype-label {
-        color: var(--muted);
-        font-size: 12px;
-        font-weight: 600;
-      }
-
-      main {
-        width: min(1180px, calc(100% - 40px));
-        margin: 0 auto;
-        padding: clamp(38px, 6vw, 78px) 0 64px;
-      }
-
-      .intro { max-width: 740px; margin-bottom: 34px; }
-
-      .eyebrow {
-        margin: 0 0 12px;
-        color: var(--primary);
-        font-size: 12px;
-        font-weight: 700;
-        letter-spacing: 0.1em;
-        text-transform: uppercase;
-      }
-
-      h1 {
-        max-width: 680px;
-        margin: 0;
-        font-size: clamp(32px, 5vw, 48px);
-        font-weight: 700;
-        letter-spacing: -0.045em;
-        line-height: 1.08;
-      }
-
-      .intro-copy {
-        max-width: 650px;
-        margin: 16px 0 0;
-        color: var(--muted);
-        font-size: 16px;
-        line-height: 1.65;
-      }
-
-      .workspace {
-        display: grid;
-        grid-template-columns: minmax(290px, 0.78fr) minmax(0, 1.5fr);
-        gap: 20px;
-        align-items: stretch;
-      }
-
-      .panel {
-        min-width: 0;
-        padding: 24px;
-        border: 1px solid var(--line);
-        border-radius: var(--radius-card);
-        background: var(--surface);
-      }
-
-      .panel-heading {
-        margin: 0;
-        font-size: 20px;
-        font-weight: 650;
-        letter-spacing: -0.025em;
-      }
-
-      .panel-copy {
-        margin: 8px 0 22px;
-        color: var(--muted);
-        font-size: 14px;
-        line-height: 1.55;
-      }
-
-      .file-picker {
-        display: grid;
-        min-height: 162px;
-        align-content: center;
-        justify-items: center;
-        gap: 10px;
-        padding: 20px;
-        border: 1px dashed #aeb9b1;
-        border-radius: 15px;
-        background: #fbfcfa;
-        text-align: center;
-      }
-
-      .upload-icon {
-        display: grid;
-        width: 42px;
-        height: 42px;
-        place-items: center;
-        border-radius: 13px;
-        color: var(--primary);
-        background: #eaf1ed;
-      }
-
-      .file-name {
-        max-width: 100%;
-        overflow: hidden;
-        color: var(--muted);
-        font-size: 12px;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      .visually-hidden {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        overflow: hidden;
-        clip: rect(0, 0, 0, 0);
-        white-space: nowrap;
-        clip-path: inset(50%);
-      }
-
-      .secondary-button, .primary-button, .camera-button, .download-link {
-        display: inline-flex;
-        min-height: 44px;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        padding: 10px 15px;
-        border: 1px solid transparent;
-        border-radius: 11px;
-        font-size: 14px;
-        font-weight: 650;
-        text-decoration: none;
-        transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
-        cursor: pointer;
-      }
-
-      .secondary-button, .camera-button {
-        border-color: var(--line);
-        color: var(--ink);
-        background: var(--surface);
-      }
-
-      .secondary-button:hover, .camera-button:hover:not(:disabled) { background: #f4f6f3; }
-
-      .primary-button, .download-link {
-        color: #ffffff;
-        background: var(--primary);
-      }
-
-      .primary-button:hover:not(:disabled), .download-link:hover { background: var(--primary-hover); }
-
-      button:disabled {
-        color: #747d77;
-        background: #e9ece9;
-        cursor: not-allowed;
-      }
-
-      .primary-button { width: 100%; margin-top: 14px; }
-      .format-note { margin: 12px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
-
-      .status-box {
-        display: grid;
-        grid-template-columns: auto 1fr;
-        gap: 12px;
-        margin-top: 22px;
-        padding: 14px;
-        border: 1px solid var(--line);
-        border-radius: 13px;
-        background: #fbfcfa;
-      }
-
-      .status-dot {
-        width: 9px;
-        height: 9px;
-        margin-top: 5px;
-        border-radius: 50%;
-        background: #78847c;
-      }
-
-      .status-box[data-state="RUNNING"] .status-dot,
-      .status-box[data-state="PENDING"] .status-dot { background: var(--accent); }
-      .status-box[data-state="DONE"] .status-dot { background: var(--success); }
-      .status-box[data-state="FAILED"] .status-dot { background: var(--danger); }
-
-      .status-title { margin: 0; font-size: 13px; font-weight: 700; }
-      .status-detail { margin: 3px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
-      .error-text { color: var(--danger); }
-
-      .viewer-panel { display: flex; flex-direction: column; }
-
-      .viewer-head {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 14px;
-        margin-bottom: 17px;
-      }
-
-      .viewer-stage {
-        position: relative;
-        display: grid;
-        min-height: 390px;
-        flex: 1;
-        overflow: hidden;
-        place-items: center;
-        border: 1px solid var(--line);
-        border-radius: 16px;
-        background: var(--stage);
-      }
-
-      .empty-state {
-        max-width: 300px;
-        padding: 28px;
-        color: var(--muted);
-        text-align: center;
-      }
-
-      .empty-cube {
-        display: grid;
-        width: 64px;
-        height: 64px;
-        margin: 0 auto 15px;
-        place-items: center;
-        border: 1px solid #d1d2ca;
-        border-radius: 20px;
-        color: #748078;
-        background: rgba(255, 255, 255, 0.56);
-      }
-
-      .empty-title { margin: 0; color: var(--ink); font-size: 15px; font-weight: 700; }
-      .empty-copy { margin: 7px 0 0; font-size: 13px; line-height: 1.55; }
-
-      model-viewer {
-        width: 100%;
-        height: 100%;
-        min-height: 390px;
-        --poster-color: transparent;
-        background: transparent;
-      }
-
-      .local-model-picker {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 10px 14px;
-        margin: -4px 0 16px;
-      }
-
-      .local-model-note {
-        margin: 0;
-        color: var(--muted);
-        font-size: 12px;
-        line-height: 1.5;
-      }
-
-      .status-box[data-state="LOCAL"] .status-dot { background: var(--success); }
-
-      .camera-controls {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 8px;
-        padding-top: 14px;
-      }
-
-      .camera-button { min-width: 44px; padding: 9px 12px; }
-      .camera-button span { font-size: 12px; }
-      .control-spacer { flex: 1; }
-
-      .camera-note {
-        margin: 11px 0 0;
-        color: var(--muted);
-        font-size: 12px;
-        line-height: 1.5;
-      }
-
-      .disclaimer {
-        margin: 22px 0 0;
-        padding: 15px 17px;
-        border-left: 3px solid var(--accent);
-        color: var(--muted);
-        background: #f1eee7;
-        font-size: 13px;
-        line-height: 1.55;
-      }
-
-      [hidden] { display: none !important; }
-
-      @media (max-width: 820px) {
-        .workspace { grid-template-columns: 1fr; }
-        .viewer-stage, model-viewer { min-height: 340px; }
-      }
-
-      @media (max-width: 480px) {
-        .site-header { min-height: 64px; padding-inline: 16px; }
-        .prototype-label { max-width: 110px; text-align: right; }
-        main { width: min(100% - 28px, 600px); padding-top: 34px; }
-        .panel { padding: 18px; }
-        .viewer-head { flex-direction: column; }
-        .viewer-stage, model-viewer { min-height: 300px; }
-        .control-spacer { flex-basis: 100%; }
-      }
-
-      @media (prefers-reduced-motion: reduce) {
-        *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
-      }
-    </style>
+    <script type="module" src="/static/js/main.js"></script>
   </head>
   <body>
+    <a class="skip-link" href="#main-content">Aller au contenu</a>
     <header class="site-header">
       <a class="brand" href="/" aria-label="Forma3D Studio, accueil">
         <span class="brand-mark" aria-hidden="true">
-          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="m12 2.9 8 4.55v9.1l-8 4.55-8-4.55v-9.1L12 2.9Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
-            <path d="m4.4 7.65 7.6 4.4 7.6-4.4M12 12.05v8.5" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+          <svg viewBox="0 0 32 32" fill="none">
+            <path d="m16 3 11 6.2v13.6L16 29 5 22.8V9.2L16 3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+            <path d="m5.5 9.5 10.5 6 10.5-6M16 15.5V28" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
           </svg>
         </span>
-        <span>Forma3D Studio</span>
+        <span>Forma3D <span class="brand-light">Studio</span></span>
       </a>
-      <span class="prototype-label">Prototype de soutenance · Sprint 1</span>
+      <nav class="header-nav" aria-label="Navigation principale">
+        <a href="#studio" aria-current="page">Studio</a>
+        <a href="#gallery">Modèles de démonstration</a>
+      </nav>
+      <span class="prototype-label"><span class="status-dot" aria-hidden="true"></span> Prototype · Sprint 1</span>
     </header>
 
-    <main>
+    <main id="main-content">
       <section class="intro" aria-labelledby="page-title">
-        <p class="eyebrow">Prévisualisation produit</p>
-        <h1 id="page-title">Votre produit, sous tous les angles.</h1>
-        <p class="intro-copy">Envoyez une photo de mobilier pour tenter de créer un modèle 3D interactif. Le résultat dépend de la photo et de la disponibilité du service gratuit.</p>
+        <p class="eyebrow">Atelier de modélisation produit</p>
+        <h1 id="page-title">Donnez du volume à vos produits.</h1>
+        <p class="intro-copy">Déposez une photo de petit mobilier et examinez le modèle 3D généré. Le résultat dépend de l’image et de la disponibilité du service gratuit.</p>
       </section>
 
-      <section class="workspace" aria-label="Création et visualisation du modèle 3D">
-        <form class="panel" id="upload-form">
-          <h2 class="panel-heading">Commencer avec une photo</h2>
-          <p class="panel-copy">Choisissez une image claire d'un seul objet, sur un fond simple si possible.</p>
-
-          <div class="file-picker">
-            <span class="upload-icon" aria-hidden="true">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-                <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14.5v4A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5v-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </span>
-            <label class="secondary-button" for="photo-input">Choisir une photo</label>
-            <span class="file-name" id="file-name">Aucun fichier sélectionné</span>
-          </div>
-          <input class="visually-hidden" id="photo-input" name="file" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" required>
-          <p class="format-note">JPG, PNG ou WebP · 10 Mo maximum. N'envoyez pas de visages ni de données personnelles au fournisseur public.</p>
-          <button class="primary-button" id="submit-button" type="submit" disabled>Créer le modèle 3D</button>
-
-          <div class="status-box" id="status-box" data-state="IDLE" role="status" aria-live="polite">
-            <span class="status-dot" aria-hidden="true"></span>
-            <div>
-              <p class="status-title" id="status-title">En attente d'une photo</p>
-              <p class="status-detail" id="status-detail">Le suivi affichera l'état réellement renvoyé par le serveur.</p>
+      <section class="workspace" id="studio" aria-label="Création et visualisation du modèle 3D">
+        <aside class="control-column" aria-label="Entrée photo et suivi">
+          <form class="panel upload-panel" id="upload-form">
+            <div class="section-heading">
+              <span class="step-index" aria-hidden="true">01</span>
+              <div>
+                <h2>Photo du produit</h2>
+                <p>Une vue claire d’un seul objet donne le meilleur point de départ.</p>
+              </div>
             </div>
-          </div>
-        </form>
 
-        <section class="panel viewer-panel" aria-labelledby="viewer-title">
-          <div class="viewer-head">
-            <div>
-              <h2 class="panel-heading" id="viewer-title">Aperçu 3D</h2>
-              <p class="panel-copy" id="viewer-caption">Une génération réelle ou un fichier GLB local apparaîtra ici.</p>
-            </div>
-            <a class="download-link" id="download-link" href="#" download hidden>Télécharger le GLB</a>
-          </div>
-
-          <div class="local-model-picker">
-            <button class="secondary-button" id="open-local-glb" type="button">Ouvrir un GLB local</button>
-            <input class="visually-hidden" id="local-glb-input" type="file" accept=".glb,model/gltf-binary">
-            <p class="local-model-note" id="local-model-note" aria-live="polite">Fichier local, non généré par l'application. Le navigateur le charge sans l'envoyer au serveur.</p>
-          </div>
-
-          <div class="viewer-stage">
-            <div class="empty-state" id="empty-state">
-              <span class="empty-cube" aria-hidden="true">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-                  <path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
-                  <path d="m4.5 7.75 7.5 4.4 7.5-4.4M12 12.15V21" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+            <input class="visually-hidden" id="photo-input" name="file" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
+            <label class="drop-zone" id="drop-zone" for="photo-input" aria-describedby="format-note">
+              <span class="drop-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M12 15.5V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14.5v4A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5v-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
               </span>
-              <p class="empty-title">Aucun modèle pour le moment</p>
-              <p class="empty-copy">Le viewer attend une génération réelle ou l'ouverture d'un fichier GLB local.</p>
+              <span class="drop-title">Glissez une photo ici</span>
+              <span class="drop-divider">ou</span>
+              <span class="button button-secondary">Choisir une photo</span>
+              <span class="file-name" id="file-name">Aucun fichier sélectionné</span>
+            </label>
+            <p class="format-note" id="format-note">JPG, PNG ou WebP · 10 Mo maximum.</p>
+            <p class="privacy-note"><span aria-hidden="true">ⓘ</span> N’envoyez pas de visages ni de données personnelles. La photo peut être traitée par un fournisseur public.</p>
+            <p class="upload-feedback" id="upload-feedback" role="alert" hidden></p>
+            <button class="button button-primary submit-button" id="submit-button" type="submit" disabled>
+              <span class="button-label">Créer le modèle 3D</span>
+              <span aria-hidden="true">→</span>
+            </button>
+          </form>
+
+          <section class="panel progress-panel" id="progress-panel" aria-labelledby="progress-title" aria-busy="false">
+            <div class="section-heading compact-heading">
+              <span class="step-index" aria-hidden="true">02</span>
+              <div>
+                <h2 id="progress-title">Suivi de génération</h2>
+                <p id="progress-summary" role="status" aria-live="polite">Aucune génération lancée.</p>
+              </div>
             </div>
-            <model-viewer id="model-viewer" alt="Modèle 3D du produit affiché dans le viewer" camera-controls touch-action="pan-y" interaction-prompt="none" shadow-intensity="0.8" hidden></model-viewer>
+            <ol class="progress-steps" id="progress-steps" aria-label="Étapes de génération">
+              <li class="progress-step" data-step="0">
+                <span class="step-marker" aria-hidden="true">1</span>
+                <span>Photo envoyée</span>
+              </li>
+              <li class="progress-step" data-step="1">
+                <span class="step-marker" aria-hidden="true">2</span>
+                <span>En file</span>
+              </li>
+              <li class="progress-step" data-step="2">
+                <span class="step-marker" aria-hidden="true">3</span>
+                <span>Génération 3D</span>
+              </li>
+              <li class="progress-step" data-step="3">
+                <span class="step-marker" aria-hidden="true">4</span>
+                <span>Validation du GLB</span>
+              </li>
+              <li class="progress-step" data-step="4">
+                <span class="step-marker" aria-hidden="true">5</span>
+                <span>Terminé</span>
+              </li>
+            </ol>
+            <div class="progress-meta">
+              <span class="activity-indicator" id="activity-indicator" aria-hidden="true"></span>
+              <p id="progress-detail">Le suivi affichera uniquement les états renvoyés par le serveur.</p>
+            </div>
+            <p class="timing-note">Sur nos cinq essais, une génération a pris environ 1 à 4 minutes. Le service gratuit ne garantit pas ce délai.</p>
+            <p class="elapsed-time" id="elapsed-time" hidden>Temps écoulé : <span id="elapsed-seconds">0</span> s</p>
+            <button class="button button-secondary retry-button" id="retry-button" type="button" hidden>Réessayer avec cette photo</button>
+          </section>
+        </aside>
+
+        <section class="panel viewer-panel" aria-labelledby="viewer-title">
+          <div class="viewer-heading">
+            <div>
+              <p class="eyebrow viewer-eyebrow">Espace de travail</p>
+              <h2 id="viewer-title">Aperçu du modèle</h2>
+            </div>
+            <div class="viewer-actions">
+              <span class="origin-badge" id="origin-badge" hidden></span>
+              <button class="button button-secondary local-open-button" id="open-local-glb" type="button">Ouvrir un GLB local</button>
+              <input class="visually-hidden" id="local-glb-input" type="file" accept=".glb,model/gltf-binary" aria-label="Choisir un fichier GLB local">
+              <a class="button button-download" id="download-link" href="#" download hidden>
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path d="M12 4v11m0 0 4-4m-4 4-4-4M5 16.5v2A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Télécharger le GLB
+              </a>
+            </div>
           </div>
 
-          <div class="camera-controls" id="camera-controls" aria-label="Commandes de caméra" hidden>
-            <button class="camera-button" id="rotate-left" type="button" aria-label="Tourner à gauche">↶ <span>Tourner</span></button>
-            <button class="camera-button" id="rotate-right" type="button" aria-label="Tourner à droite">↷ <span>Tourner</span></button>
-            <button class="camera-button" id="pan-left" type="button" aria-label="Déplacer le point de vue vers la gauche">←</button>
-            <button class="camera-button" id="pan-right" type="button" aria-label="Déplacer le point de vue vers la droite">→</button>
-            <button class="camera-button" id="pan-up" type="button" aria-label="Déplacer le point de vue vers le haut">↑</button>
-            <button class="camera-button" id="pan-down" type="button" aria-label="Déplacer le point de vue vers le bas">↓</button>
-            <span class="control-spacer" aria-hidden="true"></span>
-            <button class="camera-button" id="zoom-out" type="button" aria-label="Dézoomer">−</button>
-            <button class="camera-button" id="zoom-in" type="button" aria-label="Zoomer">+</button>
-            <button class="camera-button" id="reset-camera" type="button">Réinitialiser la vue</button>
+          <div class="viewer-stage" id="viewer-stage">
+            <div class="stage-grid" aria-hidden="true"></div>
+            <div class="empty-state" id="empty-state">
+              <span class="empty-cube" aria-hidden="true">
+                <svg viewBox="0 0 48 48" fill="none">
+                  <path d="m24 5 17 9.5v19L24 43 7 33.5v-19L24 5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                  <path d="m7.5 14.8 16.5 9.6 16.5-9.6M24 24.4V43" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+                </svg>
+              </span>
+              <h3>Votre modèle apparaîtra ici</h3>
+              <p>Envoyez une photo ou ouvrez l’un des cinq modèles réels de la galerie.</p>
+            </div>
+            <model-viewer id="model-viewer" alt="Modèle 3D du produit affiché dans le viewer" camera-controls touch-action="pan-y" interaction-prompt="none" shadow-intensity="0.8" exposure="1" loading="eager" hidden>
+              <button class="ar-button" id="ar-button" slot="ar-button" type="button" hidden>Voir chez moi en AR</button>
+            </model-viewer>
           </div>
-          <p class="camera-note" id="camera-note" hidden>Vous pouvez aussi glisser pour tourner, Maj + glisser pour déplacer le point de vue, et utiliser la molette ou le pincement pour zoomer.</p>
+
+          <p class="stage-hint" id="stage-hint" hidden>Glisser pour tourner <span aria-hidden="true">·</span> Maj + glisser pour déplacer <span aria-hidden="true">·</span> Molette pour zoomer</p>
+          <div class="viewer-toolbar" id="camera-controls" aria-label="Commandes du viewer" hidden>
+            <div class="camera-group" aria-label="Rotation">
+              <button class="icon-button" id="rotate-left" type="button" aria-label="Tourner à gauche de 15 degrés" title="Tourner à gauche">↶</button>
+              <button class="icon-button" id="rotate-right" type="button" aria-label="Tourner à droite de 15 degrés" title="Tourner à droite">↷</button>
+            </div>
+            <span class="toolbar-divider" aria-hidden="true"></span>
+            <div class="camera-group" aria-label="Déplacement">
+              <button class="icon-button" id="pan-left" type="button" aria-label="Déplacer la vue à gauche">←</button>
+              <button class="icon-button" id="pan-right" type="button" aria-label="Déplacer la vue à droite">→</button>
+              <button class="icon-button" id="pan-up" type="button" aria-label="Déplacer la vue vers le haut">↑</button>
+              <button class="icon-button" id="pan-down" type="button" aria-label="Déplacer la vue vers le bas">↓</button>
+            </div>
+            <span class="toolbar-divider" aria-hidden="true"></span>
+            <div class="camera-group" aria-label="Zoom">
+              <button class="icon-button" id="zoom-out" type="button" aria-label="Dézoomer">−</button>
+              <button class="icon-button" id="zoom-in" type="button" aria-label="Zoomer">+</button>
+            </div>
+            <span class="toolbar-spacer" aria-hidden="true"></span>
+            <button class="toolbar-text-button" id="auto-rotate" type="button" aria-pressed="false">Rotation auto</button>
+            <button class="toolbar-text-button" id="fullscreen" type="button">Plein écran</button>
+            <button class="toolbar-text-button" id="reset-camera" type="button">Réinitialiser</button>
+          </div>
+          <p class="viewer-announcement" id="viewer-announcement" role="status" aria-live="polite"></p>
         </section>
       </section>
 
-      <p class="disclaimer">Un modèle reconstruit à partir d'une photo est une approximation visuelle. Il ne garantit pas les dimensions exactes ni une géométrie adaptée à la fabrication.</p>
+      <section class="gallery-section" id="gallery" aria-labelledby="gallery-title">
+        <div class="gallery-heading">
+          <div>
+            <p class="eyebrow">Résultats de faisabilité</p>
+            <h2 id="gallery-title">Modèles de démonstration</h2>
+            <p class="gallery-copy">Cinq GLB réellement obtenus par l’application. Sélectionnez un objet pour l’ouvrir dans le viewer.</p>
+          </div>
+          <span class="gallery-count" id="gallery-count" aria-live="polite">Chargement des modèles…</span>
+        </div>
+        <div class="filter-list" id="gallery-filters" role="group" aria-label="Filtrer les modèles par catégorie">
+          <button class="filter-chip" type="button" data-category="all" aria-pressed="true">Tous</button>
+          <button class="filter-chip" type="button" data-category="chair" aria-pressed="false">Chaises</button>
+          <button class="filter-chip" type="button" data-category="stool" aria-pressed="false">Tabourets</button>
+          <button class="filter-chip" type="button" data-category="side-table" aria-pressed="false">Tables d’appoint</button>
+        </div>
+        <div class="gallery-grid" id="gallery-grid" aria-live="polite"></div>
+        <p class="gallery-message" id="gallery-message" role="status" hidden></p>
+      </section>
+
+      <aside class="honesty-note">
+        <span class="note-mark" aria-hidden="true">i</span>
+        <p>Un modèle reconstruit à partir d’une seule photo reste une approximation visuelle. Il ne garantit ni les dimensions exactes ni une géométrie adaptée à la fabrication.</p>
+      </aside>
     </main>
 
-    <script>
-      const form = document.querySelector("#upload-form");
-      const photoInput = document.querySelector("#photo-input");
-      const fileName = document.querySelector("#file-name");
-      const submitButton = document.querySelector("#submit-button");
-      const statusBox = document.querySelector("#status-box");
-      const statusTitle = document.querySelector("#status-title");
-      const statusDetail = document.querySelector("#status-detail");
-      const viewer = document.querySelector("#model-viewer");
-      const emptyState = document.querySelector("#empty-state");
-      const cameraControls = document.querySelector("#camera-controls");
-      const cameraNote = document.querySelector("#camera-note");
-      const downloadLink = document.querySelector("#download-link");
-      const viewerCaption = document.querySelector("#viewer-caption");
-      const openLocalGlbButton = document.querySelector("#open-local-glb");
-      const localGlbInput = document.querySelector("#local-glb-input");
-      const localModelNote = document.querySelector("#local-model-note");
-      const acceptedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
-      const acceptedExtensions = new Set(["jpg", "jpeg", "png", "webp"]);
-      const maxUploadBytes = 10 * 1024 * 1024;
-      let currentStatusUrl = null;
-      let pollInterval = null;
-      let pollingInFlight = false;
-      let localObjectUrl = null;
-      let activeModelSource = null;
-
-      function isAcceptedFile(file) {
-        const extension = file.name.split(".").pop().toLowerCase();
-        return acceptedExtensions.has(extension) && (!file.type || acceptedTypes.has(file.type));
-      }
-
-      function showStatus(state, title, detail, isError = false) {
-        statusBox.dataset.state = state;
-        statusTitle.textContent = title;
-        statusDetail.textContent = detail;
-        statusDetail.classList.toggle("error-text", isError);
-      }
-
-      function setBusy(isBusy) {
-        openLocalGlbButton.disabled = isBusy;
-        const selectedFile = photoInput.files[0];
-        const canSubmit = Boolean(selectedFile && isAcceptedFile(selectedFile) && selectedFile.size <= maxUploadBytes);
-        photoInput.disabled = isBusy;
-        submitButton.disabled = isBusy || !canSubmit;
-        submitButton.textContent = isBusy ? "Génération en cours…" : "Créer le modèle 3D";
-      }
-
-      function stopPolling() {
-        if (pollInterval !== null) {
-          window.clearInterval(pollInterval);
-          pollInterval = null;
-        }
-      }
-
-      function releaseLocalObjectUrl() {
-        if (localObjectUrl !== null) {
-          URL.revokeObjectURL(localObjectUrl);
-          localObjectUrl = null;
-        }
-      }
-
-      function clearViewerSource() {
-        viewer.removeAttribute("src");
-        releaseLocalObjectUrl();
-        activeModelSource = null;
-      }
-
-      openLocalGlbButton.addEventListener("click", () => localGlbInput.click());
-
-      localGlbInput.addEventListener("change", () => {
-        const file = localGlbInput.files[0];
-        if (!file) return;
-
-        if (!file.name.toLowerCase().endsWith(".glb") || file.size === 0) {
-          localGlbInput.value = "";
-          showStatus("FAILED", "Fichier GLB invalide", "Choisissez un fichier non vide dont le nom se termine par .glb.", true);
-          return;
-        }
-
-        stopPolling();
-        currentStatusUrl = null;
-        setBusy(false);
-        clearViewerSource();
-        localObjectUrl = URL.createObjectURL(file);
-        activeModelSource = "local";
-        viewer.src = localObjectUrl;
-        viewer.alt = `Modèle 3D affiché depuis le fichier local ${file.name}`;
-        viewer.hidden = false;
-        emptyState.hidden = true;
-        cameraControls.hidden = false;
-        cameraNote.hidden = false;
-        downloadLink.hidden = true;
-        viewerCaption.textContent = `Fichier local : ${file.name}.`;
-        localModelNote.textContent = `Fichier local, non généré par l'application : ${file.name}. Il n'est pas envoyé au serveur.`;
-        showStatus("LOCAL", "Fichier GLB local sélectionné", "Le navigateur charge ce fichier sans créer de requête vers le serveur.");
-      });
-
-      photoInput.addEventListener("change", () => {
-        const file = photoInput.files[0];
-        fileName.textContent = file ? file.name : "Aucun fichier sélectionné";
-        submitButton.disabled = !file;
-        if (!file) return;
-
-        if (!isAcceptedFile(file)) {
-          showStatus("FAILED", "Format non pris en charge", "Choisissez un fichier JPG, PNG ou WebP.", true);
-          submitButton.disabled = true;
-        } else if (file.size > maxUploadBytes) {
-          showStatus("FAILED", "Fichier trop volumineux", "La limite de taille est de 10 Mo.", true);
-          submitButton.disabled = true;
-        } else {
-          showStatus("IDLE", "Photo prête", "Le serveur vérifiera de nouveau le format et la taille.");
-        }
-      });
-
-      async function refreshGenerationStatus() {
-        if (!currentStatusUrl || pollingInFlight) return false;
-        pollingInFlight = true;
-        try {
-          const response = await fetch(currentStatusUrl, { cache: "no-store" });
-          const data = await response.json();
-          if (!response.ok) throw new Error(data.detail || "Impossible de lire l'état de la génération.");
-
-          if (data.status === "PENDING" || data.status === "RUNNING") {
-            showStatus(data.status, data.status === "PENDING" ? "Demande enregistrée" : "Génération en cours", "Le serveur n'expose pas de pourcentage ; cette attente dépend du fournisseur gratuit.");
-            return false;
-          }
-
-          stopPolling();
-          currentStatusUrl = null;
-          setBusy(false);
-          if (data.status === "FAILED") {
-            showStatus("FAILED", "La génération a échoué", data.error_message || "Le fournisseur n'a pas renvoyé de modèle.", true);
-            return true;
-          }
-
-          if (data.status !== "DONE" || !data.model_url) {
-            showStatus("FAILED", "Réponse inattendue", "Le serveur n'a pas fourni de lien GLB exploitable.", true);
-            return true;
-          }
-
-          clearViewerSource();
-          viewer.src = data.model_url;
-          activeModelSource = "generated";
-          viewer.alt = "Modèle 3D généré depuis la photo du produit";
-          viewer.hidden = false;
-          emptyState.hidden = true;
-          cameraControls.hidden = false;
-          cameraNote.hidden = false;
-          downloadLink.href = data.model_url;
-          downloadLink.hidden = false;
-          viewerCaption.textContent = `Modèle généré pour ${data.filename}.`;
-          showStatus("DONE", "Modèle prêt", "Le GLB est disponible dans le viewer et au téléchargement.");
-          return true;
-        } finally {
-          pollingInFlight = false;
-        }
-      }
-
-      form.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        const file = photoInput.files[0];
-        if (!file || !isAcceptedFile(file) || file.size > maxUploadBytes) return;
-
-        stopPolling();
-        currentStatusUrl = null;
-        clearViewerSource();
-        viewer.hidden = true;
-        emptyState.hidden = false;
-        cameraControls.hidden = true;
-        cameraNote.hidden = true;
-        downloadLink.hidden = true;
-        setBusy(true);
-        showStatus("PENDING", "Envoi de la photo", "Vérification du fichier par le serveur…");
-
-        try {
-          const body = new FormData();
-          body.append("file", file);
-          const response = await fetch("/models", { method: "POST", body });
-          const data = await response.json();
-          if (!response.ok) throw new Error(data.detail || "Le serveur a refusé cette photo.");
-
-          currentStatusUrl = data.status_url;
-          showStatus(data.status, "Demande enregistrée", "Le serveur suit la génération réelle du modèle.");
-          const isTerminal = await refreshGenerationStatus();
-          if (!isTerminal && currentStatusUrl) {
-            pollInterval = window.setInterval(async () => {
-              try {
-                await refreshGenerationStatus();
-              } catch (error) {
-                stopPolling();
-                setBusy(false);
-                showStatus("FAILED", "Suivi interrompu", error.message, true);
-              }
-            }, 1500);
-          }
-        } catch (error) {
-          stopPolling();
-          setBusy(false);
-          showStatus("FAILED", "Impossible de lancer la génération", error.message, true);
-        }
-      });
-
-      viewer.addEventListener("error", () => {
-        const detail = activeModelSource === "local"
-          ? "Le fichier local n'est pas un GLB lisible par le navigateur."
-          : "Le fichier existe, mais le navigateur n'a pas pu le charger. Vous pouvez toujours vérifier le téléchargement.";
-        showStatus("FAILED", "Le GLB ne s'affiche pas", detail, true);
-      });
-
-      viewer.addEventListener("load", () => {
-        if (activeModelSource === "local") {
-          showStatus("LOCAL", "Fichier GLB local chargé", "Utilisez les commandes de caméra ou les gestes dans le viewer. Le fichier reste local.");
-          return;
-        }
-        if (activeModelSource === "generated") {
-          showStatus("DONE", "Modèle chargé", "Utilisez les commandes de caméra ou les gestes dans le viewer.");
-        }
-      });
-
-      window.addEventListener("pagehide", releaseLocalObjectUrl);
-
-      function whenModelIsLoaded(action) {
-        if (!viewer.src || viewer.modelIsVisible !== true) return;
-        action();
-      }
-
-      function rotateCamera(direction) {
-        whenModelIsLoaded(() => {
-          const orbit = viewer.getCameraOrbit();
-          orbit.theta += direction * (Math.PI / 12);
-          viewer.cameraOrbit = orbit.toString();
-        });
-      }
-
-      function panCamera(axis, direction) {
-        whenModelIsLoaded(() => {
-          const target = viewer.getCameraTarget();
-          const dimensions = viewer.getDimensions();
-          const step = Math.max(dimensions.x, dimensions.y, dimensions.z, 0.1) * 0.05;
-          target[axis] += direction * step;
-          viewer.cameraTarget = target.toString();
-        });
-      }
-
-      document.querySelector("#rotate-left").addEventListener("click", () => rotateCamera(-1));
-      document.querySelector("#rotate-right").addEventListener("click", () => rotateCamera(1));
-      document.querySelector("#pan-left").addEventListener("click", () => panCamera("x", -1));
-      document.querySelector("#pan-right").addEventListener("click", () => panCamera("x", 1));
-      document.querySelector("#pan-up").addEventListener("click", () => panCamera("y", 1));
-      document.querySelector("#pan-down").addEventListener("click", () => panCamera("y", -1));
-      document.querySelector("#zoom-in").addEventListener("click", () => whenModelIsLoaded(() => viewer.zoom(1)));
-      document.querySelector("#zoom-out").addEventListener("click", () => whenModelIsLoaded(() => viewer.zoom(-1)));
-      document.querySelector("#reset-camera").addEventListener("click", () => whenModelIsLoaded(() => {
-        viewer.cameraTarget = "auto auto auto";
-        viewer.cameraOrbit = "0deg 75deg 105%";
-        viewer.updateFraming();
-      }));
-    </script>
+    <footer class="site-footer">
+      <span>Forma3D Studio</span>
+      <span>Prototype de soutenance · Aucun entraînement de modèle</span>
+    </footer>
   </body>
 </html>

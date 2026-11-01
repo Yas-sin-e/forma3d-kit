@@ -70,7 +70,7 @@ Ne pas faire au Sprint 1 : OpenCV, rembg, comptes, base de données, Next.js, Do
 
 ## Stack Sprint 1
 - Python 3.11 ou plus récent, FastAPI, Uvicorn, gradio_client, HTTPX et pytest.
-- Page HTML simple avec model-viewer, servie par FastAPI.
+- Page HTML modulaire sans framework, avec model-viewer et une galerie limitée aux GLB réels de faisabilité ; FastAPI sert la page et ses ressources.
 - Stockage local derrière LocalStorage ; métadonnées sans base de données.
 - Dépendances payantes interdites. Ajouter une bibliothèque seulement quand une étape l'exige.
 

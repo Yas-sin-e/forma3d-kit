@@ -5,7 +5,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class GenerationResponse(BaseModel):
@@ -20,3 +20,23 @@ class GenerationResponse(BaseModel):
     status_url: str
     model_url: str | None = None
     error_message: str | None = None
+
+
+class DemoModelResponse(BaseModel):
+    """Modèle de faisabilité consultable dans la galerie du viewer."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    name: str
+    filename: str
+    category: Literal["chair", "stool", "side-table"]
+    source: Literal["generated_by_app"]
+    size_bytes: int
+    model_url: str
+
+
+class DemoGalleryResponse(BaseModel):
+    """Liste des fichiers GLB réels connus et valides sur ce poste."""
+
+    items: list[DemoModelResponse]

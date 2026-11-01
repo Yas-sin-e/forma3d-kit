@@ -1,12 +1,14 @@
 # État du projet — Forma3D Studio
 
-Dernière mise à jour : 21 octobre 2026.
+Dernière mise à jour : 1 novembre 2026.
 
 ## Résumé
 
 Sprint 1 v2 : le flux réel photo vers GLB est maintenant prouvé avec le serveur TripoSR officiel lancé dans Google Colab. Les cinq photos libres de droits ont été soumises au vrai endpoint POST /models de Forma3D ; chacune a atteint PENDING, RUNNING puis DONE. Les cinq fichiers téléchargés sont valides en GLB 2.0. Aucune génération ni aucun fichier n'est simulé.
 
 L'US3, dont le critère est que l'application obtienne un vrai GLB par ce serveur, est satisfaite. Les essais antérieurs de Stable Fast 3D ont échoué et restent consignés séparément. Les appréciations bon/moyen/mauvais des cinq résultats visuels doivent être données par l'étudiante ; elles ne sont pas inférées ici.
+
+La page de studio a été refaite en modules CSS/JavaScript sans framework, avec une palette sombre à fort contraste, une scène 3D centrale, un suivi sans pourcentage et les commandes caméra demandées. La galerie interroge une route bornée aux cinq vrais GLB locaux et ne présente aucun objet de remplacement. Le code du fournisseur et les autres couches métier restent inchangés ; les seules routes ajoutées servent la galerie des modèles existants.
 
 ## Fait et vérifié
 
@@ -18,6 +20,10 @@ L'US3, dont le critère est que l'application obtienne un vrai GLB par ce serveu
 - Une première génération de chair-bentwood.jpg a rencontré un délai d'écriture Gradio. Une relance unique a réussi en 215,0 s ; aucun échec n'a été présenté comme succès.
 - Le viewer a déjà affiché un GLB effectivement produit par l'application ; rotation, déplacement, zoom et téléchargement ont été observés sur ce flux initial. Celui-ci utilisait les valeurs d'exemple basses avant la correction des valeurs par défaut. Les cinq nouveaux fichiers aux paramètres officiels ont été vérifiés côté API et sur disque ; l'activation d'Edge a échoué pendant cette dernière vérification visuelle, donc leur nouvel affichage dans Edge reste à revoir.
 - Aucun entraînement, PyTorch, CUDA ni TripoSR local. Aucune dépendance n'a été ajoutée à backend/requirements.txt.
+- Le frontend est maintenant séparé en fichiers de thème, composants, API, état, vues et orchestration. Le backend sert ces ressources sous /static/.
+- La galerie locale vérifie le GLB 2.0, limite les chemins à cinq identifiants connus et indique clairement l'origine de chaque modèle.
+- Le contrôle HTTP de l'instance locale existante a renvoyé 200 pour /, la feuille de thème et le module principal ; GET /models/gallery a renvoyé cinq entrées et un GLB a été servi en model/gltf-binary sans appeler TripoSR.
+- Le rendu pixel par pixel et l'interaction dans Edge n'ont pas été validés ; cette vérification couvre le serveur, les ressources et le téléchargement seulement.
 
 ## Résultats réels — 21 octobre 2026
 
@@ -44,7 +50,7 @@ Les tailles ont été mesurées sur les photos et GLB présents localement. Les 
 ## Vérifications de code
 
 - Les tests ciblés du fournisseur et du service passent : 20 tests sans réseau, avec client simulé.
-- La suite pytest complète passe : 38 tests en 1,12 s. Elle a été lancée avec l'accès local nécessaire aux tests TestClient ; les tests ne contactent aucun fournisseur distant.
+- La suite pytest complète passe : 43 tests en 1,49 s après la refonte. Elle a été lancée avec l'accès local nécessaire aux tests TestClient ; les tests ne contactent aucun fournisseur distant.
 - Les commits ont été poussés sur main. Le résultat de la CI déclenchée par le push n'est pas visible depuis cette session : le CLI gh est absent et la page publique ne peut pas lire ce dépôt privé. Consulter Actions dans GitHub avant d'annoncer la CI verte.
 - Vérifier avant commit que backend/.env, les cinq GLB, les photos et le cahier des charges DOCX utilisateur restent hors de l'index Git.
 

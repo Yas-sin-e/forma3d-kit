@@ -1,7 +1,34 @@
 # Frontend
 
-`index.html` contient la page française du Sprint 1 : choix de photo, suivi d'une demande réelle, viewer `<model-viewer>`, contrôles de caméra et téléchargement du GLB quand le backend indique `DONE`. Le bouton « Ouvrir un GLB local » charge aussi un fichier `.glb` sélectionné dans le navigateur, sans l'envoyer au serveur ; l'interface le marque comme un fichier non généré par l'application.
+Cette interface française de Sprint 1 est servie par FastAPI. Elle n'a ni framework, ni serveur de développement distinct, ni étape de compilation. La structure en modules sépare les styles, les appels HTTP, l'état de session et les vues afin que chaque fichier ait un rôle facile à expliquer.
 
-FastAPI sert cette page sur `/`. Il n'y a pas de serveur frontend séparé ni de compilation JavaScript. La page suit `DESIGN.md` ; son composant `<model-viewer>` est chargé depuis le CDN Google et nécessite une connexion Internet dans le navigateur. Les contrôles natifs `camera-controls` permettent aussi d'interagir directement avec la souris ou le tactile.
+## Parcours
 
-La page démarre dans un état vide, sans modèle d'exemple. Les erreurs de génération restent visibles. Un GLB chargé avec le bouton local est identifié comme fichier local, non généré par l'application. Cinq GLB réels générés par Forma3D sont disponibles localement dans backend/data/feasibility-results/ ; le viewer a déjà affiché un modèle et ses contrôles ont été manipulés sur une génération réelle à faible résolution. Les cinq sorties aux paramètres TripoSR normaux doivent encore être examinées visuellement.
+1. La personne choisit ou dépose une photo JPG, PNG ou WebP de 10 Mo maximum.
+2. L'interface rappelle de ne pas envoyer de visages ni de données personnelles.
+3. Le navigateur envoie réellement la photo à POST /models et suit l'URL renvoyée par le serveur.
+4. L'interface reflète les réponses PENDING, RUNNING, DONE ou FAILED. Elle montre le temps écoulé réellement mesuré, sans pourcentage.
+5. À DONE, le GLB validé par le fournisseur apparaît dans le viewer et le bouton de téléchargement est révélé.
+6. La galerie récupère seulement les cinq noms de fichiers de faisabilité autorisés. Les modèles absents ou invalides sont exclus. Les filtres portent sur la chaise, le tabouret et la table d'appoint.
+7. « Ouvrir un GLB local » charge le fichier dans le navigateur, sans le transmettre au serveur ; son origine est affichée comme importée manuellement.
+
+## Structure et responsabilités
+
+- css/theme.css définit la palette sombre, la typographie système, les tailles minimales, le focus et la réduction des animations.
+- css/components.css contient la mise en page et les styles des panneaux, du suivi, du viewer, de la galerie et des états.
+- js/api.js est le seul module qui appelle les routes HTTP.
+- js/state.js conserve l'état transitoire du formulaire et du suivi, sans base de données.
+- js/views/uploader.js gère le choix, le dépôt et la validation visuelle du fichier avant la vérification serveur.
+- js/views/progress.js montre les phases connues, le délai réellement écoulé et les erreurs.
+- js/views/viewer.js charge model-viewer, ses commandes de caméra et les modèles GLB locaux ou générés.
+- js/views/gallery.js présente et filtre les vrais fichiers renvoyés par l'API.
+- js/main.js relie les vues et les appels d'API sans contenir d'appel HTTP.
+- index.html expose la structure HTML et charge model-viewer 4.4.0 ainsi que les deux feuilles de style et le module principal.
+
+Les commentaires d'en-tête de chaque module donnent son rôle et son exécution. La table de docs/STRUCTURE.md complète ces descriptions.
+
+## Lancer
+
+Depuis le dossier backend, lancer Uvicorn puis ouvrir http://127.0.0.1:8000/. La page, les feuilles de style et les modules JavaScript sont servis par la même application. Le navigateur a besoin d'Internet pour récupérer model-viewer depuis le CDN Google.
+
+Le parcours de génération requiert aussi que le fournisseur distant soit disponible. La galerie dépend des cinq fichiers locaux de backend/data/feasibility-results/ ; elle n'invente pas de modèle si ces fichiers ne sont pas présents.

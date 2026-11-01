@@ -24,8 +24,8 @@ Le SaaS commercial complet n'est pas livré au Sprint 1. Les comptes vendeurs, l
 2. L'API vérifie le format et la taille du fichier.
 3. Un fournisseur pré-entraîné produit un modèle 3D ; son intégration est isolée derrière Image3DProvider.
 4. L'API conserve le fichier et communique un état réel du traitement.
-5. Une page servie par FastAPI charge le GLB dans le composant model-viewer.
-6. Le vendeur manipule le modèle et télécharge le GLB.
+5. Une page modulaire servie par FastAPI charge le GLB dans le composant model-viewer et montre une galerie locale des cinq résultats réels de faisabilité pour la démonstration.
+6. Le vendeur manipule le modèle et télécharge le GLB. La galerie locale n'est pas le catalogue commercial du SaaS.
 
 L'étape 1 de ce sprint ne met en place que le squelette FastAPI et son vrai endpoint GET /health. Les étapes suivantes ajoutent les fonctions du parcours dans l'ordre défini par AGENTS.md.
 
@@ -46,6 +46,7 @@ L'étape 1 de ce sprint ne met en place que le squelette FastAPI et son vrai end
 - Génération, stockage local et état de traitement.
 - Page HTML avec viewer interactif et téléchargement.
 - Essais réels avec 5 à 10 photos de petit mobilier opaque.
+- Page de studio modulaire avec une galerie de démonstration limitée aux résultats réels présents sur le poste ; elle ne devient pas un catalogue produit partagé.
 
 ### Hors périmètre du Sprint 1
 - OpenCV, rembg, authentification et base de données.

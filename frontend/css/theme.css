@@ -1,0 +1,111 @@
+/*
+ * Rôle : définit les couleurs, la typographie et les règles globales accessibles.
+ * Exécution : chargé par frontend/index.html avant les styles des composants.
+ */
+:root {
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  --page: #0E1218;
+  --surface: #161C26;
+  --surface-raised: #1C2430;
+  --surface-soft: #202A37;
+  --stage: #121923;
+  --ink: #F1F5F9;
+  --muted: #A9B4C4;
+  --subtle: #7F8C9E;
+  --accent: #2DD4BF;
+  --accent-ink: #0E1218;
+  --warning: #FBBF24;
+  --danger: #F87171;
+  --success: #4ADE80;
+  --line: #303B49;
+  --line-strong: #465365;
+  --focus: #2DD4BF;
+  --radius-card: 16px;
+  --radius-control: 11px;
+  --shadow-panel: 0 18px 55px rgb(0 0 0 / 18%);
+  --motion-fast: 150ms ease-out;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 360px;
+  min-height: 100%;
+  scroll-behavior: smooth;
+  background: var(--page);
+}
+
+body {
+  min-width: 360px;
+  min-height: 100vh;
+  margin: 0;
+  color: var(--ink);
+  background:
+    radial-gradient(ellipse at 75% -20%, rgb(45 212 191 / 7%), transparent 43rem),
+    var(--page);
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+button,
+input,
+a {
+  font: inherit;
+}
+
+button,
+a,
+input {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button {
+  color: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+label:focus-within {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+::selection {
+  color: var(--accent-ink);
+  background: var(--accent);
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

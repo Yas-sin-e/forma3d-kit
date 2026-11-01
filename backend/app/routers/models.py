@@ -1,5 +1,5 @@
-# Rôle : expose l'endpoint de validation d'une photo produit.
-# Exécution : FastAPI appelle la route quand un client envoie POST /models.
+# Rôle : expose l'envoi, le suivi, les téléchargements et la galerie des GLB autorisés.
+# Exécution : FastAPI appelle ces routes aux requêtes photo, statut ou modèles d'essai.
 """Routes HTTP associées aux modèles 3D et aux images reçues."""
 
 from typing import Annotated
@@ -8,8 +8,9 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Re
 from fastapi.responses import FileResponse
 
 from app.models import GenerationRecord, GenerationStatus
-from app.schemas import GenerationResponse
+from app.schemas import DemoGalleryResponse, GenerationResponse
 from app.services.generation_service import GenerationService
+from app.services.demo_gallery import DemoGallery
 from app.services.upload_validator import (
     MAX_UPLOAD_BYTES,
     UploadValidationError,
@@ -22,6 +23,11 @@ router = APIRouter(prefix="/models", tags=["models"])
 def get_generation_service(request: Request) -> GenerationService:
     """Récupère le service unique créé au démarrage de l'application."""
     return request.app.state.generation_service
+
+
+def get_demo_gallery(request: Request) -> DemoGallery:
+    """Récupère le catalogue local borné aux cinq modèles de faisabilité."""
+    return request.app.state.demo_gallery
 
 
 def _to_response(record: GenerationRecord) -> GenerationResponse:
@@ -65,6 +71,30 @@ async def create_model_generation(
     record = service.create_generation(validated, content)
     background_tasks.add_task(service.run, record.id)
     return _to_response(record)
+
+
+@router.get("/gallery", response_model=DemoGalleryResponse)
+def list_demo_models(
+    gallery: Annotated[DemoGallery, Depends(get_demo_gallery)],
+) -> DemoGalleryResponse:
+    """Liste uniquement les GLB de faisabilité autorisés et encore valides."""
+    return DemoGalleryResponse(items=gallery.list_models())
+
+
+@router.get("/gallery/{model_id}")
+def download_demo_model(
+    model_id: str,
+    gallery: Annotated[DemoGallery, Depends(get_demo_gallery)],
+) -> FileResponse:
+    """Sert un GLB réel de démonstration par identifiant autorisé."""
+    model_path = gallery.get_model_path(model_id)
+    if model_path is None:
+        raise HTTPException(status_code=404, detail="Modèle de démonstration introuvable.")
+    return FileResponse(
+        path=model_path,
+        media_type="model/gltf-binary",
+        filename=model_path.name,
+    )
 
 
 @router.get("/{generation_id}", response_model=GenerationResponse)

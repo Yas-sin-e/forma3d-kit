@@ -1,34 +1,65 @@
-# Rôle : vérifie que FastAPI sert la page de génération et les vrais contrôles du viewer.
-# Exécution : Pytest appelle GET / sans charger de modèle ni appeler de fournisseur.
-"""Tests HTTP statiques de la page HTML du Sprint 1."""
+# Rôle : vérifie le HTML servi, le chargement des modules et l'isolation des appels HTTP.
+# Exécution : Pytest appelle FastAPI avec TestClient, sans navigateur ni fournisseur distant.
+"""Tests statiques de la page modulaire du Sprint 1."""
 
 from fastapi.testclient import TestClient
 
 from app.main import app
 
 
-def test_home_serves_upload_viewer_and_status_controls() -> None:
-    response = TestClient(app).get("/")
+def test_home_serves_the_modular_studio_and_model_viewer() -> None:
+    client = TestClient(app)
+    response = client.get("/")
     html = response.content.decode("utf-8")
 
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
     assert 'lang="fr"' in html
     assert "<model-viewer" in html
+    assert "model-viewer/4.4.0/model-viewer.min.js" in html
     assert 'accept=".jpg,.jpeg,.png,.webp' in html
-    assert 'fetch("/models"' in html
-    assert "window.setInterval" in html
-    assert "pollingInFlight" in html
-    assert "function isAcceptedFile(file)" in html
-    assert "Le viewer attend une génération réelle ou l'ouverture d'un fichier GLB local." in html
-    assert "cameraOrbit" in html
-    assert 'id="pan-left"' in html
-    assert 'id="zoom-in"' in html
+    assert "/static/css/theme.css" in html
+    assert "/static/css/components.css" in html
+    assert "/static/js/main.js" in html
+    assert 'id="progress-steps"' in html
+    assert 'id="gallery-filters"' in html
+    assert 'id="gallery-grid"' in html
     assert 'id="open-local-glb"' in html
     assert 'accept=".glb,model/gltf-binary"' in html
-    assert "Fichier local, non généré par l'application" in html
-    assert "URL.createObjectURL(file)" in html
-    assert "URL.revokeObjectURL(localObjectUrl)" in html
-    local_handler = html.split('localGlbInput.addEventListener("change", () => {', 1)[1].split("\n      });", 1)[0]
+    assert 'id="ar-button"' in html
+
+
+def test_static_frontend_assets_are_served_and_only_api_module_calls_fetch() -> None:
+    client = TestClient(app)
+    api_response = client.get("/static/js/api.js")
+    css_response = client.get("/static/css/components.css")
+    module_paths = (
+        "/static/js/main.js",
+        "/static/js/state.js",
+        "/static/js/views/uploader.js",
+        "/static/js/views/progress.js",
+        "/static/js/views/viewer.js",
+        "/static/js/views/gallery.js",
+    )
+
+    assert api_response.status_code == 200
+    assert "fetch(" in api_response.text
+    assert css_response.status_code == 200
+    for path in module_paths:
+        response = client.get(path)
+        assert response.status_code == 200
+        assert "fetch(" not in response.text
+
+
+def test_local_model_controls_do_not_send_files_to_the_backend() -> None:
+    client = TestClient(app)
+    viewer = client.get("/static/js/views/viewer.js").text
+
+    local_handler = viewer.split('localInput.addEventListener("change", () => {', 1)[1].split(
+        "\n  });", 1
+    )[0]
+
+    assert "URL.createObjectURL(url)" in viewer
+    assert "URL.revokeObjectURL(localObjectUrl)" in viewer
     assert "fetch(" not in local_handler
     assert "FormData" not in local_handler

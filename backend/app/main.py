@@ -1,5 +1,5 @@
-# Rôle : construit l'API FastAPI et sert la page du viewer du Sprint 1.
-# Exécution : Uvicorn importe ce module au démarrage ; les tests l'importent aussi.
+# Rôle : construit l'API FastAPI, sert le frontend et configure les services du Sprint 1.
+# Exécution : Uvicorn importe ce module ; FastAPI sert la page, les ressources et les routes.
 """Point d'entrée HTTP de Forma3D Studio.
 
 Ce module crée l'application FastAPI et expose le contrôle GET /health.
@@ -10,9 +10,11 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.providers.huggingface import HuggingFaceSpaceProvider
 from app.routers.models import router as models_router
+from app.services.demo_gallery import DemoGallery
 from app.services.generation_service import GenerationService
 from app.storage.local_storage import LocalStorage
 
@@ -27,8 +29,14 @@ app.state.generation_service = GenerationService(
     provider=HuggingFaceSpaceProvider(),
     storage=LocalStorage(),
 )
+app.state.demo_gallery = DemoGallery()
 
 app.include_router(models_router)
+app.mount(
+    "/static",
+    StaticFiles(directory=_PROJECT_ROOT / "frontend"),
+    name="frontend-static",
+)
 
 
 @app.get("/", include_in_schema=False)

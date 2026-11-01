@@ -1,6 +1,6 @@
 # Structure expliquée — Forma3D Studio
 
-Mis à jour le 21 octobre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le backend Forma3D et le serveur TripoSR dans Colab. Les évaluations visuelles restent à faire par l'étudiante.
+Mis à jour le 1 novembre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le backend Forma3D et le serveur TripoSR dans Colab. L'interface a ensuite été séparée en modules accessibles ; les notes qualitatives des résultats restent à faire par l'étudiante.
 
 ## Racine et documents de cadrage
 
@@ -43,14 +43,15 @@ Mis à jour le 21 octobre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le 
 | `backend/README.md` | Explique l'API, ses limites et ses commandes | Permet de lancer le serveur sans deviner les étapes | À l'installation et au développement |
 | `backend/requirements.txt` | Déclare FastAPI, Uvicorn, HTTPX2, pytest, multipart, Gradio Client et python-dotenv | Recrée les dépendances dans le venv | À l'installation et en CI |
 | `backend/app/__init__.py` | Marque `app` comme paquet Python | Rend les imports déterministes | Au démarrage et pendant les tests |
-| `backend/app/main.py` | Construit FastAPI, sert la page `/`, configure le service et branche les routes | Fournit un point d'entrée unique | Quand Uvicorn démarre ou TestClient importe l'application |
+| `backend/app/main.py` | Construit FastAPI, sert la page, publie le frontend sous /static/, configure le service et le catalogue | Fournit un point d'entrée unique pour les ressources et les routes | Quand Uvicorn démarre ou TestClient importe l'application |
 | backend/.env | Configuration locale, dont l'URL temporaire du serveur Gradio | Fichier ignoré par Git ; ne jamais copier son contenu dans un document ou un commit | Pour connecter le backend au serveur Colab actif |
 | `backend/app/models.py` | Définit états et fiche de génération en mémoire | Représente le cycle sans installer une base au Sprint 1 | Pendant la vie du serveur |
-| `backend/app/schemas.py` | Fixe le JSON public de l'état de génération | Stabilise les réponses et la documentation OpenAPI | Sur POST et GET `/models` |
+| `backend/app/schemas.py` | Fixe les réponses JSON de génération et de la galerie | Stabilise les réponses et la documentation OpenAPI | Sur les routes /models |
 | `backend/app/routers/__init__.py` | Marque le paquet des routes | Clarifie l'organisation Python | À l'import des routes |
-| `backend/app/routers/models.py` | Valide la photo, crée la tâche, donne l'état et sert le GLB terminé | Sépare HTTP de l'orchestration métier | À l'envoi, au suivi et au téléchargement |
+| `backend/app/routers/models.py` | Reçoit les photos, expose les états, sert le GLB terminé et les modèles de galerie | Sépare HTTP de l'orchestration métier et limite les fichiers de démo | À l'envoi, au suivi, au téléchargement et au filtrage de la galerie |
 | `backend/app/services/__init__.py` | Marque le paquet métier | Clarifie les imports de services | À l'import du validateur et du service |
 | `backend/app/services/upload_validator.py` | Contrôle extension, MIME, signature et plafond de 10 Mo | Le nom ou le type annoncé seul ne suffit pas | Avant d'enregistrer une photo |
+| `backend/app/services/demo_gallery.py` | Liste seulement cinq GLB autorisés, valide leur structure 2.0 et résout leurs identifiants | N'expose aucun chemin fourni par le client et exclut les fichiers absents ou invalides | À l'ouverture de la galerie ou d'un modèle d'essai |
 | backend/app/services/generation_service.py | Orchestre les états, le fournisseur et le stockage ; journalise type/repr/cause et masque les secrets | Facilite le diagnostic sans divulguer le jeton ni l'URL configurée | Après un upload valide ou en cas d'échec fournisseur |
 | `backend/app/providers/__init__.py` | Marque le paquet d'adaptateurs | Isole les fournisseurs externes | À l'import fournisseur |
 | `backend/app/providers/base.py` | Définit `Image3DProvider.generate(Path) -> bytes` et l'erreur commune | Permet de remplacer Hugging Face sans réécrire le service | Dans GenerationService et les adaptateurs |
@@ -63,9 +64,21 @@ Mis à jour le 21 octobre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le 
 
 | Chemin | À quoi ça sert | Pourquoi ce choix | Quand on l'utilise |
 |---|---|---|---|
-| `frontend/` | Contient la page web du Sprint 1 | Offre une interface sans deuxième serveur ni build | Quand une personne visite `/` |
-| `frontend/README.md` | Explique le rôle de la page et sa dépendance CDN | Rend visible que cette interface existe réellement et ses limites | Avant de la lancer ou de la modifier |
-| `frontend/index.html` | Formulaire photo, statuts, viewer, commandes caméra, téléchargement et ouverture d'un GLB local par URL `blob:` | Garde un seul serveur ; le fichier local ne passe pas par l'API et n'est pas présenté comme généré | Quand le vendeur visite `/` ou vérifie le viewer avec un fichier `.glb` existant |
+| `frontend/` | Contient la page, les styles et les modules JavaScript du Sprint 1 | Offre une interface modulaire sans deuxième serveur ni build | Quand une personne visite / |
+| `frontend/README.md` | Explique les modules, le parcours et les limites du navigateur | Rend les responsabilités et dépendances compréhensibles | Avant de lancer ou modifier le frontend |
+| `frontend/index.html` | Définit les zones accessibles du studio, du viewer, du suivi et de la galerie | Sépare le document et les libellés de la logique des vues | Quand FastAPI sert la page d'accueil |
+| `frontend/css/` | Regroupe le thème et les styles de composants | Sépare les jetons visuels de la mise en page | Au chargement de la page et pour une retouche visuelle |
+| `frontend/css/theme.css` | Définit la palette sombre, les fontes, le focus et la réduction du mouvement | Centralise les règles globales et lisibles | Avant les styles des composants |
+| `frontend/css/components.css` | Met en page panneaux, upload, suivi, viewer, galerie et adaptations écran | Donne à chaque zone un style cohérent sans CSS intégré dans le HTML | Lors du rendu du studio |
+| `frontend/js/` | Regroupe l'état, l'API et les vues ES modules | Permet de suivre une responsabilité par fichier sans framework | Quand le navigateur charge le module principal |
+| `frontend/js/api.js` | Centralise fetch pour créer et suivre les générations et charger la galerie | Empêche les vues de disperser les appels serveur | À chaque action nécessitant l'API |
+| `frontend/js/state.js` | Garde en mémoire photo, statut, durée et minuteries de la session | Évite une base de données pour cet état temporaire | Pendant l'envoi et le suivi d'une demande |
+| `frontend/js/main.js` | Coordonne formulaire, suivi, galerie et viewer | Relie les modules sans placer la logique HTTP dans les vues | À l'ouverture de la page |
+| `frontend/js/views/` | Regroupe les vues de l'interface | Isole les responsabilités visibles du studio | Quand une vue est modifiée ou réutilisée |
+| `frontend/js/views/uploader.js` | Gère le dépôt, le sélecteur, les erreurs de fichier et l'envoi au callback | Rend les contrôles de fichier testables sans mélanger l'API | À la sélection d'une photo |
+| `frontend/js/views/progress.js` | Traduit les états observés et le temps réel en étape accessible | N'invente ni pourcentage ni délai restant | Pendant et après une génération |
+| `frontend/js/views/viewer.js` | Charge les modèles et gère caméra, plein écran, auto-rotation, AR conditionnelle et fichier local | Isole les gestes du composant 3D du suivi API | Après sélection ou génération d'un GLB |
+| `frontend/js/views/gallery.js` | Crée les aperçus 3D et filtre les résultats de faisabilité par catégorie | N'affiche que les entrées réelles reçues du backend | Quand la galerie est chargée ou filtrée |
 
 ## Tests et vérification continue
 
@@ -78,7 +91,8 @@ Mis à jour le 21 octobre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le 
 | backend/tests/test_generation_service.py | Vérifie les transitions d'état et le masquage du jeton et de l'URL dans les logs d'erreur | Protège le diagnostic des secrets locaux | À chaque suite pytest |
 | `backend/tests/test_local_storage.py` | Contrôle écritures atomiques, noms et garde-fous de chemin | Protège le stockage local contre un chemin client | À chaque suite pytest |
 | `backend/tests/test_models_api.py` | Vérifie les réponses d'upload, de suivi, les erreurs et le refus de téléchargement prématuré | Stabilise le contrat HTTP sans appeler le fournisseur | À chaque suite pytest |
-| `backend/tests/test_frontend.py` | Vérifie la page, le contrôle GLB local et l'absence d'envoi réseau depuis son gestionnaire | Protège le parcours local sans fournisseur et sans navigateur externe | À chaque suite pytest |
+| `backend/tests/test_frontend.py` | Vérifie les ressources statiques, l'isolation HTTP dans api.js et l'absence d'envoi du fichier local | Protège les limites du frontend sans fournisseur | À chaque suite pytest |
+| `backend/tests/test_demo_gallery.py` | Vérifie l'allowlist, la validation GLB, les erreurs et le téléchargement temporaire | Protège la galerie sans dépendre des médias ignorés du poste | À chaque suite pytest |
 | `.github/workflows/ci.yml` | Vérifie les documents puis installe les dépendances et exécute pytest | Donne un contrôle répétable sur GitHub | À chaque push ou pull request |
 
 ## Documentation et historique
@@ -93,7 +107,7 @@ Mis à jour le 21 octobre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le 
 | `docs/etapes/etape-02.md` | Explique le validateur et le contrat d'upload historique | Documente l'évolution de POST `/models` au fil du sprint | Pour réviser l'étape 2 |
 | `docs/etapes/etape-03.md` | Décrit l'API Hugging Face inspectée, les photos, la licence et les erreurs observées | Distingue l'implémentation de sa faisabilité non démontrée | Pour revoir le fournisseur ou expliquer l'essai au jury |
 | `docs/etapes/etape-04.md` | Explique statuts, service, stockage et routes | Rend le cycle de génération explicable fichier par fichier | Pour réviser l'étape 4 |
-| `docs/etapes/etape-05.md` | Explique le formulaire, le suivi, le viewer et ses limites de test | Relie l'interface aux routes backend | Pour présenter ou modifier l'étape 5 |
+| `docs/etapes/etape-05.md` | Explique les modules, le suivi réel, le viewer, la galerie et les limites de test | Relie l'interface et ses ressources aux routes backend | Pour présenter ou modifier l'étape 5 |
 | docs/etapes/etape-06.md | Consigne le contrat observé, les cinq appels, les temps, les tailles et les limites de visualisation | Fournit une trace exacte et pédagogique pour reproduire la soutenance | Pour analyser les résultats et attribuer les notes visuelles |
 | docs/etapes/etape-06-colab.md | Explique l'installation testée, le démarrage Gradio et les limites du runtime gratuit | Permet de redémarrer le service sans PyTorch local et sans divulguer le lien temporaire | Avant de préparer une autre démonstration |
 | `docs/etapes/.gitkeep` | Marqueur ancien du dossier de guides | Conservé sans rôle d'exécution | Au clonage du dépôt |
