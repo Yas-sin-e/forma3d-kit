@@ -24,6 +24,7 @@ dist/
 *.sqlite3
 backend/data/
 backend/storage/
+/backend/.dev-server*.log
 /storage/
 
 # Système et éditeur

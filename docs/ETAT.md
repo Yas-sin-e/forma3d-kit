@@ -2,13 +2,25 @@
 
 Dernière mise à jour : 1 novembre 2026.
 
-## Résumé
+## Étape 7 — fiabilité et qualité (en cours)
+
+- Ajout d'une sonde `GET /health/provider` avec délai de 5 secondes. Elle ne renvoie que `ONLINE`, `OFFLINE` ou `UNCONFIGURED`, jamais la cible distante.
+- L'interface vérifie le fournisseur au chargement puis toutes les 30 secondes. Hors ligne, la génération est bloquée et le bouton de secours ouvre un modèle réel de la galerie.
+- Les conseils photo, la phrase d'approximation et la photo source éventuelle ont été ajoutés. Aucun nom de modèle `Chaise métal 01/02` n'a été changé.
+- Le lancement local passe par `scripts/dev.ps1`, qui crée le venv s'il manque, lance pytest, démarre Uvicorn puis ouvre Edge.
+- Les réglages facultatifs `FOREGROUND_RATIO` et `MC_RESOLUTION` ne sont validés qu'avec des noms et bornes tirés du contrat Gradio observé ; aucune plage n'est codée en dur.
+- Point 0 suspendu : Edge/Colab a affiché « Échec : backend non attribué ». Aucun nouveau lien n'est disponible, `.env` n'a pas été modifié, aucune photo n'a été envoyée et aucune génération d'étape 7 n'a eu lieu.
+- La FAQ officielle Colab restreint les services web non liés au calcul interactif sur les runtimes gérés et avertit des interruptions de l'interface web de génération en offre gratuite. La cellule publique du notebook est bloquée et aucun contournement n'est ajouté.
+- Les tests de l'étape 7 passent : 55 réussis en 1,49 s, avec transports simulés et sans réseau fournisseur. La syntaxe de `scripts/dev.ps1` et le JSON du notebook sont valides ; le notebook n'a aucune sortie enregistrée.
+- Les vérifications locales de code et de documentation de l'étape 7 sont terminées. La vérification visuelle dans Edge, les générations qualité et les notes visuelles restent en attente d'un environnement d'inférence autorisé.
+
+## Résumé de l'étape 6 (historique vérifié)
 
 Sprint 1 v2 : le flux réel photo vers GLB est maintenant prouvé avec le serveur TripoSR officiel lancé dans Google Colab. Les cinq photos libres de droits ont été soumises au vrai endpoint POST /models de Forma3D ; chacune a atteint PENDING, RUNNING puis DONE. Les cinq fichiers téléchargés sont valides en GLB 2.0. Aucune génération ni aucun fichier n'est simulé.
 
 L'US3, dont le critère est que l'application obtienne un vrai GLB par ce serveur, est satisfaite. Les essais antérieurs de Stable Fast 3D ont échoué et restent consignés séparément. Les appréciations bon/moyen/mauvais des cinq résultats visuels doivent être données par l'étudiante ; elles ne sont pas inférées ici.
 
-La page de studio a été refaite en modules CSS/JavaScript sans framework, avec une palette sombre à fort contraste, une scène 3D centrale, un suivi sans pourcentage et les commandes caméra demandées. La galerie interroge une route bornée aux cinq vrais GLB locaux et ne présente aucun objet de remplacement. Le code du fournisseur et les autres couches métier restent inchangés ; les seules routes ajoutées servent la galerie des modèles existants.
+La page de studio a été refaite en modules CSS/JavaScript sans framework, avec une palette sombre à fort contraste, une scène 3D centrale, un suivi sans pourcentage et les commandes caméra demandées. La galerie interroge une route bornée aux cinq vrais GLB locaux et ne présente aucun objet de remplacement. L'étape 7 a depuis ajouté un contrôle fournisseur, des photos sources autorisées et des réglages qualité validés dynamiquement.
 
 ## Fait et vérifié
 
@@ -43,17 +55,17 @@ Les tailles ont été mesurées sur les photos et GLB présents localement. Les 
 - Space Hugging Face officiel stabilityai/TripoSR : son état runtime empêchait la lecture de l'API à l'époque. L'adaptateur actuel vise le serveur Gradio officiel autonome, dont le contrat a ensuite été réellement lu.
 - L'installation Colab a d'abord échoué dans torchmcubes, puis la commande de secours a échoué. Le notebook a été ajusté avec les outils de build du README torchmcubes et --no-build-isolation ; cette installation a ensuite réussi sur le runtime T4 Python 3.12.12. onnxruntime a été ajouté au runtime Colab et huggingface-hub fixé à 0.34.0 pour résoudre deux erreurs de démarrage. Rien de cela n'a modifié l'environnement local.
 - Le journal des générations est en mémoire et disparaît quand FastAPI redémarre. Les GLB de faisabilité restent dans le dossier local ignoré par Git.
-- Le lien Gradio est public, sans authentification, temporaire et absent du notebook versionné et des documents. Garder le runtime et la cellule du serveur actifs pendant une démonstration.
+- Le lien Gradio utilisé lors de la génération est historique, public et sans authentification ; aucun lien utilisable n'est enregistré dans le dépôt. Les règles actuelles de Colab géré gratuit suspendent son redémarrage par notebook ; voir `docs/etapes/etape-06-colab.md`.
 - Le GPU gratuit, sa disponibilité, sa durée et le temps d'inactivité ne sont pas garantis. Le modèle est une approximation visuelle, pas une reconstruction dimensionnelle pour fabriquer un meuble.
 - Les droits des photos doivent être vérifiés indépendamment de la licence MIT du code et des poids pré-entraînés.
 
 ## Vérifications de code
 
 - Les tests ciblés du fournisseur et du service passent : 20 tests sans réseau, avec client simulé.
-- La suite pytest complète passe : 43 tests en 1,49 s après la refonte. Elle a été lancée avec l'accès local nécessaire aux tests TestClient ; les tests ne contactent aucun fournisseur distant.
+- Avant l'étape 7, les 43 tests existants passaient. Après les nouveaux contrôles simulés, la suite complète passe : 55 tests en 1,49 s ; aucun test ne contacte un fournisseur distant.
 - Les commits ont été poussés sur main. Le résultat de la CI déclenchée par le push n'est pas visible depuis cette session : le CLI gh est absent et la page publique ne peut pas lire ce dépôt privé. Consulter Actions dans GitHub avant d'annoncer la CI verte.
 - Vérifier avant commit que backend/.env, les cinq GLB, les photos et le cahier des charges DOCX utilisateur restent hors de l'index Git.
 
 ## Prochaine action recommandée
 
-Attribuer une note bon, moyen ou mauvais à chacun des cinq GLB après les avoir examinés, puis consulter le résultat de la CI dans GitHub Actions.
+Après validation d'un environnement d'inférence autorisé, relire son contrat `view_api()` et reprendre les essais qualité laissés en attente ; les étiquettes visuelles et la CI doivent ensuite être vérifiées séparément.

@@ -40,6 +40,7 @@ Objectif : le vendeur envoie une photo, obtient un GLB via un fournisseur gratui
 4. GenerationService, stockage local et états PENDING/RUNNING/DONE/FAILED.
 5. Page HTML avec model-viewer, rotation, déplacement de caméra, zoom et téléchargement, servie par FastAPI.
 6. Essais réels sur 5 à 10 photos de petit mobilier opaque ; conserver des modèles de démonstration si les licences l'autorisent.
+7. Fiabilité et qualité : contrôle fournisseur sans divulgation d'URL, comportement hors ligne, conseils photo, comparaison à l'image source, réglages validés par le contrat courant et documentation des limites.
 
 Ne pas faire au Sprint 1 : OpenCV, rembg, comptes, base de données, Next.js, Docker, Celery, Redis ou MinIO.
 
@@ -53,6 +54,8 @@ Ne pas faire au Sprint 1 : OpenCV, rembg, comptes, base de données, Next.js, Do
 - Ne pas envoyer de photo contenant des données personnelles à un Space public.
 - Vérifier les licences avant tout usage autre que scolaire.
 - Expliquer les quotas et files d'attente gratuits observés ; ils peuvent rendre une démo non fiable.
+- Google Colab gratuit ne garantit pas un GPU ou un runtime. Sa FAQ actuelle interdit les services web sans lien avec le calcul interactif sur les runtimes gérés et signale les interruptions d'interfaces web de génération ; ne pas démarrer ni contourner ce cas depuis un runtime géré gratuit.
+- Une URL publique Gradio est temporaire et accessible à quiconque la connaît. Garder la configuration uniquement dans un `.env` ignoré par Git ; le contrôle de santé ne renvoie jamais cette URL.
 - Un GLB pré-généré est identifié honnêtement et ne compte pas comme génération en direct.
 
 ## Modes de travail
@@ -91,3 +94,10 @@ Ne pas faire au Sprint 1 : OpenCV, rembg, comptes, base de données, Next.js, Do
 
 ## Mémoire du projet
 Au début de chaque session, lire AGENTS.md, docs/ETAT.md et docs/STRUCTURE.md, puis résumer l'avancement en cinq lignes. Après chaque étape, mettre à jour docs/ETAT.md.
+
+## État mis à jour au 1 novembre 2026
+- L'étape 6 a prouvé cinq générations TripoSR dans une session passée ; ces cinq résultats sont des fichiers locaux réels, et ne sont pas de nouvelles générations de cette session.
+- L'étape 7 ajoute le contrôle fournisseur hors ligne et des réglages dont les noms/bornes doivent provenir du contrat réel à chaque génération.
+- La reconnexion Colab du 1 novembre 2026 a affiché « Échec : backend non attribué » ; aucun lien n'a été obtenu et aucun nouvel essai n'a été lancé.
+- La cellule publique du notebook s'arrête sur les runtimes Colab gérés gratuits, conformément à la FAQ actuelle de Google. Ne pas retirer ce garde-fou, maintenir une session en vie ou contourner une limitation.
+- Les étiquettes `Chaise métal 01/02` ne changent qu'après validation de l'étudiante.

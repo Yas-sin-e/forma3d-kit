@@ -1,39 +1,31 @@
-# Guide — serveur TripoSR dans Google Colab
+# Guide — TripoSR, Colab et limites du serveur public
 
-Dernière vérification : 21 octobre 2026. Le notebook a été exécuté sur un runtime Google Colab Tesla T4 ; le serveur Gradio officiel a démarré et a produit cinq modèles utilisés par l'application Forma3D.
+Dernière mise à jour : 1 novembre 2026.
 
-## Ce que fait le notebook
+## Historique vérifié
 
-tools/colab/triposr_server.ipynb clone le dépôt officiel VAST-AI-Research/TripoSR, installe ses dépendances dans l'environnement temporaire de Colab et lance gradio_app.py. Il ne configure ni PyTorch, ni CUDA, ni TripoSR sur l'ordinateur local. Le modèle est pré-entraîné ; le parcours n'entraîne rien.
+Le 21 octobre 2026, le notebook a vérifié un runtime Tesla T4 sous Python 3.12.12, installé TripoSR dans le runtime distant et démarré son interface Gradio. Cinq demandes réelles de l'application ont fourni cinq GLB 2.0 valides ; les mesures figurent dans [etape-06.md](etape-06.md). Ce résultat est historique et ne garantit pas qu'une nouvelle session ou un nouveau GPU soit disponible.
 
-Le runtime testé a fourni Python 3.12.12, Tesla T4 et PyTorch/CUDA 12.6. L'installation officielle de requirements.txt a d'abord échoué à torchmcubes. Le README de torchmcubes a servi à compiler son extension en installant scikit-build-core, pybind11 et CMake, puis en utilisant --no-build-isolation. Cette installation a réussi.
+Le 1 novembre 2026, la tentative de reconnexion dans Colab a affiché exactement « Échec : backend non attribué ». L'interaction a été arrêtée sans autre tentative, demande payante, validation ou contournement. Aucun nouveau lien n'a été reçu, `backend/.env` n'a pas été modifié, aucune photo n'a été envoyée et aucune nouvelle génération n'a été lancée.
 
-Le premier lancement a révélé que le runtime n'avait pas onnxruntime ; son installation dans Colab a résolu l'erreur. Une incompatibilité de huggingface-hub a ensuite été corrigée par une version 0.34.0 dans le même runtime. Ces corrections sont décrites dans le notebook. Aucun changement n'a été fait aux dépendances du backend local.
+## Pourquoi le serveur public est suspendu
 
-## Contrat et résultats vérifiés
+La FAQ officielle de Google Colab indique que les runtimes gérés interdisent l'hébergement de fichiers, le service de médias et les autres services web sans lien avec le calcul interactif. Elle précise que, dans l'offre gratuite, une interface web sur un runtime Colab pour générer du contenu est couramment interrompue et hors des priorités de cette offre. Le serveur public TripoSR/Gradio prévu ici correspond à ce cas d'usage ; le notebook arrête donc explicitement cette cellule. Ce garde-fou ne doit pas être retiré pour relancer le service dans un runtime Colab géré gratuit.
 
-Le code du dépôt officiel a été consulté dans README.md, requirements.txt, gradio_app.py et run.py. Le contrat réel lu avec view_api() expose /check_input_image, /preprocess et /generate. generate renvoie les sorties OBJ et GLB dans cet ordre ; le fournisseur conserve le GLB.
+La FAQ ne garantit ni l'accès à un GPU, ni une disponibilité, ni une durée constante. Elle indique aussi qu'une VM gratuite peut être supprimée après inactivité et que la durée de vie est limitée par le service. Source consultée le 1 novembre 2026 : [FAQ officielle Google Colab](https://research.google.com/colaboratory/faq.html).
 
-Le notebook démarre gradio_app.py avec --share, --port 7860 et --queuesize 1. Le code officiel accepte --share, --port, --username et --password, et n'ajoute l'authentification que si les deux identifiants sont fournis. Le notebook n'en fournit pas : quiconque connaît le lien public temporaire peut appeler le serveur.
+## À propos du lien Gradio
 
-La chaîne complète a été utilisée par Forma3D : cinq photos libres ont atteint PENDING, RUNNING puis DONE via POST /models. Les cinq GLB téléchargés sont valides au format 2.0. Mesures et photos sont consignées dans docs/etapes/etape-06.md. Aucune URL temporaire n'est inscrite dans ce guide ni dans le notebook versionné.
+Un lien `gradio.live` est public à toute personne qui le connaît, sauf authentification explicitement configurée. La documentation Gradio 4.44.1 décrit une expiration après 72 heures ; la documentation Gradio actuelle parle désormais d'une semaine. Le dépôt TripoSR utilisé lors de l'essai précédent dépendait de Gradio 4.8.0, donc la limite de 72 heures reste une borne conservatrice retenue dans le projet. Ni cette durée ni la continuité du runtime ne constituent une garantie de service ; Colab peut arrêter le runtime avant.
 
-## Reprendre une session
+Si un environnement distinct et explicitement autorisé fournit un lien, sa valeur doit rester uniquement dans `backend/.env`, sous la clé `HF_SPACE_ID`. Ne jamais l'enregistrer dans Git, un document, un journal ou une capture partagée. Le fichier versionné `.env.example` garde cette valeur vide.
 
-1. Ouvrir tools/colab/triposr_server.ipynb dans Google Colab.
-2. Dans Exécution, choisir Modifier le type d'exécution puis T4 GPU, si Colab le propose.
-3. Exécuter les cellules dans l'ordre. Le notebook vérifie le GPU, clone le dépôt officiel, installe les dépendances puis démarre le serveur.
-4. Si une cellule échoue, conserver son erreur complète et ne pas prétendre que le serveur est disponible. Les problèmes de torchmcubes, onnxruntime et huggingface-hub sont explicitement traités dans les cellules du notebook.
-5. Copier le nouveau lien affiché par Gradio uniquement dans la configuration locale backend/.env. Le lien n'est pas permanent ; ne pas le coller dans un fichier versionné ou un message public.
-6. Garder la cellule de démarrage en cours pendant les générations et la démonstration. Arrêter la cellule ou perdre le runtime coupe le serveur.
-7. Avant de versionner le notebook après une session, effacer ses sorties et vérifier qu'aucun lien temporaire n'y reste enregistré.
+Références consultées le 1 novembre 2026 : [Guide officiel Gradio 4.44.1 sur le partage](https://www.gradio.app/4.44.1/guides/sharing-your-app), [guide Gradio actuel sur le partage](https://www.gradio.app/guides/sharing-your-app).
 
-## Limites et données
+## Notebook et usage local
 
-- L'accès gratuit à un GPU T4 n'est jamais garanti ; Colab décide de la disponibilité, des quotas, des périodes d'inactivité et de la durée de session.
-- Le lien Gradio est public et temporaire. Le serveur configuré ici n'a pas d'authentification.
-- Une démonstration nécessite que la session Colab, le GPU et la cellule du serveur restent actifs.
-- N'envoyer que des photos libres de droits, sans personne ni donnée personnelle. Le serveur public reçoit les images.
-- La licence MIT couvre le code et les poids publiés par TripoSR ; elle ne transfère pas les droits d'une image.
-- La reconstruction est visuelle ; elle ne garantit pas les dimensions ou l'aptitude à fabriquer le meuble.
-- Le statut du test est réel : installation, démarrage, lecture API, cinq générations et validation GLB ont été observés le 21 octobre 2026. Cela ne garantit pas que le service public temporaire soit encore actif lors d'une prochaine session.
+`tools/colab/triposr_server.ipynb` conserve les cellules pédagogiques de contrôle GPU et d'installation distante. La première cellule s'arrête avec un message clair si aucun GPU CUDA/T4 n'est attribué. La dernière cellule refuse de lancer le serveur public depuis un runtime Colab géré gratuit et n'essaie ni tunnel alternatif, ni maintien en vie, ni nouveau compte. La compatibilité de ces modifications n'a pas été vérifiée sur un runtime Colab actif ; statut : **non testé sur Colab le 1 novembre 2026**.
+
+Après démarrage local autorisé, `scripts/dev.ps1` lance les tests, démarre Uvicorn et ouvre Edge. Le badge `Serveur 3D` interroge `/health/provider` au chargement et toutes les 30 secondes. Si la cible n'est pas configurée ou ne répond pas en 5 secondes, l'interface désactive la génération et garde l'accès aux modèles locaux déjà présents.
+
+Envoyer uniquement des photos libres de droits, sans personne et sans donnée personnelle. Un GLB de démonstration est une sortie pré-générée et ne prouve pas qu'un nouveau serveur a généré un modèle pendant la démo.
