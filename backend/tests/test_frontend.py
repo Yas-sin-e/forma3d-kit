@@ -27,6 +27,12 @@ def test_home_serves_the_modular_studio_and_model_viewer() -> None:
     assert 'id="open-local-glb"' in html
     assert 'accept=".glb,model/gltf-binary"' in html
     assert 'id="ar-button"' in html
+    assert 'id="provider-badge"' in html
+    assert 'id="provider-notice"' in html
+    assert 'id="open-demo-model"' in html
+    assert 'id="photo-guidance-title"' in html
+    assert 'id="source-photo-image"' in html
+    assert "Modèle approximatif créé à partir d’une seule photo" in html
 
 
 def test_static_frontend_assets_are_served_and_only_api_module_calls_fetch() -> None:
@@ -49,6 +55,23 @@ def test_static_frontend_assets_are_served_and_only_api_module_calls_fetch() -> 
         response = client.get(path)
         assert response.status_code == 200
         assert "fetch(" not in response.text
+
+
+def test_provider_health_polling_and_offline_demo_fallback_are_in_api_modules() -> None:
+    client = TestClient(app)
+    api = client.get("/static/js/api.js").text
+    main = client.get("/static/js/main.js").text
+    uploader = client.get("/static/js/views/uploader.js").text
+    gallery = client.get("/static/js/views/gallery.js").text
+
+    assert 'fetch("/health/provider"' in api
+    assert "30_000" in main
+    assert "uploader.setProviderAvailable(false)" in main
+    assert "uploader.setProviderAvailable(available)" in main
+    assert "Le serveur 3D (Colab) est arrêté ou son lien a expiré (72 h)." in main
+    assert "gallery.openFirstModel()" in main
+    assert "providerAvailable" in uploader
+    assert "openFirstModel" in gallery
 
 
 def test_local_model_controls_do_not_send_files_to_the_backend() -> None:

@@ -9,11 +9,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 _DEMO_FILES = (
-    ("chair-bentwood", "Chaise en bois cintré", "chair", "chair-bentwood.glb"),
-    ("chair-metal-01", "Chaise métal 01", "chair", "chair-met-01.glb"),
-    ("chair-metal-02", "Chaise métal 02", "chair", "chair-met-02.glb"),
-    ("side-table-metal", "Table d’appoint en métal", "side-table", "side-table-met.glb"),
-    ("stool-metal-01", "Tabouret métal 01", "stool", "stool-met-01.glb"),
+    ("chair-bentwood", "Chaise en bois cintré", "chair", "chair-bentwood.glb", "chair-bentwood.jpg"),
+    ("chair-metal-01", "Chaise métal 01", "chair", "chair-met-01.glb", "chair-met-01.jpg"),
+    ("chair-metal-02", "Chaise métal 02", "chair", "chair-met-02.glb", "chair-met-02.jpg"),
+    ("side-table-metal", "Table d’appoint en métal", "side-table", "side-table-met.glb", "side-table-met.jpg"),
+    ("stool-metal-01", "Tabouret métal 01", "stool", "stool-met-01.glb", "stool-met-01.jpg"),
 )
 _JSON_CHUNK_TYPE = 0x4E4F534A
 
@@ -29,6 +29,7 @@ class DemoModel:
     source: str
     size_bytes: int
     model_url: str
+    source_image_url: str | None
 
 
 class DemoGallery:
@@ -37,11 +38,12 @@ class DemoGallery:
     def __init__(self, root: Path | None = None) -> None:
         default_root = Path(__file__).resolve().parents[2] / "data" / "feasibility-results"
         self.root = (root or default_root).resolve()
+        self.source_images_root = self.root.parent / "feasibility-inputs"
 
     def list_models(self) -> list[DemoModel]:
         """Retourne les modèles dont le fichier existe et porte une structure GLB 2.0."""
         models = []
-        for model_id, name, category, filename in _DEMO_FILES:
+        for model_id, name, category, filename, source_image in _DEMO_FILES:
             path = self.root / filename
             if not path.is_file() or not self._is_valid_glb_2(path):
                 continue
@@ -54,6 +56,11 @@ class DemoGallery:
                     source="generated_by_app",
                     size_bytes=path.stat().st_size,
                     model_url=f"/models/gallery/{model_id}",
+                    source_image_url=(
+                        f"/models/gallery/{model_id}/source-image"
+                        if (self.source_images_root / source_image).is_file()
+                        else None
+                    ),
                 )
             )
         return models
@@ -65,6 +72,18 @@ class DemoGallery:
             return None
         path = self.root / entry[3]
         return path if path.is_file() and self._is_valid_glb_2(path) else None
+
+    def get_source_image_path(self, model_id: str) -> Path | None:
+        """Résout la photo source uniquement pour un modèle connu et une photo présente."""
+        entry = next((item for item in _DEMO_FILES if item[0] == model_id), None)
+        if entry is None:
+            return None
+        path = (self.source_images_root / entry[4]).resolve()
+        try:
+            path.relative_to(self.source_images_root.resolve())
+        except ValueError:
+            return None
+        return path if path.is_file() and path.suffix.casefold() in {".jpg", ".jpeg", ".png", ".webp"} else None
 
     @staticmethod
     def _is_valid_glb_2(path: Path) -> bool:

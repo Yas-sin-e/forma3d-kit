@@ -97,6 +97,24 @@ def download_demo_model(
     )
 
 
+@router.get("/gallery/{model_id}/source-image")
+def serve_demo_source_image(
+    model_id: str,
+    gallery: Annotated[DemoGallery, Depends(get_demo_gallery)],
+) -> FileResponse:
+    """Sert la photo source d'un modèle autorisé seulement si elle est présente."""
+    image_path = gallery.get_source_image_path(model_id)
+    if image_path is None:
+        raise HTTPException(status_code=404, detail="Photo source introuvable.")
+    media_types = {
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+        ".webp": "image/webp",
+    }
+    return FileResponse(path=image_path, media_type=media_types[image_path.suffix.casefold()])
+
+
 @router.get("/{generation_id}", response_model=GenerationResponse)
 def get_model_generation(
     generation_id: str,

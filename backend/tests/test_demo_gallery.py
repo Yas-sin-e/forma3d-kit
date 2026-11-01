@@ -43,6 +43,7 @@ def test_gallery_lists_only_existing_valid_allowlisted_glb_files(tmp_path: Path)
                 "source": "generated_by_app",
                 "size_bytes": len(valid_glb),
                 "model_url": "/models/gallery/chair-bentwood",
+                "source_image_url": None,
             }
         ]
     }
@@ -60,6 +61,28 @@ def test_gallery_download_serves_the_real_allowlisted_glb(tmp_path: Path) -> Non
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("model/gltf-binary")
     assert response.content == valid_glb
+
+
+def test_gallery_lists_and_serves_source_photo_only_when_present(tmp_path: Path) -> None:
+    valid_glb = _minimal_glb_20()
+    (tmp_path / "chair-met-01.glb").write_bytes(valid_glb)
+    source_dir = tmp_path.parent / "feasibility-inputs"
+    source_dir.mkdir()
+    source_bytes = b"\xff\xd8\xffphoto source fixture"
+    (source_dir / "chair-met-01.jpg").write_bytes(source_bytes)
+    app.dependency_overrides[get_demo_gallery] = lambda: DemoGallery(tmp_path)
+    try:
+        client = TestClient(app)
+        listing = client.get("/models/gallery")
+        photo = client.get("/models/gallery/chair-metal-01/source-image")
+    finally:
+        app.dependency_overrides.pop(get_demo_gallery, None)
+
+    assert listing.status_code == 200
+    assert listing.json()["items"][0]["source_image_url"] == "/models/gallery/chair-metal-01/source-image"
+    assert photo.status_code == 200
+    assert photo.headers["content-type"].startswith("image/jpeg")
+    assert photo.content == source_bytes
 
 
 def test_gallery_refuses_unknown_or_invalid_models(tmp_path: Path) -> None:

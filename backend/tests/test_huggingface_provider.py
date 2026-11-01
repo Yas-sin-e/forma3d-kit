@@ -332,6 +332,71 @@ def test_triposr_contract_uses_component_values_instead_of_examples() -> None:
     assert contract["generate_step"]["inputs"][1:] == [256]
 
 
+def test_triposr_settings_use_only_bounds_published_by_api_metadata() -> None:
+    client_config = {
+        "dependencies": [{"api_name": "submit", "inputs": [5, 9, 10, 11]}],
+        "components": [
+            {"id": 9, "type": "checkbox", "props": {"value": True}},
+            {"id": 10, "type": "slider", "props": {"minimum": 0.2, "maximum": 1.0}},
+            {"id": 11, "type": "slider", "props": {"minimum": 32, "maximum": 512}},
+        ],
+    }
+    contract = HuggingFaceSpaceProvider._read_triphosr_api_contract(
+        _triposr_combined_api_description(),
+        client_config,
+        foreground_ratio=0.9,
+        mc_resolution=512,
+    )
+
+    assert contract["inputs"][1:] == [True, 0.9, 512]
+
+
+def test_triposr_settings_refuse_values_outside_discovered_bounds() -> None:
+    client_config = {
+        "dependencies": [{"api_name": "submit", "inputs": [5, 9, 10, 11]}],
+        "components": [
+            {"id": 9, "type": "checkbox", "props": {"value": True}},
+            {"id": 10, "type": "slider", "props": {"minimum": 0.2, "maximum": 1.0}},
+            {"id": 11, "type": "slider", "props": {"minimum": 32, "maximum": 512}},
+        ],
+    }
+
+    with pytest.raises(ProviderError, match="hors des bornes publiées par l'API"):
+        HuggingFaceSpaceProvider._read_triphosr_api_contract(
+            _triposr_combined_api_description(),
+            client_config,
+            foreground_ratio=1.1,
+        )
+
+
+def test_triposr_settings_refuse_to_guess_missing_bounds() -> None:
+    with pytest.raises(ProviderError, match="ne publie pas les bornes de foreground_ratio"):
+        HuggingFaceSpaceProvider._read_triphosr_api_contract(
+            _triposr_combined_api_description(),
+            foreground_ratio=0.9,
+        )
+
+
+def test_public_provider_health_uses_a_five_second_timeout_and_hides_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    observations: dict[str, Any] = {}
+
+    def fail_request(url: str, **kwargs: Any) -> Any:
+        observations["timeout"] = kwargs.get("timeout")
+        observations["url"] = url
+        raise TimeoutError("failed to reach https://secret-demo.gradio.live/config")
+
+    monkeypatch.setattr("app.providers.huggingface.httpx2.get", fail_request)
+    provider = HuggingFaceSpaceProvider(
+        settings=Settings(hf_space_id="https://secret-demo.gradio.live")
+    )
+
+    assert provider.health_status() == "OFFLINE"
+    assert observations["timeout"] == 5.0
+    assert "secret-demo.gradio.live" not in provider.health_status()
+
+
 def test_provider_uses_url_view_api_and_does_not_send_hf_token_to_gradio_share(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -484,11 +549,25 @@ def test_settings_reads_backend_env_before_root_env(monkeypatch, tmp_path: Path)
     monkeypatch.setattr("app.config._PROJECT_ROOT", tmp_path)
     monkeypatch.delenv("HF_SPACE_ID", raising=False)
     monkeypatch.delenv("HF_TOKEN", raising=False)
+    monkeypatch.delenv("FOREGROUND_RATIO", raising=False)
+    monkeypatch.delenv("MC_RESOLUTION", raising=False)
 
     settings = get_settings()
 
     assert settings.hf_space_id == "stabilityai/TripoSR"
     assert settings.hf_token == "backend-test-token"
+
+
+def test_settings_reads_optional_triposr_quality_values(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setattr("app.config._PROJECT_ROOT", tmp_path)
+    monkeypatch.setenv("HF_SPACE_ID", "https://triposr.example.gradio.live")
+    monkeypatch.setenv("FOREGROUND_RATIO", "0.9")
+    monkeypatch.setenv("MC_RESOLUTION", "320")
+
+    settings = get_settings()
+
+    assert settings.foreground_ratio == 0.9
+    assert settings.mc_resolution == 320
 
 
 def test_settings_accepts_a_public_gradio_url_without_credentials_or_query() -> None:

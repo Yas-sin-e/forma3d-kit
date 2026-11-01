@@ -34,6 +34,7 @@ class DemoModelResponse(BaseModel):
     source: Literal["generated_by_app"]
     size_bytes: int
     model_url: str
+    source_image_url: str | None = None
 
 
 class DemoGalleryResponse(BaseModel):

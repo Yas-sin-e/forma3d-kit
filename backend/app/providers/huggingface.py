@@ -35,6 +35,7 @@ _BUILDING_STAGES = {
 _PAUSED_STAGES = {"PAUSED", "SLEEPING", "STOPPED"}
 _JSON_CHUNK_TYPE = 0x4E4F534A
 _MISSING_COMPONENT_VALUE = object()
+_PROVIDER_HEALTH_TIMEOUT_SECONDS = 5.0
 
 
 class HuggingFaceSpaceProvider:
@@ -52,6 +53,10 @@ class HuggingFaceSpaceProvider:
 
     def generate(self, image_path: Path) -> bytes:
         """Envoie une image et ne retourne que des octets GLB 2.0 valides."""
+        if not self.settings.hf_space_id.strip():
+            raise ProviderError(
+                "HF_SPACE_ID est vide dans backend/.env ; le serveur 3D n'est pas configuré."
+            )
         source = Path(image_path)
         if not source.is_file():
             raise ProviderError("La photo à convertir est introuvable sur le serveur.")
@@ -88,6 +93,66 @@ class HuggingFaceSpaceProvider:
         raise ProviderError(
             f"{target_label} est indisponible ou a refusé la génération : {message}"
         ) from last_error
+
+    def health_status(self) -> str:
+        """Teste la joignabilité sans jamais inclure l'adresse dans la réponse."""
+        target = self.settings.hf_space_id.strip()
+        if not target:
+            return "UNCONFIGURED"
+
+        try:
+            if self._is_http_url(target):
+                host = (urlsplit(target).hostname or "").casefold()
+                if host in {"huggingface.co", "www.huggingface.co"}:
+                    parts = urlsplit(target).path.strip("/").split("/")
+                    if len(parts) < 2 or parts[0] != "spaces":
+                        return "OFFLINE"
+                    space_id = "/".join(parts[1:])
+                    runtime_url = (
+                        "https://huggingface.co/api/spaces/"
+                        f"{quote(space_id, safe='/')}/runtime"
+                    )
+                    headers = {}
+                    if self.settings.hf_token:
+                        headers["Authorization"] = f"Bearer {self.settings.hf_token}"
+                    response = httpx2.get(
+                        runtime_url,
+                        headers=headers,
+                        timeout=_PROVIDER_HEALTH_TIMEOUT_SECONDS,
+                    )
+                    response.raise_for_status()
+                    return (
+                        "ONLINE"
+                        if response.json().get("stage") == "RUNNING"
+                        else "OFFLINE"
+                    )
+
+                response = httpx2.get(
+                    f"{target.rstrip('/')}/config",
+                    timeout=_PROVIDER_HEALTH_TIMEOUT_SECONDS,
+                )
+                return "ONLINE" if response.status_code == 200 else "OFFLINE"
+
+            runtime_url = (
+                "https://huggingface.co/api/spaces/"
+                f"{quote(target, safe='/')}/runtime"
+            )
+            headers = {}
+            if self.settings.hf_token:
+                headers["Authorization"] = f"Bearer {self.settings.hf_token}"
+            response = httpx2.get(
+                runtime_url,
+                headers=headers,
+                timeout=_PROVIDER_HEALTH_TIMEOUT_SECONDS,
+            )
+            response.raise_for_status()
+            return (
+                "ONLINE"
+                if response.json().get("stage") == "RUNNING"
+                else "OFFLINE"
+            )
+        except Exception:
+            return "OFFLINE"
 
     def _wait_for_space(self, deadline: float) -> None:
         """Attend le démarrage d'un Space HF ; une URL Gradio publique n'a pas ce runtime."""
@@ -146,6 +211,14 @@ class HuggingFaceSpaceProvider:
 
             named_endpoints = api_description.get("named_endpoints")
             if isinstance(named_endpoints, dict) and _SF3D_ENDPOINT in named_endpoints:
+                if (
+                    self.settings.foreground_ratio is not None
+                    or self.settings.mc_resolution is not None
+                ):
+                    raise ProviderError(
+                        "FOREGROUND_RATIO et MC_RESOLUTION sont des réglages TripoSR ; "
+                        "l'API Stable Fast 3D n'expose pas ces paramètres."
+                    )
                 contract = self._read_sf3d_api_contract(api_description)
                 result = self._submit(
                     client,
@@ -158,6 +231,8 @@ class HuggingFaceSpaceProvider:
                 contract = self._read_triphosr_api_contract(
                     api_description,
                     getattr(client, "config", None),
+                    foreground_ratio=self.settings.foreground_ratio,
+                    mc_resolution=self.settings.mc_resolution,
                 )
                 result = self._run_triphosr_contract(
                     client,
@@ -350,6 +425,8 @@ class HuggingFaceSpaceProvider:
         cls,
         api_description: Any,
         client_config: Any = None,
+        foreground_ratio: float | None = None,
+        mc_resolution: int | None = None,
     ) -> dict[str, Any]:
         """Trouve la chaîne d'API et lit les valeurs réelles des composants Gradio."""
         endpoints = cls._all_endpoints(api_description)
@@ -376,6 +453,11 @@ class HuggingFaceSpaceProvider:
                 selector,
                 len(parameters),
             )
+            component_props = cls._client_component_props(
+                client_config,
+                selector,
+                len(parameters),
+            )
 
             if glb_index is not None and has_background and has_foreground and has_resolution:
                 direct_candidates.append(
@@ -385,6 +467,11 @@ class HuggingFaceSpaceProvider:
                         image_index,
                         glb_index,
                         component_values,
+                        component_props,
+                        {
+                            "foreground_ratio": foreground_ratio,
+                            "mc_resolution": mc_resolution,
+                        },
                     )
                 )
             elif glb_index is not None and has_resolution:
@@ -395,17 +482,27 @@ class HuggingFaceSpaceProvider:
                         image_index,
                         glb_index,
                         component_values,
+                        component_props,
+                        {"mc_resolution": mc_resolution},
                     )
                 )
             elif has_background and has_foreground and cls._find_image_output(outputs) is not None:
+                inputs = cls._defaulted_inputs(
+                    parameters,
+                    image_index,
+                    component_values,
+                )
+                applied_settings = cls._apply_triposr_settings(
+                    parameters,
+                    inputs,
+                    component_props,
+                    {"foreground_ratio": foreground_ratio},
+                )
                 preprocess_candidates.append(
                     {
                         "selector": selector,
-                        "inputs": cls._defaulted_inputs(
-                            parameters,
-                            image_index,
-                            component_values,
-                        ),
+                        "inputs": inputs,
+                        "applied_settings": applied_settings,
                         "input_index": image_index,
                         "output_index": cls._find_image_output(outputs),
                     }
@@ -425,6 +522,11 @@ class HuggingFaceSpaceProvider:
 
         if direct_candidates:
             direct = max(direct_candidates, key=lambda value: len(value["inputs"]))
+            cls._require_configured_triposr_settings(
+                direct.get("applied_settings", set()),
+                foreground_ratio,
+                mc_resolution,
+            )
             return {
                 "strategy": "single",
                 **direct,
@@ -440,6 +542,13 @@ class HuggingFaceSpaceProvider:
             key=lambda value: len(value["inputs"]),
         )
         generate_step = max(generate_candidates, key=lambda value: len(value["inputs"]))
+        applied_settings = set(preprocess_step.get("applied_settings", set()))
+        applied_settings.update(generate_step.get("applied_settings", set()))
+        cls._require_configured_triposr_settings(
+            applied_settings,
+            foreground_ratio,
+            mc_resolution,
+        )
         check_step = check_candidates[0] if check_candidates else None
         return {
             "strategy": "separate",
@@ -458,17 +567,111 @@ class HuggingFaceSpaceProvider:
         image_index: int,
         model_output_index: int,
         component_values: list[Any] | None = None,
+        component_props: list[dict[str, Any] | object] | None = None,
+        configured_settings: dict[str, float | int | None] | None = None,
     ) -> dict[str, Any]:
+        inputs = cls._defaulted_inputs(
+            parameters,
+            image_index,
+            component_values,
+        )
+        applied_settings = cls._apply_triposr_settings(
+            parameters,
+            inputs,
+            component_props,
+            configured_settings or {},
+        )
         return {
             "selector": selector,
-            "inputs": cls._defaulted_inputs(
-                parameters,
-                image_index,
-                component_values,
-            ),
+            "inputs": inputs,
+            "applied_settings": applied_settings,
             "input_index": image_index,
             "model_output_index": model_output_index,
         }
+
+    @classmethod
+    def _apply_triposr_settings(
+        cls,
+        parameters: list[dict[str, Any]],
+        inputs: list[Any],
+        component_props: list[dict[str, Any] | object] | None,
+        configured_settings: dict[str, float | int | None],
+    ) -> set[str]:
+        """Applique les valeurs .env seulement si view_api publie le contrôle et ses bornes."""
+        applied: set[str] = set()
+        for setting_name, value in configured_settings.items():
+            if value is None:
+                continue
+            indexes = [
+                index
+                for index, parameter in enumerate(parameters)
+                if cls._parameter_name(parameter) == setting_name
+            ]
+            if not indexes:
+                continue
+            if len(indexes) != 1:
+                raise ProviderError(
+                    f"view_api() publie plusieurs paramètres {setting_name} ; "
+                    "aucun réglage n'a été appliqué."
+                )
+
+            index = indexes[0]
+            parameter = parameters[index]
+            parameter_type = parameter.get("type")
+            component_type = str(parameter.get("component", "")).casefold()
+            type_name = (
+                parameter_type.get("type")
+                if isinstance(parameter_type, dict)
+                else parameter_type
+            )
+            if type_name not in {"number", "integer", "float"} and component_type != "slider":
+                raise ProviderError(
+                    f"Le paramètre {setting_name} n'est pas décrit comme une valeur numérique dans view_api()."
+                )
+
+            metadata = parameter_type if isinstance(parameter_type, dict) else {}
+            props = (
+                component_props[index]
+                if component_props is not None and index < len(component_props)
+                else _MISSING_COMPONENT_VALUE
+            )
+            props = props if isinstance(props, dict) else {}
+            minimum = metadata.get(
+                "minimum",
+                metadata.get("min", props.get("minimum", props.get("min"))),
+            )
+            maximum = metadata.get(
+                "maximum",
+                metadata.get("max", props.get("maximum", props.get("max"))),
+            )
+            if not isinstance(minimum, (int, float)) or not isinstance(maximum, (int, float)):
+                raise ProviderError(
+                    f"view_api() ou Client.config ne publie pas les bornes de {setting_name} ; "
+                    "retirez son réglage .env pour utiliser la valeur du serveur."
+                )
+            if not minimum <= value <= maximum:
+                raise ProviderError(
+                    f"La valeur configurée de {setting_name} est hors des bornes publiées par l'API."
+                )
+            inputs[index] = value
+            applied.add(setting_name)
+        return applied
+
+    @staticmethod
+    def _require_configured_triposr_settings(
+        applied: set[str],
+        foreground_ratio: float | None,
+        mc_resolution: int | None,
+    ) -> None:
+        """Refuse une config qui ne correspond pas aux champs du contrat réellement découvert."""
+        if foreground_ratio is not None and "foreground_ratio" not in applied:
+            raise ProviderError(
+                "view_api() ne publie pas le paramètre foreground_ratio dans la chaîne choisie."
+            )
+        if mc_resolution is not None and "mc_resolution" not in applied:
+            raise ProviderError(
+                "view_api() ne publie pas le paramètre mc_resolution dans la chaîne choisie."
+            )
 
     @classmethod
     def _defaulted_inputs(
@@ -544,6 +747,47 @@ class HuggingFaceSpaceProvider:
             else:
                 values.append(_MISSING_COMPONENT_VALUE)
         return values
+
+    @staticmethod
+    def _client_component_props(
+        client_config: Any,
+        selector: dict[str, Any],
+        parameter_count: int,
+    ) -> list[dict[str, Any] | object] | None:
+        """Lit les propriétés des contrôles Gradio reliés à un endpoint découvert."""
+        if not isinstance(client_config, dict):
+            return None
+        api_name = selector.get("api_name")
+        dependencies = client_config.get("dependencies")
+        components = client_config.get("components")
+        if not isinstance(api_name, str) or not isinstance(dependencies, list):
+            return None
+        if not isinstance(components, list):
+            return None
+
+        matches = [
+            dependency
+            for dependency in dependencies
+            if isinstance(dependency, dict)
+            and isinstance(dependency.get("api_name"), str)
+            and dependency["api_name"].strip("/") == api_name.strip("/")
+            and isinstance(dependency.get("inputs"), list)
+            and len(dependency["inputs"]) == parameter_count
+        ]
+        if len(matches) != 1:
+            return None
+
+        component_by_id = {
+            component.get("id"): component
+            for component in components
+            if isinstance(component, dict) and "id" in component
+        }
+        properties = []
+        for component_id in matches[0]["inputs"]:
+            component = component_by_id.get(component_id)
+            props = component.get("props") if isinstance(component, dict) else None
+            properties.append(props if isinstance(props, dict) else _MISSING_COMPONENT_VALUE)
+        return properties
 
     @staticmethod
     def _all_endpoints(api_description: dict[str, Any]) -> list[tuple[dict[str, Any], dict[str, Any]]]:
