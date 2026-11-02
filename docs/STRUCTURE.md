@@ -1,6 +1,6 @@
 # Structure expliquée — Forma3D Studio
 
-Mis à jour le 1 novembre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le backend Forma3D et TripoSR. L'étape 7 ajoute le contrôle de disponibilité, l'interface hors ligne, les réglages qualité validés dynamiquement et l'affichage des photos source. Le redémarrage Colab a rencontré « Échec : backend non attribué » et reste en attente.
+Mis à jour le 1 novembre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le backend Forma3D et TripoSR. L'étape 7 ajoute le contrôle de disponibilité, les catégories obligatoires pour les nouvelles photos, l'affichage des générations réussies dans le filtre correspondant, les réglages qualité validés dynamiquement et les photos source. Les nouvelles catégories restent en mémoire jusqu'au redémarrage du backend.
 
 ## Racine et documents de cadrage
 
@@ -50,13 +50,13 @@ Mis à jour le 1 novembre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le 
 | `backend/app/models.py` | Définit états et fiche de génération en mémoire | Représente le cycle sans installer une base au Sprint 1 | Pendant la vie du serveur |
 | `backend/app/config.py` | Charge la cible, les délais et les réglages TripoSR facultatifs sans valeur par défaut de cible | Le projet peut démarrer et signaler proprement un fournisseur non configuré | À la création du fournisseur et au démarrage |
 | `backend/app/providers/huggingface.py` | Sonde la cible sous 5 secondes, découvre les appels et bornes de TripoSR et valide le GLB 2.0 | Évite les noms/plages inventés et n'affiche pas d'adresse dans l'état de santé | Au badge de santé et à chaque génération |
-| `backend/app/schemas.py` | Fixe les réponses JSON de génération et de la galerie, dont la photo source facultative | Stabilise les réponses et la documentation OpenAPI | Sur les routes /models |
+| `backend/app/schemas.py` | Fixe les réponses JSON, dont la catégorie choisie et la photo source facultative | Stabilise les réponses et empêche les catégories hors MVP | Sur les routes /models |
 | `backend/app/routers/__init__.py` | Marque le paquet des routes | Clarifie l'organisation Python | À l'import des routes |
-| `backend/app/routers/models.py` | Reçoit les photos, expose les états, sert les GLB et les photos source via des identifiants connus | Sépare HTTP de l'orchestration et borne les fichiers servis | À l'envoi, au suivi et à l'ouverture de la galerie |
+| `backend/app/routers/models.py` | Reçoit la photo et sa catégorie, expose les états, puis sert les GLB et photos source par identifiant | Sépare HTTP du métier et place chaque génération réussie dans le bon filtre de galerie | À l'envoi, au suivi et à la consultation de la galerie |
 | `backend/app/services/__init__.py` | Marque le paquet métier | Clarifie les imports de services | À l'import du validateur et du service |
 | `backend/app/services/upload_validator.py` | Contrôle extension, MIME, signature et plafond de 10 Mo | Le nom ou le type annoncé seul ne suffit pas | Avant d'enregistrer une photo |
 | `backend/app/services/demo_gallery.py` | Liste seulement cinq GLB autorisés, valide leur structure 2.0 et ajoute la photo source seulement si elle existe | N'expose aucun chemin fourni par le client et exclut les fichiers absents ou invalides | À l'ouverture de la galerie ou d'un modèle d'essai |
-| backend/app/services/generation_service.py | Orchestre les états, le fournisseur et le stockage ; journalise type/repr/cause et masque les secrets | Facilite le diagnostic sans divulguer le jeton ni l'URL configurée | Après un upload valide ou en cas d'échec fournisseur |
+| backend/app/services/generation_service.py | Orchestre les états, la catégorie choisie, le fournisseur et le stockage ; journalise les erreurs sans secrets | Associe la génération à un type de meuble sans base de données au Sprint 1 | Après un upload valide, pour la galerie de session ou en cas d'échec |
 | `backend/app/providers/__init__.py` | Marque le paquet d'adaptateurs | Isole les fournisseurs externes | À l'import fournisseur |
 | `backend/app/providers/base.py` | Définit `Image3DProvider.generate(Path) -> bytes` et l'erreur commune | Permet de remplacer Hugging Face sans réécrire le service | Dans GenerationService et les adaptateurs |
 | backend/app/providers/huggingface.py | Découvre le contrat avec view_api, lit les valeurs courantes de client.config, exécute les étapes TripoSR et valide GLB 2.0 | Évite d'interpréter les exemples comme des valeurs par défaut et prend la vraie sortie GLB | À chaque génération distante |
@@ -70,19 +70,19 @@ Mis à jour le 1 novembre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le 
 |---|---|---|---|
 | `frontend/` | Contient la page, les styles et les modules JavaScript du Sprint 1 | Offre une interface modulaire sans deuxième serveur ni build | Quand une personne visite / |
 | `frontend/README.md` | Explique les modules, le parcours et les limites du navigateur | Rend les responsabilités et dépendances compréhensibles | Avant de lancer ou modifier le frontend |
-| `frontend/index.html` | Définit les zones accessibles du studio, du viewer, du suivi et de la galerie | Sépare le document et les libellés de la logique des vues | Quand FastAPI sert la page d'accueil |
+| `frontend/index.html` | Définit le studio accessible, le sélecteur obligatoire de catégorie, le viewer, le suivi et la galerie | Rend le type d'objet explicite avant l'envoi et sépare contenu et logique | Quand FastAPI sert la page d'accueil |
 | `frontend/css/` | Regroupe le thème et les styles de composants | Sépare les jetons visuels de la mise en page | Au chargement de la page et pour une retouche visuelle |
 | `frontend/css/theme.css` | Définit la palette sombre, les fontes, le focus et la réduction du mouvement | Centralise les règles globales et lisibles | Avant les styles des composants |
-| `frontend/css/components.css` | Met en page panneaux, upload, suivi, viewer, galerie et adaptations écran | Donne à chaque zone un style cohérent sans CSS intégré dans le HTML | Lors du rendu du studio |
+| `frontend/css/components.css` | Met en page panneaux, upload, sélecteur catégorie, suivi, viewer et galerie | Donne à chaque zone un style cohérent et un focus clavier visible | Lors du rendu du studio |
 | `frontend/js/` | Regroupe l'état, l'API et les vues ES modules | Permet de suivre une responsabilité par fichier sans framework | Quand le navigateur charge le module principal |
-| `frontend/js/api.js` | Centralise fetch pour générations, galerie et santé du fournisseur | Empêche les vues de disperser les appels serveur | À chaque action et toutes les 30 secondes pour la disponibilité |
+| `frontend/js/api.js` | Centralise fetch pour génération (photo et catégorie), galerie et santé du fournisseur | Empêche les vues de disperser les appels serveur | À chaque action et toutes les 30 secondes pour la disponibilité |
 | `frontend/js/state.js` | Garde en mémoire photo, statut, durée et minuteries de la session | Évite une base de données pour cet état temporaire | Pendant l'envoi et le suivi d'une demande |
-| `frontend/js/main.js` | Coordonne formulaire, suivi, galerie, viewer et disponibilité | Relie les modules sans placer la logique HTTP dans les vues | À l'ouverture et aux changements d'état |
+| `frontend/js/main.js` | Coordonne formulaire, suivi, galerie et viewer ; rafraîchit le filtre après une génération réussie | Montre le résultat dans sa catégorie sans logique HTTP dans les vues | À l'ouverture et aux changements d'état |
 | `frontend/js/views/` | Regroupe les vues de l'interface | Isole les responsabilités visibles du studio | Quand une vue est modifiée ou réutilisée |
-| `frontend/js/views/uploader.js` | Gère dépôt et erreurs de photo, et désactive l'envoi si le fournisseur est hors ligne | Évite une génération quand le backend sait que la cible est indisponible | À la sélection d'une photo et au polling santé |
+| `frontend/js/views/uploader.js` | Gère dépôt, validation photo et choix obligatoire parmi les trois catégories | Évite les générations sans type d'objet clair ou avec fournisseur hors ligne | Avant toute soumission |
 | `frontend/js/views/progress.js` | Traduit les états observés et le temps réel en étape accessible | N'invente ni pourcentage ni délai restant | Pendant et après une génération |
-| `frontend/js/views/viewer.js` | Charge le modèle et la photo source, libère les URL temporaires et gère les commandes caméra | Compare le modèle à sa photo sans garder un blob d'une vue précédente | Après une génération ou une sélection de galerie |
-| `frontend/js/views/gallery.js` | Crée les aperçus 3D, filtre les modèles réels et ouvre un modèle de secours | Donne un recours hors ligne sans modèle fictif | Quand le fournisseur est hors ligne |
+| `frontend/js/views/viewer.js` | Charge le modèle, la photo source et affiche la catégorie du résultat | Compare l'objet au GLB et rend son classement visible | Après une génération ou une sélection de galerie |
+| `frontend/js/views/gallery.js` | Crée les aperçus 3D, filtre les modèles réels et sélectionne la catégorie du dernier GLB | Rend le résultat retrouvable sous le bon filtre sans modèle fictif | Après le chargement de galerie et une génération terminée |
 
 ## Tests et vérification continue
 

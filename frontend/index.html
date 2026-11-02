@@ -68,6 +68,16 @@
               <span class="file-name" id="file-name">Aucun fichier sélectionné</span>
             </label>
             <p class="format-note" id="format-note">JPG, PNG ou WebP · 10 Mo maximum.</p>
+            <div class="category-field">
+              <label for="product-category">Catégorie du produit</label>
+              <select class="category-select" id="product-category" name="category" required>
+                <option value="" selected disabled>Choisir une catégorie</option>
+                <option value="chair">Chaise</option>
+                <option value="stool">Tabouret</option>
+                <option value="side-table">Table d’appoint</option>
+              </select>
+              <p class="format-note">La catégorie choisie classe le nouveau GLB dans la galerie.</p>
+            </div>
             <p class="privacy-note"><span aria-hidden="true">ⓘ</span> N’envoyez pas de visages ni de données personnelles. La photo peut être traitée par un fournisseur public.</p>
             <p class="upload-feedback" id="upload-feedback" role="alert" hidden></p>
             <button class="button button-primary submit-button" id="submit-button" type="submit" disabled>
@@ -206,7 +216,7 @@
           <div>
             <p class="eyebrow">Résultats de faisabilité</p>
             <h2 id="gallery-title">Modèles de démonstration</h2>
-            <p class="gallery-copy">Cinq GLB réellement obtenus par l’application. Sélectionnez un objet pour l’ouvrir dans le viewer.</p>
+            <p class="gallery-copy">Cinq modèles de faisabilité et les générations réussies pendant cette session. Chaque nouvel objet apparaît dans sa catégorie.</p>
           </div>
           <span class="gallery-count" id="gallery-count" aria-live="polite">Chargement des modèles…</span>
         </div>

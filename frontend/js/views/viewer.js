@@ -20,6 +20,7 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
   let localObjectUrl = null;
   let sourcePhotoObjectUrl = null;
   let activeModel = null;
+  const categoryLabels = { chair: "Chaise", stool: "Tabouret", "side-table": "Table d’appoint" };
 
   function releaseLocalObjectUrl() {
     if (localObjectUrl !== null) {
@@ -68,7 +69,7 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
     announce("");
   }
 
-  function showModel({ url, filename, source, downloadUrl = null, sourcePhoto = null }) {
+  function showModel({ url, filename, source, category = null, downloadUrl = null, sourcePhoto = null }) {
     clear();
     if (source === "local") {
       localObjectUrl = URL.createObjectURL(url);
@@ -77,9 +78,12 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
       announce("Fichier local, non généré par l’application. Il est chargé dans ce navigateur sans être envoyé au serveur.");
     } else {
       viewer.src = url;
-      originBadge.textContent = source === "gallery"
+      const origin = source === "gallery"
         ? "Généré par l’application · modèle d’essai"
         : "Généré par l’application";
+      originBadge.textContent = categoryLabels[category]
+        ? origin + " · " + categoryLabels[category]
+        : origin;
       announce(filename ? "Chargement du modèle : " + filename + "." : "Chargement du GLB fourni par le serveur.");
     }
 

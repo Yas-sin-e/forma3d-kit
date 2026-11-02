@@ -21,6 +21,7 @@ function validatePhoto(file) {
 export function setupUploader(onSubmit) {
   const form = document.querySelector("#upload-form");
   const photoInput = document.querySelector("#photo-input");
+  const categoryInput = document.querySelector("#product-category");
   const dropZone = document.querySelector("#drop-zone");
   const fileName = document.querySelector("#file-name");
   const submitButton = document.querySelector("#submit-button");
@@ -45,21 +46,26 @@ export function setupUploader(onSubmit) {
       return;
     }
     const error = validatePhoto(selectedPhoto);
-    submitButton.disabled = busy || !providerAvailable || Boolean(error);
+    submitButton.disabled = busy || !providerAvailable || !categoryInput.value || Boolean(error);
     if (error) setFeedback(error);
   }
 
   function setBusy(isBusy) {
     busy = isBusy;
     photoInput.disabled = isBusy;
+    categoryInput.disabled = isBusy;
     openLocalButton.disabled = isBusy;
-    submitButton.disabled = isBusy || !providerAvailable || !selectedPhoto || Boolean(validatePhoto(selectedPhoto));
+    submitButton.disabled = isBusy || !providerAvailable || !selectedPhoto || !categoryInput.value || Boolean(validatePhoto(selectedPhoto));
     submitButton.setAttribute("aria-busy", isBusy ? "true" : "false");
     const label = submitButton.querySelector(".button-label");
     label.textContent = isBusy ? "Génération en cours" : "Créer le modèle 3D";
   }
 
   photoInput.addEventListener("change", () => setSelectedPhoto(photoInput.files[0]));
+  categoryInput.addEventListener("change", () => {
+    submitButton.disabled = busy || !providerAvailable || !selectedPhoto || !categoryInput.value || Boolean(validatePhoto(selectedPhoto));
+    setFeedback("");
+  });
 
   for (const eventName of ["dragenter", "dragover"]) {
     dropZone.addEventListener(eventName, (event) => {
@@ -90,22 +96,27 @@ export function setupUploader(onSubmit) {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (busy || !selectedPhoto) return;
+    if (!categoryInput.value) {
+      setFeedback("Choisissez une catégorie pour ce produit.");
+      return;
+    }
     const error = validatePhoto(selectedPhoto);
     if (error) {
       setFeedback(error);
       return;
     }
     setFeedback("");
-    await onSubmit(selectedPhoto);
+    await onSubmit(selectedPhoto, categoryInput.value);
   });
 
   return {
     getSelectedPhoto: () => selectedPhoto,
+    getSelectedCategory: () => categoryInput.value,
     setBusy,
     setError: setFeedback,
     setProviderAvailable(isAvailable) {
       providerAvailable = isAvailable;
-      submitButton.disabled = busy || !providerAvailable || !selectedPhoto || Boolean(validatePhoto(selectedPhoto));
+      submitButton.disabled = busy || !providerAvailable || !selectedPhoto || !categoryInput.value || Boolean(validatePhoto(selectedPhoto));
     },
   };
 }

@@ -2,14 +2,18 @@
 # Exécution : Pytest appelle l'application FastAPI en mémoire depuis le dossier backend.
 """Tests HTTP locaux du cycle asynchrone sans appel à un fournisseur distant."""
 
+import json
+import struct
 from pathlib import Path
 
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.models import ProductCategory
 from app.providers.base import ProviderError
-from app.routers.models import get_generation_service
+from app.routers.models import get_demo_gallery, get_generation_service
 from app.services.generation_service import GenerationService
+from app.services.demo_gallery import DemoGallery
 from app.storage.local_storage import LocalStorage
 
 
@@ -20,6 +24,16 @@ class UnavailableProvider:
         raise ProviderError("Space public indisponible pour ce test.")
 
 
+class SuccessfulProvider:
+    """Fournisseur local simulé qui renvoie un conteneur GLB 2.0 minimal."""
+
+    def generate(self, image_path: Path) -> bytes:
+        document = json.dumps({"asset": {"version": "2.0"}}, separators=(",", ":")).encode()
+        document += b" " * (-len(document) % 4)
+        json_chunk = struct.pack("<I4s", len(document), b"JSON") + document
+        return struct.pack("<4sII", b"glTF", 2, 12 + len(json_chunk)) + json_chunk
+
+
 def test_upload_returns_job_and_status_records_provider_failure(tmp_path: Path) -> None:
     service = GenerationService(UnavailableProvider(), LocalStorage(tmp_path))
     app.dependency_overrides[get_generation_service] = lambda: service
@@ -28,9 +42,11 @@ def test_upload_returns_job_and_status_records_provider_failure(tmp_path: Path) 
         response = client.post(
             "/models",
             files={"file": ("chair.png", b"\x89PNG\r\n\x1a\nsample", "image/png")},
+            data={"category": "chair"},
         )
         assert response.status_code == 202
         assert response.json()["status"] == "PENDING"
+        assert response.json()["category"] == "chair"
         assert response.json()["model_url"] is None
 
         generation_id = response.json()["id"]
@@ -56,6 +72,7 @@ def test_upload_rejects_invalid_image_before_scheduling_generation(tmp_path: Pat
         response = client.post(
             "/models",
             files={"file": ("chair.png", b"not-an-image", "image/png")},
+            data={"category": "chair"},
         )
 
         assert response.status_code == 415
@@ -64,6 +81,51 @@ def test_upload_rejects_invalid_image_before_scheduling_generation(tmp_path: Pat
         )
     finally:
         app.dependency_overrides.pop(get_generation_service, None)
+
+
+def test_upload_requires_a_supported_category() -> None:
+    client = TestClient(app)
+    file = {"file": ("chair.png", b"\x89PNG\r\n\x1a\nsample", "image/png")}
+    try:
+        missing = client.post("/models", files=file)
+        invalid = client.post("/models", files=file, data={"category": "lamp"})
+    finally:
+        app.dependency_overrides.pop(get_generation_service, None)
+
+    assert missing.status_code == 422
+    assert invalid.status_code == 422
+
+
+def test_completed_upload_appears_in_its_category_with_source_and_glb(tmp_path: Path) -> None:
+    service = GenerationService(SuccessfulProvider(), LocalStorage(tmp_path / "storage"))
+    app.dependency_overrides[get_generation_service] = lambda: service
+    app.dependency_overrides[get_demo_gallery] = lambda: DemoGallery(tmp_path / "demos")
+    client = TestClient(app)
+    image_bytes = b"\x89PNG\r\n\x1a\nsample"
+    try:
+        upload = client.post(
+            "/models",
+            files={"file": ("stool-essai.png", image_bytes, "image/png")},
+            data={"category": ProductCategory.STOOL.value},
+        )
+        generation_id = upload.json()["id"]
+        status = client.get(upload.json()["status_url"])
+        gallery = client.get("/models/gallery")
+        source = client.get(f"/models/{generation_id}/source-image")
+        model = client.get(f"/models/{generation_id}/glb")
+    finally:
+        app.dependency_overrides.pop(get_generation_service, None)
+        app.dependency_overrides.pop(get_demo_gallery, None)
+
+    assert upload.status_code == 202
+    assert status.json()["status"] == "DONE"
+    assert status.json()["category"] == "stool"
+    generated = next(item for item in gallery.json()["items"] if item["id"] == generation_id)
+    assert generated["category"] == "stool"
+    assert generated["source_image_url"] == f"/models/{generation_id}/source-image"
+    assert source.content == image_bytes
+    assert model.status_code == 200
+    assert model.content[:4] == b"glTF"
 
 
 def test_status_route_returns_not_found_for_unknown_id() -> None:

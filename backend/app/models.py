@@ -17,6 +17,14 @@ class GenerationStatus(StrEnum):
     FAILED = "FAILED"
 
 
+class ProductCategory(StrEnum):
+    """Catégories de mobilier prises en charge par le Sprint 1."""
+
+    CHAIR = "chair"
+    STOOL = "stool"
+    SIDE_TABLE = "side-table"
+
+
 @dataclass(frozen=True, slots=True)
 class GenerationRecord:
     """Métadonnées gardées pendant la vie du serveur, sans base de données."""
@@ -25,6 +33,7 @@ class GenerationRecord:
     status: GenerationStatus
     filename: str
     content_type: str
+    category: ProductCategory
     image_path: Path
     created_at: datetime
     updated_at: datetime

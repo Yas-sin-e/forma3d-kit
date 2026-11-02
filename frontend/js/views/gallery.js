@@ -110,6 +110,15 @@ export function setupGallery(onOpenModel) {
   void load();
   return {
     reload: load,
+    selectCategory(category) {
+      const button = filters.querySelector(`button[data-category="${category}"]`);
+      if (!button) return;
+      appState.selectedGalleryCategory = category;
+      filters.querySelectorAll("button[data-category]").forEach((filter) => {
+        filter.setAttribute("aria-pressed", filter === button ? "true" : "false");
+      });
+      render();
+    },
     async openFirstModel() {
       if (!models.length) await load();
       const model = models[0];

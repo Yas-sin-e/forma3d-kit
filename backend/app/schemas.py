@@ -15,6 +15,9 @@ class GenerationResponse(BaseModel):
     status: Literal["PENDING", "RUNNING", "DONE", "FAILED"]
     filename: str = Field(description="Nom de fichier nettoyé, sans chemin local.")
     content_type: Literal["image/jpeg", "image/png", "image/webp"]
+    category: Literal["chair", "stool", "side-table"] = Field(
+        description="Catégorie choisie avant l'envoi de la photo."
+    )
     created_at: datetime
     updated_at: datetime
     status_url: str

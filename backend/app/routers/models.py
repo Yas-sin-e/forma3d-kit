@@ -2,13 +2,14 @@
 # Exécution : FastAPI appelle ces routes aux requêtes photo, statut ou modèles d'essai.
 """Routes HTTP associées aux modèles 3D et aux images reçues."""
 
+from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 
-from app.models import GenerationRecord, GenerationStatus
-from app.schemas import DemoGalleryResponse, GenerationResponse
+from app.models import GenerationRecord, GenerationStatus, ProductCategory
+from app.schemas import DemoGalleryResponse, DemoModelResponse, GenerationResponse
 from app.services.generation_service import GenerationService
 from app.services.demo_gallery import DemoGallery
 from app.services.upload_validator import (
@@ -38,6 +39,7 @@ def _to_response(record: GenerationRecord) -> GenerationResponse:
         status=record.status.value,
         filename=record.filename,
         content_type=record.content_type,
+        category=record.category.value,
         created_at=record.created_at,
         updated_at=record.updated_at,
         status_url=f"/models/{record.id}",
@@ -49,6 +51,7 @@ def _to_response(record: GenerationRecord) -> GenerationResponse:
 @router.post("", response_model=GenerationResponse, status_code=202)
 async def create_model_generation(
     file: Annotated[UploadFile, File(description="Photo JPG, PNG ou WebP, jusqu'à 10 Mo.")],
+    category: Annotated[ProductCategory, Form(description="Catégorie du meuble photographié.")],
     background_tasks: BackgroundTasks,
     service: Annotated[GenerationService, Depends(get_generation_service)],
 ) -> GenerationResponse:
@@ -68,7 +71,7 @@ async def create_model_generation(
     finally:
         await file.close()
 
-    record = service.create_generation(validated, content)
+    record = service.create_generation(validated, content, category)
     background_tasks.add_task(service.run, record.id)
     return _to_response(record)
 
@@ -76,9 +79,28 @@ async def create_model_generation(
 @router.get("/gallery", response_model=DemoGalleryResponse)
 def list_demo_models(
     gallery: Annotated[DemoGallery, Depends(get_demo_gallery)],
+    service: Annotated[GenerationService, Depends(get_generation_service)],
 ) -> DemoGalleryResponse:
-    """Liste uniquement les GLB de faisabilité autorisés et encore valides."""
-    return DemoGalleryResponse(items=gallery.list_models())
+    """Liste les cinq GLB de faisabilité et les générations réussies de la session."""
+    items = gallery.list_models()
+    for record in service.list_completed_generations():
+        model_path = service.get_model_path(record.id)
+        source_path = service.get_source_image_path(record.id)
+        if model_path is None or source_path is None:
+            continue
+        items.append(
+            DemoModelResponse(
+                id=record.id,
+                name=Path(record.filename).stem,
+                filename=f"{record.id}.glb",
+                category=record.category.value,
+                source="generated_by_app",
+                size_bytes=model_path.stat().st_size,
+                model_url=f"/models/{record.id}/glb",
+                source_image_url=f"/models/{record.id}/source-image",
+            )
+        )
+    return DemoGalleryResponse(items=items)
 
 
 @router.get("/gallery/{model_id}")
@@ -152,3 +174,16 @@ def download_model_glb(
         media_type="model/gltf-binary",
         filename=f"{generation_id}.glb",
     )
+
+
+@router.get("/{generation_id}/source-image")
+def serve_generation_source_image(
+    generation_id: str,
+    service: Annotated[GenerationService, Depends(get_generation_service)],
+) -> FileResponse:
+    """Sert la photo d'une génération DONE pour sa carte de galerie."""
+    record = service.get_generation(generation_id)
+    image_path = service.get_source_image_path(generation_id)
+    if record is None or image_path is None:
+        raise HTTPException(status_code=404, detail="Photo source introuvable.")
+    return FileResponse(path=image_path, media_type=record.content_type)

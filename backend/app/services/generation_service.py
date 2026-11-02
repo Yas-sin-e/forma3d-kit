@@ -11,7 +11,7 @@ from pathlib import Path
 from threading import RLock
 from uuid import uuid4
 
-from app.models import GenerationRecord, GenerationStatus
+from app.models import GenerationRecord, GenerationStatus, ProductCategory
 from app.providers.base import Image3DProvider, ProviderError
 from app.services.upload_validator import ValidatedUpload
 from app.storage.base import Storage
@@ -28,8 +28,13 @@ class GenerationService:
         self._records: dict[str, GenerationRecord] = {}
         self._lock = RLock()
 
-    def create_generation(self, upload: ValidatedUpload, content: bytes) -> GenerationRecord:
-        """Enregistre l'image, crée un identifiant et initialise PENDING."""
+    def create_generation(
+        self,
+        upload: ValidatedUpload,
+        content: bytes,
+        category: ProductCategory,
+    ) -> GenerationRecord:
+        """Enregistre l'image et sa catégorie, puis initialise PENDING."""
         generation_id = str(uuid4())
         extension = Path(upload.filename).suffix.lower()
         image_path = self._storage.save_image(generation_id, extension, content)
@@ -39,6 +44,7 @@ class GenerationService:
             status=GenerationStatus.PENDING,
             filename=upload.filename,
             content_type=upload.content_type,
+            category=category,
             image_path=image_path,
             created_at=now,
             updated_at=now,
@@ -58,6 +64,25 @@ class GenerationService:
         if record is None or record.status is not GenerationStatus.DONE:
             return None
         return self._storage.get_model_path(generation_id)
+
+    def get_source_image_path(self, generation_id: str) -> Path | None:
+        """Retourne la photo source locale d'une génération réellement terminée."""
+        record = self.get_generation(generation_id)
+        if record is None or record.status is not GenerationStatus.DONE:
+            return None
+        return record.image_path if record.image_path.is_file() else None
+
+    def list_completed_generations(self) -> list[GenerationRecord]:
+        """Liste les générations terminées de la session courante, de la plus récente à l'ancienne."""
+        with self._lock:
+            records = [
+                record
+                for record in self._records.values()
+                if record.status is GenerationStatus.DONE
+                and record.model_path is not None
+                and record.model_path.is_file()
+            ]
+        return sorted(records, key=lambda record: record.created_at, reverse=True)
 
     def run(self, generation_id: str) -> None:
         """Exécute le fournisseur et publie DONE ou FAILED de façon atomique."""

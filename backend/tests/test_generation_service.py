@@ -6,7 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from uuid import uuid4
 
-from app.models import GenerationStatus
+from app.models import GenerationStatus, ProductCategory
 from app.providers.base import ProviderError
 from app.services.generation_service import GenerationService
 from app.services.upload_validator import ValidatedUpload
@@ -33,7 +33,7 @@ def test_create_generation_stores_image_and_starts_pending(tmp_path: Path) -> No
     service = GenerationService(UnavailableProvider(), LocalStorage(tmp_path))
     image_content = b"\xff\xd8\xffvalidated test photo"
 
-    record = service.create_generation(_validated_upload(), image_content)
+    record = service.create_generation(_validated_upload(), image_content, ProductCategory.CHAIR)
 
     assert record.status is GenerationStatus.PENDING
     assert record.image_path.read_bytes() == image_content
@@ -43,7 +43,7 @@ def test_create_generation_stores_image_and_starts_pending(tmp_path: Path) -> No
 def test_run_records_provider_failure_without_creating_a_model(tmp_path: Path) -> None:
     storage = LocalStorage(tmp_path)
     service = GenerationService(UnavailableProvider(), storage)
-    record = service.create_generation(_validated_upload(), b"\xff\xd8\xffphoto")
+    record = service.create_generation(_validated_upload(), b"\xff\xd8\xffphoto", ProductCategory.CHAIR)
 
     service.run(record.id)
 
@@ -75,7 +75,7 @@ def test_run_logs_provider_cause_while_masking_remote_credentials(
         DetailedUnavailableProvider(),
         LocalStorage(tmp_path),
     )
-    record = service.create_generation(_validated_upload(), b"\xff\xd8\xffphoto")
+    record = service.create_generation(_validated_upload(), b"\xff\xd8\xffphoto", ProductCategory.CHAIR)
 
     service.run(record.id)
 

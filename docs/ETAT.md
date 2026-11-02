@@ -1,18 +1,21 @@
 # État du projet — Forma3D Studio
 
-Dernière mise à jour : 1 novembre 2026.
+Dernière mise à jour : 2 novembre 2026.
 
 ## Étape 7 — fiabilité et qualité (en cours)
 
 - Ajout d'une sonde `GET /health/provider` avec délai de 5 secondes. Elle ne renvoie que `ONLINE`, `OFFLINE` ou `UNCONFIGURED`, jamais la cible distante.
 - L'interface vérifie le fournisseur au chargement puis toutes les 30 secondes. Hors ligne, la génération est bloquée et le bouton de secours ouvre un modèle réel de la galerie.
 - Les conseils photo, la phrase d'approximation et la photo source éventuelle ont été ajoutés. Aucun nom de modèle `Chaise métal 01/02` n'a été changé.
+- Le formulaire exige maintenant une catégorie (chaise, tabouret ou table d'appoint). Après une génération réussie, le modèle et sa photo source rejoignent la galerie dans le filtre choisi ; cette liste de session est en mémoire et se réinitialise au redémarrage.
 - Le lancement local passe par `scripts/dev.ps1`, qui crée le venv s'il manque, lance pytest, démarre Uvicorn puis ouvre Edge.
 - Les réglages facultatifs `FOREGROUND_RATIO` et `MC_RESOLUTION` ne sont validés qu'avec des noms et bornes tirés du contrat Gradio observé ; aucune plage n'est codée en dur.
-- Point 0 suspendu : Edge/Colab a affiché « Échec : backend non attribué ». Aucun nouveau lien n'est disponible, `.env` n'a pas été modifié, aucune photo n'a été envoyée et aucune génération d'étape 7 n'a eu lieu.
-- La FAQ officielle Colab restreint les services web non liés au calcul interactif sur les runtimes gérés et avertit des interruptions de l'interface web de génération en offre gratuite. La cellule publique du notebook est bloquée et aucun contournement n'est ajouté.
-- Les tests de l'étape 7 passent : 55 réussis en 1,49 s, avec transports simulés et sans réseau fournisseur. La syntaxe de `scripts/dev.ps1` et le JSON du notebook sont valides ; le notebook n'a aucune sortie enregistrée.
-- Les vérifications locales de code et de documentation de l'étape 7 sont terminées. La vérification visuelle dans Edge, les générations qualité et les notes visuelles restent en attente d'un environnement d'inférence autorisé.
+- Historique : le 1 novembre, Edge/Colab a affiché « Échec : backend non attribué ». Le 2 novembre, l'étudiante a fourni le lien d'une session déjà active et accepté l'usage personnel de démonstration à ses risques. L'API locale a répondu `ONLINE`, puis une photo libre de tabouret a été traitée par l'application et a produit un GLB valide.
+- Preuve de la génération de l'étape 7 : `stool-met-01.jpg`, catégorie `stool`, état final `DONE`, environ 105 s, GLB de 2 619 760 octets, validé GLB 2.0. Le viewer a rendu le modèle et affiché la photo source ainsi que le bouton de téléchargement. L'événement de téléchargement du navigateur n'a pas été confirmé ; le fichier GLB a bien été renvoyé et validé par l'application. La note de qualité visuelle appartient à l'étudiante.
+- Contrôle après le lancement local : le script a terminé ses vérifications et l'API a répondu, mais `GET /health/provider` renvoie maintenant `OFFLINE`. Aucune nouvelle photo n'a été envoyée après ce contrôle. La galerie renvoie sept GLB, dont le résultat `stool-met-01` classé dans `stool`.
+- L'étudiante a accepté l'usage du serveur pour une démonstration et un développement personnels, à ses risques, sans en faire un service de production. Aucun maintien en vie ni contournement des limites Colab n'est utilisé. La section Limites et la FAQ officielle restent applicables.
+- Les tests de l'étape 7 passent : 57 réussis en 1,21 s, avec transports simulés et sans réseau fournisseur. `scripts/dev.ps1 -Port 8003` a terminé les tests et affiché l'API prête. `/health/provider` avait répondu `ONLINE` avant l'envoi, puis `OFFLINE` au contrôle suivant ; le lien actuellement configuré n'est donc pas joignable.
+- La catégorie est requise pour chaque envoi ; la nouvelle génération apparaît dans le filtre choisi. Les comparaisons de 15 configurations restent en attente ; aucune génération qualité n'est présentée comme réalisée.
 
 ## Résumé de l'étape 6 (historique vérifié)
 
@@ -50,6 +53,8 @@ La page de studio a été refaite en modules CSS/JavaScript sans framework, avec
 Les tailles ont été mesurées sur les photos et GLB présents localement. Les durées correspondent au suivi PENDING/RUNNING/DONE par l'application, et non à une estimation du fournisseur. Les résultats sont ignorés par Git. Les notes qualitatives sont laissées à l'étudiante après examen de chaque modèle.
 
 ## Historique et limites
+
+- Décision de l'étudiante : usage personnel de démonstration et de développement accepté à ses propres risques, sans prétention de service de production. Cette acceptation n'autorise ni maintien en vie, ni contournement de quota/limite, ni demande payante. Arrêt obligatoire si Colab exige une connexion, validation ou captcha. La [FAQ officielle Colab](https://research.google.com/colaboratory/faq.html), consultée le 1 novembre 2026, reste la référence des limites des runtimes gérés.
 
 - Stable Fast 3D : cinq essais antérieurs sur des photos libres ont rencontré la même exception interne générique. Aucun GLB n'a été reçu de ces essais.
 - Space Hugging Face officiel stabilityai/TripoSR : son état runtime empêchait la lecture de l'API à l'époque. L'adaptateur actuel vise le serveur Gradio officiel autonome, dont le contrat a ensuite été réellement lu.

@@ -82,8 +82,11 @@ async function applyStatus(data) {
     downloadUrl: modelUrl,
     filename: data.filename,
     source: "generated",
+    category: data.category,
     sourcePhoto: appState.selectedPhoto,
   });
+  await gallery.reload();
+  gallery.selectCategory(data.category);
   progress.render("DONE", {
     summary: "Modèle terminé",
     detail: "Le serveur a validé le GLB 2.0 et l’a rendu disponible dans le viewer.",
@@ -106,7 +109,7 @@ async function refreshStatus() {
   }
 }
 
-async function startGeneration(photo) {
+async function startGeneration(photo, category) {
   if (appState.isGenerating || !photo) return;
   stopTracking();
   beginGeneration(photo);
@@ -118,7 +121,7 @@ async function startGeneration(photo) {
   }, 1000);
 
   try {
-    const data = await createGeneration(photo);
+    const data = await createGeneration(photo, category);
     if (typeof data.status_url !== "string") {
       throw new Error("La réponse du serveur ne contient pas d’adresse de suivi.");
     }
@@ -136,7 +139,8 @@ async function startGeneration(photo) {
 
 progressPanel.addEventListener("forma3d:retry", () => {
   const photo = uploader.getSelectedPhoto();
-  if (photo && !appState.isGenerating) void startGeneration(photo);
+  const category = uploader.getSelectedCategory();
+  if (photo && category && !appState.isGenerating) void startGeneration(photo, category);
 });
 
 const gallery = setupGallery((model) => {
@@ -151,6 +155,7 @@ const gallery = setupGallery((model) => {
       downloadUrl: modelUrl,
       filename: model.filename,
       source: "gallery",
+      category: model.category,
       sourcePhoto: model.source_image_url ? sameOriginPath(model.source_image_url) : null,
     });
     viewer.announce("Modèle de démonstration réel ouvert : " + model.name + ".");

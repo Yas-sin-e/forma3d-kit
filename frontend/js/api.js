@@ -17,9 +17,10 @@ async function readResponse(response, fallbackMessage) {
   return data;
 }
 
-export async function createGeneration(photo) {
+export async function createGeneration(photo, category) {
   const body = new FormData();
   body.append("file", photo);
+  body.append("category", category);
   const response = await fetch("/models", {
     method: "POST",
     body,
