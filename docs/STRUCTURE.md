@@ -1,6 +1,6 @@
 # Structure expliquée — Forma3D Studio
 
-Mis à jour le 1 novembre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le backend Forma3D et TripoSR. L'étape 7 ajoute le contrôle de disponibilité, les catégories obligatoires pour les nouvelles photos, l'affichage des générations réussies dans le filtre correspondant, les réglages qualité validés dynamiquement et les photos source. Les nouvelles catégories restent en mémoire jusqu'au redémarrage du backend.
+Mis à jour le 2 novembre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le backend Forma3D et TripoSR. L'étape 7 ajoute le contrôle de disponibilité, les catégories obligatoires pour les nouvelles photos, l'affichage des générations réussies dans le filtre correspondant, les réglages qualité validés dynamiquement et les photos source. Les nouvelles catégories restent en mémoire jusqu'au redémarrage du backend.
 
 ## Racine et documents de cadrage
 

@@ -9,7 +9,7 @@ Cette interface française de Sprint 1 est servie par FastAPI. Elle n'a ni frame
 3. Le navigateur envoie réellement la photo à POST /models et suit l'URL renvoyée par le serveur.
 4. L'interface reflète les réponses PENDING, RUNNING, DONE ou FAILED. Elle montre le temps écoulé réellement mesuré, sans pourcentage.
 5. À DONE, le GLB validé par le fournisseur apparaît dans le viewer et le bouton de téléchargement est révélé.
-6. La galerie récupère seulement les cinq noms de fichiers de faisabilité autorisés. Les modèles absents ou invalides sont exclus. Les filtres portent sur la chaise, le tabouret et la table d'appoint.
+6. La galerie combine les cinq GLB de faisabilité dont les identifiants sont autorisés et les générations réussies de la session backend. Les fichiers absents ou invalides sont exclus. Chaque nouvel envoi exige une catégorie ; le modèle et sa photo source apparaissent sous le filtre choisi.
 7. « Ouvrir un GLB local » charge le fichier dans le navigateur, sans le transmettre au serveur ; son origine est affichée comme importée manuellement.
 
 ## Structure et responsabilités
@@ -29,6 +29,6 @@ Les commentaires d'en-tête de chaque module donnent son rôle et son exécution
 
 ## Lancer
 
-Depuis le dossier backend, lancer Uvicorn puis ouvrir http://127.0.0.1:8000/. La page, les feuilles de style et les modules JavaScript sont servis par la même application. Le navigateur a besoin d'Internet pour récupérer model-viewer depuis le CDN Google.
+Depuis la racine du projet, lancer `.\scripts\dev.ps1` ; le script vérifie les tests, démarre Uvicorn et ouvre Edge. Pour choisir un port, utiliser `.\scripts\dev.ps1 -Port 8003`. La page, les feuilles de style et les modules JavaScript sont servis par la même application. Le navigateur a besoin d'Internet pour récupérer model-viewer depuis le CDN Google.
 
-Le parcours de génération requiert aussi que le fournisseur distant soit disponible. La galerie dépend des cinq fichiers locaux de backend/data/feasibility-results/ ; elle n'invente pas de modèle si ces fichiers ne sont pas présents.
+Le parcours de génération requiert aussi que le fournisseur distant soit disponible ; vérifier `/health/provider` avant d'envoyer une photo. Si le statut est `OFFLINE`, relancer le notebook Colab pour une session personnelle acceptée, puis inscrire son nouveau lien uniquement dans `backend/.env` et relancer le serveur. La galerie garde les cinq modèles locaux valides et ajoute les générations récentes terminées ; l'historique des envois est en mémoire et repart au redémarrage du backend.
