@@ -1,6 +1,6 @@
 # État du projet — Forma3D Studio
 
-Dernière mise à jour : 2 novembre 2026.
+Dernière mise à jour : 3 novembre 2026.
 
 ## Étape 7 — fiabilité et qualité (en cours)
 
@@ -16,6 +16,9 @@ Dernière mise à jour : 2 novembre 2026.
 - L'étudiante a accepté l'usage du serveur pour une démonstration et un développement personnels, à ses risques, sans en faire un service de production. Aucun maintien en vie ni contournement des limites Colab n'est utilisé. La section Limites et la FAQ officielle restent applicables.
 - Les tests de l'étape 7 passent : 57 réussis en 1,21 s, avec transports simulés et sans réseau fournisseur. `scripts/dev.ps1 -Port 8003` a terminé les tests et affiché l'API prête. `/health/provider` avait répondu `ONLINE` avant l'envoi, puis `OFFLINE` au contrôle suivant ; le lien actuellement configuré n'est donc pas joignable.
 - La catégorie est requise pour chaque envoi ; la nouvelle génération apparaît dans le filtre choisi. Les comparaisons de 15 configurations restent en attente ; aucune génération qualité n'est présentée comme réalisée.
+- Présentation du studio compactée : conseils photo repliables, panneau d'entrée plus étroit sur grand écran, viewer limité à 70 vh, miniature source agrandissable, barre caméra flottante et galerie horizontale de vignettes sélectionnables au clic ou au clavier. Les noms existants, dont « Chaise métal 01 » et « Chaise métal 02 », sont conservés.
+- Éclairage du viewer réglé avec les attributs documentés pour model-viewer 4.4.0 (`environment-image`, `tone-mapping`, `exposure`, `shadow-intensity`, `shadow-softness`). La documentation officielle décrit le tonemapping Neutral comme adapté à la fidélité des couleurs e-commerce : [documentation v4.4.0](https://raw.githubusercontent.com/google/model-viewer/v4.4.0/packages/modelviewer.dev/data/docs.json), [exemple éclairage et environnement](https://modelviewer.dev/examples/lightingandenv/). La valeur d'exposition est un réglage visuel à réévaluer après comparaison sur plusieurs modèles.
+- Vérification visuelle locale sans fournisseur : le processus Uvicorn de test a reçu `HF_SPACE_ID` vide par variable d'environnement, sans lecture, modification ni affichage de `backend/.env`. La page a affiché « Serveur 3D : hors ligne » et désactivé la génération. Dans le navigateur, un GLB existant « Chaise métal 01 » s'est chargé dans le viewer ; la miniature de la photo source était visible et son clic a ouvert la photo en grand ; la galerie apparaissait en bande horizontale avec ses cinq modèles. Le rendu paraissait clair et les tons bruns visibles, sans comparaison côte à côte avec l'ancien éclairage. La largeur réelle de 360 px n'a pas été vérifiée visuellement ; aucune génération ni requête au fournisseur n'a été lancée.
 
 ## Résumé de l'étape 6 (historique vérifié)
 

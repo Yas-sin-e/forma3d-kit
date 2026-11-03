@@ -1,6 +1,6 @@
 # Structure expliquée — Forma3D Studio
 
-Mis à jour le 2 novembre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le backend Forma3D et TripoSR. L'étape 7 ajoute le contrôle de disponibilité, les catégories obligatoires pour les nouvelles photos, l'affichage des générations réussies dans le filtre correspondant, les réglages qualité validés dynamiquement et les photos source. Les nouvelles catégories restent en mémoire jusqu'au redémarrage du backend.
+Mis à jour le 3 novembre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le backend Forma3D et TripoSR. L'étape 7 ajoute le contrôle de disponibilité, les catégories obligatoires pour les nouvelles photos, l'affichage des générations réussies dans le filtre correspondant, les réglages qualité validés dynamiquement et les photos source. L'interface du studio est compacte, son viewer est limité en hauteur et la galerie défile en bande de vignettes. Les nouvelles générations restent en mémoire jusqu'au redémarrage du backend.
 
 ## Racine et documents de cadrage
 
@@ -70,10 +70,10 @@ Mis à jour le 2 novembre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le 
 |---|---|---|---|
 | `frontend/` | Contient la page, les styles et les modules JavaScript du Sprint 1 | Offre une interface modulaire sans deuxième serveur ni build | Quand une personne visite / |
 | `frontend/README.md` | Explique les modules, le parcours et les limites du navigateur | Rend les responsabilités et dépendances compréhensibles | Avant de lancer ou modifier le frontend |
-| `frontend/index.html` | Définit le studio accessible, le sélecteur obligatoire de catégorie, le viewer, le suivi et la galerie | Rend le type d'objet explicite avant l'envoi et sépare contenu et logique | Quand FastAPI sert la page d'accueil |
+| `frontend/index.html` | Définit le studio compact, les conseils repliables, la photo agrandissable, le viewer, le suivi et la galerie | Garde l'interface accessible tout en donnant la priorité à la scène 3D | Quand FastAPI sert la page d'accueil |
 | `frontend/css/` | Regroupe le thème et les styles de composants | Sépare les jetons visuels de la mise en page | Au chargement de la page et pour une retouche visuelle |
 | `frontend/css/theme.css` | Définit la palette sombre, les fontes, le focus et la réduction du mouvement | Centralise les règles globales et lisibles | Avant les styles des composants |
-| `frontend/css/components.css` | Met en page panneaux, upload, sélecteur catégorie, suivi, viewer et galerie | Donne à chaque zone un style cohérent et un focus clavier visible | Lors du rendu du studio |
+| `frontend/css/components.css` | Met en page le panneau d'entrée étroit, le viewer limité à 70 vh, sa miniature source, sa barre flottante et la bande de vignettes | Conserve les couleurs DESIGN.md, le focus clavier et le fonctionnement à partir de 360 px | Lors du rendu du studio et aux changements de largeur |
 | `frontend/js/` | Regroupe l'état, l'API et les vues ES modules | Permet de suivre une responsabilité par fichier sans framework | Quand le navigateur charge le module principal |
 | `frontend/js/api.js` | Centralise fetch pour génération (photo et catégorie), galerie et santé du fournisseur | Empêche les vues de disperser les appels serveur | À chaque action et toutes les 30 secondes pour la disponibilité |
 | `frontend/js/state.js` | Garde en mémoire photo, statut, durée et minuteries de la session | Évite une base de données pour cet état temporaire | Pendant l'envoi et le suivi d'une demande |
@@ -81,8 +81,8 @@ Mis à jour le 2 novembre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le 
 | `frontend/js/views/` | Regroupe les vues de l'interface | Isole les responsabilités visibles du studio | Quand une vue est modifiée ou réutilisée |
 | `frontend/js/views/uploader.js` | Gère dépôt, validation photo et choix obligatoire parmi les trois catégories | Évite les générations sans type d'objet clair ou avec fournisseur hors ligne | Avant toute soumission |
 | `frontend/js/views/progress.js` | Traduit les états observés et le temps réel en étape accessible | N'invente ni pourcentage ni délai restant | Pendant et après une génération |
-| `frontend/js/views/viewer.js` | Charge le modèle, la photo source et affiche la catégorie du résultat | Compare l'objet au GLB et rend son classement visible | Après une génération ou une sélection de galerie |
-| `frontend/js/views/gallery.js` | Crée les aperçus 3D, filtre les modèles réels et sélectionne la catégorie du dernier GLB | Rend le résultat retrouvable sous le bon filtre sans modèle fictif | Après le chargement de galerie et une génération terminée |
+| `frontend/js/views/viewer.js` | Charge le GLB, applique l'éclairage PBR documenté et ouvre la photo source dans une boîte de dialogue accessible | Améliore le rendu et permet de comparer la source sans rétrécir la scène | Après une génération ou une sélection de galerie |
+| `frontend/js/views/gallery.js` | Crée la bande de vignettes 3D filtrable et permet l'ouverture au clic ou au clavier | Garde les étiquettes réelles et rend chaque résultat directement sélectionnable | Après le chargement de galerie et une génération terminée |
 
 ## Tests et vérification continue
 

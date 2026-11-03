@@ -9,9 +9,11 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
   const cameraControls = document.querySelector("#camera-controls");
   const downloadLink = document.querySelector("#download-link");
   const originBadge = document.querySelector("#origin-badge");
-  const comparison = document.querySelector("#viewer-comparison");
   const sourcePhotoFigure = document.querySelector("#source-photo-preview");
   const sourcePhotoImage = document.querySelector("#source-photo-image");
+  const sourcePhotoOpen = document.querySelector("#source-photo-open");
+  const sourcePhotoDialog = document.querySelector("#source-photo-dialog");
+  const sourcePhotoLarge = document.querySelector("#source-photo-large");
   const announcement = document.querySelector("#viewer-announcement");
   const openLocalButton = document.querySelector("#open-local-glb");
   const localInput = document.querySelector("#local-glb-input");
@@ -34,6 +36,7 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
       URL.revokeObjectURL(sourcePhotoObjectUrl);
       sourcePhotoObjectUrl = null;
     }
+    sourcePhotoLarge.removeAttribute("src");
   }
 
   function announce(message) {
@@ -52,11 +55,11 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
     viewer.removeAttribute("ar");
     viewer.removeAttribute("auto-rotate");
     viewer.removeAttribute("src");
+    if (sourcePhotoDialog.open) sourcePhotoDialog.close();
     releaseLocalObjectUrl();
     releaseSourcePhotoObjectUrl();
     sourcePhotoImage.removeAttribute("src");
     sourcePhotoFigure.hidden = true;
-    comparison.classList.remove("has-source-photo");
     activeModel = null;
     viewer.hidden = true;
     emptyState.hidden = false;
@@ -98,7 +101,6 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
         ? "Photo source du modèle " + filename
         : "Photo source du produit envoyé";
       sourcePhotoFigure.hidden = false;
-      comparison.classList.add("has-source-photo");
     }
 
     activeModel = { source, filename };
@@ -176,6 +178,13 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
     }
   });
 
+  sourcePhotoOpen.addEventListener("click", () => {
+    if (!sourcePhotoImage.src) return;
+    sourcePhotoLarge.src = sourcePhotoImage.currentSrc || sourcePhotoImage.src;
+    sourcePhotoLarge.alt = sourcePhotoImage.alt.replace("source", "source agrandie");
+    sourcePhotoDialog.showModal();
+  });
+
   openLocalButton.addEventListener("click", () => localInput.click());
   localInput.addEventListener("change", () => {
     const file = localInput.files[0];
@@ -206,7 +215,10 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
     onError(message);
   });
 
-  window.addEventListener("pagehide", releaseLocalObjectUrl);
+  window.addEventListener("pagehide", () => {
+    releaseLocalObjectUrl();
+    releaseSourcePhotoObjectUrl();
+  });
 
   return { clear, showModel, announce };
 }

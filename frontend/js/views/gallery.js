@@ -1,6 +1,6 @@
 /*
- * Rôle : affiche et filtre les cinq GLB de démonstration réellement disponibles.
- * Exécution : main.js charge les entrées du backend et cette vue ouvre le modèle choisi.
+ * Rôle : affiche une bande de vignettes réelles et filtre les modèles par catégorie.
+ * Exécution : main.js charge la galerie et cette vue ouvre le modèle choisi au clic ou au clavier.
  */
 import { listGalleryModels } from "../api.js";
 import { appState } from "../state.js";
@@ -33,8 +33,13 @@ export function setupGallery(onOpenModel) {
     miniViewer.setAttribute("alt", "Aperçu 3D : " + model.name);
     miniViewer.setAttribute("loading", "lazy");
     miniViewer.setAttribute("interaction-prompt", "none");
-    miniViewer.setAttribute("shadow-intensity", "0.65");
+    miniViewer.setAttribute("environment-image", "neutral");
+    miniViewer.setAttribute("tone-mapping", "neutral");
+    miniViewer.setAttribute("exposure", "1.08");
+    miniViewer.setAttribute("shadow-intensity", "0.45");
+    miniViewer.setAttribute("shadow-softness", "0.8");
     miniViewer.setAttribute("camera-orbit", "0deg 75deg 100%");
+    miniViewer.setAttribute("aria-hidden", "true");
     preview.append(miniViewer);
 
     const content = document.createElement("div");
@@ -57,14 +62,17 @@ export function setupGallery(onOpenModel) {
     size.className = "model-card-size";
     size.textContent = "GLB · " + formatMegabytes(model.size_bytes);
 
-    const openButton = document.createElement("button");
-    openButton.className = "button button-secondary model-card-open";
-    openButton.type = "button";
-    openButton.textContent = "Ouvrir dans le viewer";
-    openButton.addEventListener("click", () => onOpenModel(model));
-
-    content.append(heading, category, source, size, openButton);
+    content.append(heading, category, source, size);
     article.append(preview, content);
+    article.setAttribute("role", "button");
+    article.tabIndex = 0;
+    article.setAttribute("aria-label", "Ouvrir « " + model.name + " » dans le viewer");
+    article.addEventListener("click", () => onOpenModel(model));
+    article.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      onOpenModel(model);
+    });
     return article;
   }
 
