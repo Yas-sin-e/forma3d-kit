@@ -89,7 +89,7 @@ def test_completed_generation_survives_repository_and_service_restart(tmp_path: 
 
     assert restored is not None
     assert restored.status is GenerationStatus.DONE
-    assert restored.category is ProductCategory.STOOL
+    assert restored.category == ProductCategory.STOOL
     assert restored.image_path.read_bytes() == b"\x89PNG\r\n\x1a\ntest"
     assert restored.model_path is not None and restored.model_path.is_file()
     assert restarted_service.get_model_path(record.id) == restored.model_path

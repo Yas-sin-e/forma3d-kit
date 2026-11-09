@@ -8,6 +8,17 @@ from enum import StrEnum
 from pathlib import Path
 
 
+@dataclass(frozen=True, slots=True)
+class CategoryRecord:
+    """Catégorie persistée, éventuellement masquée aux nouveaux uploads."""
+
+    id: int
+    slug: str
+    label: str
+    is_active: bool
+    created_at: datetime
+
+
 class GenerationStatus(StrEnum):
     """États publics du parcours asynchrone de génération."""
 
@@ -33,7 +44,7 @@ class GenerationRecord:
     status: GenerationStatus
     filename: str
     content_type: str
-    category: ProductCategory
+    category: str
     image_path: Path
     created_at: datetime
     updated_at: datetime

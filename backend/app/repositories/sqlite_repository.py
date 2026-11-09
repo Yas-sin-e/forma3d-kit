@@ -10,7 +10,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Iterator
 
-from app.models import GenerationRecord, GenerationStatus, ProductCategory
+from app.models import CategoryRecord, GenerationRecord, GenerationStatus, ProductCategory
+from app.repositories.base import CategoryConflictError, CategoryInUseError, CategoryNotFoundError
 
 _INITIAL_CATEGORIES = (
     (ProductCategory.CHAIR.value, "Chaise"),
@@ -124,7 +125,7 @@ class SQLiteGenerationRepository:
                 """,
                 (
                     record.id,
-                    record.category.value,
+                    str(getattr(record.category, "value", record.category)),
                     record.status.value,
                     record.filename,
                     record.content_type,
@@ -165,6 +166,111 @@ class SQLiteGenerationRepository:
             ).fetchall()
         return [self._record_from_row(row) for row in rows]
 
+    def get_category(self, slug: str, include_inactive: bool = False) -> CategoryRecord | None:
+        """Recherche une catégorie, en filtrant les inactives sauf demande explicite."""
+        with self._connection() as connection:
+            row = connection.execute(
+                "SELECT * FROM categories WHERE slug = ? AND (? OR is_active = 1)",
+                (slug, int(include_inactive)),
+            ).fetchone()
+        return self._category_from_row(row) if row is not None else None
+
+    def list_categories(self, include_inactive: bool = False) -> list[CategoryRecord]:
+        """Retourne les catégories dans l'ordre de création puis du libellé."""
+        with self._connection() as connection:
+            rows = connection.execute(
+                "SELECT * FROM categories WHERE (? OR is_active = 1) ORDER BY id, label",
+                (int(include_inactive),),
+            ).fetchall()
+        return [self._category_from_row(row) for row in rows]
+
+    def create_category(self, slug: str, label: str) -> CategoryRecord:
+        """Insère une catégorie active et traduit le conflit unique en erreur métier."""
+        with self._connection() as connection:
+            try:
+                cursor = connection.execute(
+                    "INSERT INTO categories (slug, label, is_active, created_at) VALUES (?, ?, 1, ?)",
+                    (slug, label, datetime.now(UTC).isoformat()),
+                )
+            except sqlite3.IntegrityError as error:
+                raise CategoryConflictError("Ce slug de catégorie existe déjà.") from error
+            row = connection.execute(
+                "SELECT * FROM categories WHERE id = ?", (cursor.lastrowid,)
+            ).fetchone()
+        return self._category_from_row(row)
+
+    def update_category(
+        self,
+        current_slug: str,
+        *,
+        slug: str | None = None,
+        label: str | None = None,
+        is_active: bool | None = None,
+    ) -> CategoryRecord:
+        """Met à jour les champs fournis tout en conservant l'identifiant relationnel."""
+        assignments: list[str] = []
+        values: list[object] = []
+        if slug is not None:
+            assignments.append("slug = ?")
+            values.append(slug)
+        if label is not None:
+            assignments.append("label = ?")
+            values.append(label)
+        if is_active is not None:
+            assignments.append("is_active = ?")
+            values.append(int(is_active))
+        if not assignments:
+            category = self.get_category(current_slug, include_inactive=True)
+            if category is None:
+                raise CategoryNotFoundError("Catégorie introuvable.")
+            return category
+        with self._connection() as connection:
+            try:
+                cursor = connection.execute(
+                    f"UPDATE categories SET {', '.join(assignments)} WHERE slug = ?",
+                    (*values, current_slug),
+                )
+            except sqlite3.IntegrityError as error:
+                raise CategoryConflictError("Ce slug de catégorie existe déjà.") from error
+            if cursor.rowcount == 0:
+                raise CategoryNotFoundError("Catégorie introuvable.")
+            row = connection.execute(
+                "SELECT * FROM categories WHERE id = ?", (cursor.lastrowid,)
+            ).fetchone()
+            if row is None:
+                row = connection.execute(
+                    "SELECT * FROM categories WHERE slug = ?", (slug or current_slug,)
+                ).fetchone()
+        return self._category_from_row(row)
+
+    def delete_category(self, slug: str) -> None:
+        """Supprime une catégorie seulement si aucune génération ne la référence."""
+        with self._connection() as connection:
+            row = connection.execute(
+                "SELECT id FROM categories WHERE slug = ?", (slug,)
+            ).fetchone()
+            if row is None:
+                raise CategoryNotFoundError("Catégorie introuvable.")
+            uses = connection.execute(
+                "SELECT COUNT(*) FROM generations WHERE category_id = ?", (row["id"],)
+            ).fetchone()[0]
+            if uses:
+                raise CategoryInUseError(
+                    "Cette catégorie est utilisée par des générations et ne peut pas être supprimée."
+                )
+            connection.execute("DELETE FROM categories WHERE id = ?", (row["id"],))
+
+    @staticmethod
+    def _category_from_row(row: sqlite3.Row) -> CategoryRecord:
+        """Convertit une ligne SQLite en catégorie métier immuable."""
+        return CategoryRecord(
+            id=row["id"],
+            slug=row["slug"],
+            label=row["label"],
+            is_active=bool(row["is_active"]),
+            created_at=datetime.fromisoformat(row["created_at"]),
+        )
+
     @staticmethod
     def _record_from_row(row: sqlite3.Row) -> GenerationRecord:
         """Convertit une ligne SQLite en objet métier typé."""
@@ -173,7 +279,7 @@ class SQLiteGenerationRepository:
             status=GenerationStatus(row["status"]),
             filename=row["filename"],
             content_type=row["content_type"],
-            category=ProductCategory(row["category_slug"]),
+            category=row["category_slug"],
             image_path=Path(row["source_photo_path"]),
             created_at=datetime.fromisoformat(row["created_at"]),
             updated_at=datetime.fromisoformat(row["updated_at"]),

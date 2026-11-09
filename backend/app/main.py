@@ -17,7 +17,9 @@ from fastapi.staticfiles import StaticFiles
 
 from app.providers.huggingface import HuggingFaceSpaceProvider
 from app.repositories.sqlite_repository import SQLiteGenerationRepository
+from app.routers.categories import router as categories_router
 from app.routers.models import router as models_router
+from app.services.category_service import CategoryService
 from app.services.demo_gallery import DemoGallery
 from app.services.generation_service import GenerationService
 from app.storage.local_storage import LocalStorage
@@ -55,10 +57,12 @@ app.state.generation_service = GenerationService(
     repository=generation_repository,
 )
 app.state.generation_repository = generation_repository
+app.state.category_service = CategoryService(generation_repository)
 app.state.generation_provider = provider
 app.state.demo_gallery = DemoGallery()
 
 app.include_router(models_router)
+app.include_router(categories_router)
 app.mount(
     "/static",
     StaticFiles(directory=_PROJECT_ROOT / "frontend"),

@@ -1,10 +1,22 @@
-# Rôle : définit le contrat de persistance des générations sans imposer SQLite au métier.
-# Exécution : GenerationService dépend de cette interface pour créer et relire l'historique.
+# Rôle : définit le contrat des catégories et générations sans imposer SQLite au métier.
+# Exécution : les services dépendent de cette interface pour lire et modifier l'historique.
 """Interface de dépôt utilisée par le service de génération."""
 
 from typing import Protocol
 
-from app.models import GenerationRecord
+from app.models import CategoryRecord, GenerationRecord
+
+
+class CategoryConflictError(Exception):
+    """Conflit d'unicité ou suppression interdite pour une catégorie."""
+
+
+class CategoryNotFoundError(Exception):
+    """Catégorie demandée introuvable."""
+
+
+class CategoryInUseError(CategoryConflictError):
+    """Une génération référence encore cette catégorie."""
 
 
 class GenerationRepository(Protocol):
@@ -24,4 +36,31 @@ class GenerationRepository(Protocol):
 
     def list_completed_generations(self) -> list[GenerationRecord]:
         """Retourne les générations terminées, de la plus récente à la plus ancienne."""
+        ...
+
+    def get_category(self, slug: str, include_inactive: bool = False) -> CategoryRecord | None:
+        """Retourne une catégorie par slug, éventuellement inactive."""
+        ...
+
+    def list_categories(self, include_inactive: bool = False) -> list[CategoryRecord]:
+        """Liste les catégories actives ou l'ensemble demandé par l'administration."""
+        ...
+
+    def create_category(self, slug: str, label: str) -> CategoryRecord:
+        """Crée une catégorie ; l'adaptateur signale un slug déjà utilisé."""
+        ...
+
+    def update_category(
+        self,
+        current_slug: str,
+        *,
+        slug: str | None = None,
+        label: str | None = None,
+        is_active: bool | None = None,
+    ) -> CategoryRecord:
+        """Modifie le slug, le libellé ou l'état sans détacher les générations."""
+        ...
+
+    def delete_category(self, slug: str) -> None:
+        """Supprime une catégorie inutilisée et refuse si une génération la référence."""
         ...

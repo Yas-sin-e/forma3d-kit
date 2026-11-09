@@ -12,7 +12,7 @@ from threading import RLock
 from time import monotonic
 from uuid import uuid4
 
-from app.models import GenerationRecord, GenerationStatus, ProductCategory
+from app.models import GenerationRecord, GenerationStatus
 from app.providers.base import Image3DProvider, ProviderError
 from app.repositories.base import GenerationRepository
 from app.services.upload_validator import ValidatedUpload
@@ -39,9 +39,12 @@ class GenerationService:
         self,
         upload: ValidatedUpload,
         content: bytes,
-        category: ProductCategory,
+        category: str,
     ) -> GenerationRecord:
         """Enregistre l'image et sa catégorie, puis initialise PENDING."""
+        category_slug = str(getattr(category, "value", category))
+        if self._repository.get_category(category_slug) is None:
+            raise ValueError("Cette catégorie est inconnue ou désactivée.")
         generation_id = str(uuid4())
         extension = Path(upload.filename).suffix.lower()
         image_path = self._storage.save_image(generation_id, extension, content)
@@ -51,7 +54,7 @@ class GenerationService:
             status=GenerationStatus.PENDING,
             filename=upload.filename,
             content_type=upload.content_type,
-            category=category,
+            category=category_slug,
             image_path=image_path,
             created_at=now,
             updated_at=now,

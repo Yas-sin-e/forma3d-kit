@@ -8,7 +8,7 @@ from typing import Annotated
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 
-from app.models import GenerationRecord, GenerationStatus, ProductCategory
+from app.models import GenerationRecord, GenerationStatus
 from app.schemas import DemoGalleryResponse, DemoModelResponse, GenerationResponse
 from app.services.generation_service import GenerationService
 from app.services.demo_gallery import DemoGallery
@@ -39,7 +39,7 @@ def _to_response(record: GenerationRecord) -> GenerationResponse:
         status=record.status.value,
         filename=record.filename,
         content_type=record.content_type,
-        category=record.category.value,
+        category=record.category,
         created_at=record.created_at,
         updated_at=record.updated_at,
         status_url=f"/models/{record.id}",
@@ -51,7 +51,7 @@ def _to_response(record: GenerationRecord) -> GenerationResponse:
 @router.post("", response_model=GenerationResponse, status_code=202)
 async def create_model_generation(
     file: Annotated[UploadFile, File(description="Photo JPG, PNG ou WebP, jusqu'à 10 Mo.")],
-    category: Annotated[ProductCategory, Form(description="Catégorie du meuble photographié.")],
+    category: Annotated[str, Form(description="Slug d'une catégorie active du catalogue.")],
     background_tasks: BackgroundTasks,
     service: Annotated[GenerationService, Depends(get_generation_service)],
 ) -> GenerationResponse:
@@ -71,7 +71,10 @@ async def create_model_generation(
     finally:
         await file.close()
 
-    record = service.create_generation(validated, content, category)
+    try:
+        record = service.create_generation(validated, content, category)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
     background_tasks.add_task(service.run, record.id)
     return _to_response(record)
 
@@ -93,7 +96,7 @@ def list_demo_models(
                 id=record.id,
                 name=Path(record.filename).stem,
                 filename=f"{record.id}.glb",
-                category=record.category.value,
+                category=record.category,
                 source="generated_by_app",
                 size_bytes=model_path.stat().st_size,
                 model_url=f"/models/{record.id}/glb",
