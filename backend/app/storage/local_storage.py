@@ -38,6 +38,8 @@ class LocalStorage:
         if not content:
             raise ValueError("Impossible d'enregistrer un modèle vide.")
         destination = self.models_dir / f"{generation_id}.glb"
+        if destination.exists():
+            raise FileExistsError("Un modèle portant cet identifiant existe déjà.")
         self._write_atomically(destination, content)
         return destination
 
@@ -65,7 +67,8 @@ class LocalStorage:
                 temporary_file.write(content)
                 temporary_file.flush()
                 os.fsync(temporary_file.fileno())
-            os.replace(temporary_path, destination)
+            os.link(temporary_path, destination)
+            temporary_path.unlink()
         except Exception:
             temporary_path.unlink(missing_ok=True)
             raise

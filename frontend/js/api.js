@@ -49,6 +49,31 @@ export async function listGalleryModels() {
   return readResponse(response, "Impossible de charger les modèles de démonstration.");
 }
 
+export async function importGlbModel(file, title, category) {
+  const body = new FormData();
+  body.append("file", file);
+  body.append("title", title);
+  body.append("category", category);
+  const response = await fetch("/models/import", {
+    method: "POST",
+    body,
+    headers: { Accept: "application/json" },
+  });
+  return readResponse(response, "Impossible d’importer ce modèle GLB.");
+}
+
+export async function copyExampleModel(exampleId, title, category) {
+  const body = new FormData();
+  body.append("title", title);
+  body.append("category", category);
+  const response = await fetch(`/models/examples/${encodeURIComponent(exampleId)}/copy`, {
+    method: "POST",
+    body,
+    headers: { Accept: "application/json" },
+  });
+  return readResponse(response, "Impossible d’ajouter cet exemple à vos modèles.");
+}
+
 export async function getProviderHealth() {
   const response = await fetch("/health/provider", {
     cache: "no-store",

@@ -14,17 +14,19 @@ class GenerationResponse(BaseModel):
     id: str = Field(description="Identifiant de suivi créé par le serveur.")
     status: Literal["PENDING", "RUNNING", "DONE", "FAILED"]
     filename: str = Field(description="Nom de fichier nettoyé, sans chemin local.")
-    content_type: Literal["image/jpeg", "image/png", "image/webp"]
+    content_type: str
     category: str = Field(description="Slug de la catégorie choisie avant l'envoi de la photo.")
     created_at: datetime
     updated_at: datetime
     status_url: str
     model_url: str | None = None
     error_message: str | None = None
+    duration_seconds: float | None = None
     image_warning: str | None = Field(
         default=None,
         description="Avertissement non bloquant issu de la préparation locale de la photo.",
     )
+    origin: Literal["generated", "imported", "example"] = "generated"
 
 
 class DemoModelResponse(BaseModel):
@@ -36,7 +38,9 @@ class DemoModelResponse(BaseModel):
     name: str
     filename: str
     category: str
-    source: Literal["generated_by_app"]
+    source: Literal["generated_by_app", "imported", "example"]
+    origin: Literal["generated", "imported", "example"] = "example"
+    created_at: datetime | None = None
     size_bytes: int
     model_url: str
     source_image_url: str | None = None

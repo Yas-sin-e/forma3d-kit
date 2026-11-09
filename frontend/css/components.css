@@ -1137,7 +1137,7 @@ model-viewer {
   border-radius: 14px;
   background: var(--surface);
   transition: transform var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
-  cursor: pointer;
+  cursor: default;
   scroll-snap-align: start;
 }
 
@@ -1147,10 +1147,29 @@ model-viewer {
   box-shadow: 0 14px 35px rgb(0 0 0 / 22%);
 }
 
-.model-card:focus-visible {
+.model-card-open:focus-visible {
   outline: 3px solid var(--focus);
   outline-offset: 3px;
 }
+
+.model-card-open {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.model-card-open:hover { color: inherit; background: transparent; }
+
+.model-card-action { margin: 0 10px 10px; justify-content: center; }
 
 .model-card-preview {
   display: grid;
@@ -1186,12 +1205,26 @@ model-viewer {
 }
 
 .model-card-category,
-.model-card-size {
+.model-card-size,
+.model-card-date {
   margin: 0;
   color: var(--muted);
   font-size: 16px;
   line-height: 1.4;
 }
+
+.library-empty-actions, .model-import-panel {
+  margin: 0 0 18px;
+  padding: clamp(16px, 3vw, 24px);
+}
+
+.library-empty-actions p, .model-import-panel > p { color: var(--muted); font-size: 16px; line-height: 1.55; }
+.library-empty-actions > div, .form-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.model-import-panel h2 { margin-top: 0; }
+.model-import-panel form { display: grid; gap: 10px; }
+.model-import-panel label { margin-top: 4px; font-weight: 650; }
+.model-import-panel input, .model-import-panel select { width: 100%; min-height: 48px; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: var(--radius-control); color: var(--ink); background: var(--stage); font: inherit; }
+.model-import-panel [role="status"] { min-height: 24px; margin: 0; color: var(--muted); }
 
 .source-badge {
   align-self: flex-start;

@@ -1,6 +1,6 @@
 # Structure expliquée — Forma3D Studio
 
-Mis à jour le 9 novembre 2026. Le Sprint 2 est terminé : catégories partagées gérées par API/SQLite et préparation locale des photos via Pillow. L'étape 11 est une refonte UX indépendante du Sprint 3, qui n'a pas commencé.
+Mis à jour le 10 novembre 2026. Le Sprint 2 est terminé. L'étape 11 est une refonte UX indépendante du Sprint 3. L'étape 12 ajoute l'import GLB et la provenance unifiée ; le Sprint 5 n'est pas démarré.
 
 ## Racine et documents de cadrage
 
@@ -12,7 +12,7 @@ Mis à jour le 9 novembre 2026. Le Sprint 2 est terminé : catégories partagée
 | `README.md` | Démarrage du dépôt, état et commandes Windows | Point d'entrée pour l'étudiante et le jury | Au clonage et au lancement |
 | `PROMPT-1.md` | Prompt local de démarrage de session v2 | Rappelle les règles au travail quotidien | Au début d'une session Codex ; ignoré par Git |
 | `.gitignore` | Exclut secrets, environnements, caches, uploads et sorties générées | Évite de versionner les données locales ou sensibles | Avant chaque commit |
-| `.env.example` | Variables fournisseur et réglages TripoSR facultatifs, sans cible ni secret | Rend la configuration explicite sans inventer de valeurs de plage ni exposer de lien | Avant un essai autorisé du fournisseur |
+| `.env.example` | Variables fournisseur, réglages TripoSR facultatifs et plafond GLB `MAX_GLB_UPLOAD_MB` (30 par défaut) | Rend la configuration explicite sans cible ni secret | Avant le lancement ou l'import d'un modèle |
 | `sprint-1-v2-saas-3d-ecommerce.docx` | Cahier des charges remis pour le sprint | Conserve la référence de départ et ses exigences | Au cadrage et à la soutenance |
 | `.github/` | Configuration destinée au dépôt GitHub | Sépare l'automatisation distante des sources | Sur GitHub |
 | `.github/workflows/` | Répertoire des workflows CI | Range les vérifications reproductibles | À chaque push ou pull request |
@@ -47,29 +47,29 @@ Mis à jour le 9 novembre 2026. Le Sprint 2 est terminé : catégories partagée
 | `backend/app/__init__.py` | Marque `app` comme paquet Python | Rend les imports déterministes | Au démarrage et pendant les tests |
 | `backend/app/main.py` | Construit FastAPI, choisit le chemin SQLite fixe, initialise le dépôt et journalise `.env`/HF_SPACE_ID absents sans exposer la cible | Configure l'adaptateur une fois tout en gardant les variables fournisseur inchangées | À l'import et au démarrage d'Uvicorn |
 | backend/.env | Configuration locale, dont la cible d'un serveur Gradio autorisé | Fichier ignoré par Git ; ne jamais copier son contenu dans un document, un journal ou un commit | Pour configurer un fournisseur disponible |
-| `backend/app/models.py` | Définit les catégories, les états, la fiche de génération, sa durée et son avertissement photo | Sépare les données métier du format de stockage | Pendant la gestion, le suivi et la relecture |
+| `backend/app/models.py` | Définit les catégories, états, origines, fiche de génération et chemins facultatifs de photo | Sépare les données métier du format de stockage et distingue import, exemple et génération | Pendant la gestion, le suivi et la relecture |
 | `backend/app/repositories/` | Regroupe le contrat de dépôt et les adaptateurs de persistance | Isole SQL des règles métier | Quand le service lit ou écrit l'historique |
 | `backend/app/repositories/__init__.py` | Marque le paquet Python des dépôts | Rend leur rôle d'accès aux données explicite | À l'import du service ou de l'adaptateur |
 | `backend/app/repositories/base.py` | Définit `GenerationRepository` sans imposer SQLite au service | Permet de tester ou remplacer l'adaptateur indépendamment | Dans `GenerationService` et ses tests |
-| `backend/app/repositories/sqlite_repository.py` | Crée les tables et gère catégories, générations, connexions courtes et récupération après redémarrage | Utilise `sqlite3` standard et une connexion par opération | Au démarrage, à chaque transition et à la lecture de la galerie |
-| `backend/app/config.py` | Charge la cible, les délais et les réglages TripoSR facultatifs sans valeur par défaut de cible | Le projet peut démarrer et signaler proprement un fournisseur non configuré | À la création du fournisseur et au démarrage |
+| `backend/app/repositories/sqlite_repository.py` | Crée les tables, migre sans perte la colonne `origin` et gère connexions courtes | Utilise `sqlite3` standard et une connexion par opération | Au démarrage, à chaque transition et à la lecture de la galerie |
+| `backend/app/config.py` | Charge la cible, délais, réglages TripoSR et taille maximale d'import GLB | Centralise les valeurs configurables, sans valeur de fournisseur inventée | À la création des services et au démarrage |
 | `backend/app/providers/huggingface.py` | Sonde la cible sous 5 secondes, découvre les appels et bornes de TripoSR et valide le GLB 2.0 | Évite les noms/plages inventés et n'affiche pas d'adresse dans l'état de santé | Au badge de santé et à chaque génération |
-| `backend/app/schemas.py` | Fixe les réponses JSON des catégories, générations et galerie, dont l'avertissement photo | Stabilise les contrats HTTP sans exposer les chemins locaux | Sur les routes `/categories` et `/models` |
+| `backend/app/schemas.py` | Fixe les réponses JSON avec l'origine, l'état, la date et les liens de galerie | Stabilise les contrats HTTP sans exposer les chemins locaux | Sur les routes `/categories` et `/models` |
 | `backend/app/routers/__init__.py` | Marque le paquet des routes | Clarifie l'organisation Python | À l'import des routes |
 | `backend/app/routers/categories.py` | Expose lister, créer, renommer, activer/désactiver et supprimer les catégories | Garde la validation HTTP distincte des règles métier | Aux actions de gestion et au chargement des choix |
-| `backend/app/routers/models.py` | Reçoit la photo et sa catégorie, expose les états, puis sert les GLB et photos source par identifiant | Sépare HTTP du métier et place chaque génération réussie dans le bon filtre de galerie | À l'envoi, au suivi et à la consultation de la galerie |
+| `backend/app/routers/models.py` | Reçoit les photos, importe les GLB, copie les exemples autorisés, expose les états et réunit la galerie | Sépare HTTP du métier et valide les catégories avant l'enregistrement | À l'envoi, au suivi, à l'import et à la consultation des modèles |
 | `backend/app/services/__init__.py` | Marque le paquet métier | Clarifie les imports de services | À l'import du validateur et du service |
 | `backend/app/services/category_service.py` | Vérifie les catégories, les slugs et les libellés puis traduit les erreurs de persistance | Centralise les règles réutilisables par les routes et les tests | Lors du CRUD et avant chaque upload |
 | `backend/app/services/upload_validator.py` | Contrôle extension, MIME, signature et plafond de 10 Mo | Le nom ou le type annoncé seul ne suffit pas | Avant d'enregistrer une photo |
 | `backend/app/services/image_preparer.py` | Redresse, compose une image carrée avec marges et mesure petite taille/netteté via Pillow | Prépare une copie temporaire sans modifier l'original ni ajouter de modèle | Juste avant l'appel du fournisseur |
-| `backend/app/services/demo_gallery.py` | Liste seulement cinq GLB autorisés, valide leur structure 2.0 et ajoute la photo source seulement si elle existe | N'expose aucun chemin fourni par le client et exclut les fichiers absents ou invalides | À l'ouverture de la galerie ou d'un modèle d'essai |
-| `backend/app/services/generation_service.py` | Orchestre états, préparation de copie, fournisseur, fichiers et historique ; conserve les avertissements | Garde le métier indépendant de SQLite et préserve la photo source | Après un upload, pendant le traitement et à la lecture de l'historique |
+| `backend/app/services/demo_gallery.py` | Liste les cinq GLB autorisés, valide le GLB 2.0 en fichier ou en mémoire et résout les exemples copiables | Partage un validateur strict sans exposer de chemin arbitraire | À l'ouverture de la galerie, à l'import et à la copie d'exemple |
+| `backend/app/services/generation_service.py` | Orchestre génération et enregistrement des modèles importés ou copiés, avec leur origine | Garde la validation métier indépendante de SQLite et du stockage | Après un upload photo, import GLB ou copie d'exemple |
 | `backend/app/providers/__init__.py` | Marque le paquet d'adaptateurs | Isole les fournisseurs externes | À l'import fournisseur |
 | `backend/app/providers/base.py` | Définit `Image3DProvider.generate(Path) -> bytes` et l'erreur commune | Permet de remplacer Hugging Face sans réécrire le service | Dans GenerationService et les adaptateurs |
 | backend/app/providers/huggingface.py | Découvre le contrat avec view_api, lit les valeurs courantes de client.config, exécute les étapes TripoSR et valide GLB 2.0 | Évite d'interpréter les exemples comme des valeurs par défaut et prend la vraie sortie GLB | À chaque génération distante |
 | `backend/app/storage/__init__.py` | Marque le paquet des adaptateurs de stockage | Sépare les fichiers de persistance du métier | À l'import du stockage |
 | `backend/app/storage/base.py` | Définit le contrat `Storage` pour photos et GLB | Permet de changer la persistance derrière une interface | Dans GenerationService et ses tests |
-| `backend/app/storage/local_storage.py` | Écrit de façon atomique avec des noms UUID créés par le serveur | Démarre sans service payant et évite les chemins du client | À l'acceptation et à la fin d'une génération |
+| `backend/app/storage/local_storage.py` | Écrit les photos et GLB avec des noms UUID serveur et refuse l'écrasement d'un GLB | Évite les chemins client et conserve un stockage atomique sans service payant | À l'import et à la fin d'une génération |
 | `backend/data/forma3d.sqlite3` | Contient les métadonnées locales des catégories et générations | Base fixe, sans configuration ni dépendance serveur ; ignorée par Git | Créée et ouverte au démarrage et lors des opérations du dépôt |
 
 ## Interface
@@ -83,14 +83,14 @@ Mis à jour le 9 novembre 2026. Le Sprint 2 est terminé : catégories partagée
 | `frontend/css/theme.css` | Définit la palette sombre, les fontes, le focus et la réduction du mouvement | Centralise les règles globales et lisibles | Avant les styles des composants |
 | `frontend/css/components.css` | Met en page le studio, les pages de catalogue, le viewer et le menu repliable | Conserve la palette DESIGN.md, le focus clavier et le fonctionnement de 360 à 1440 px | Lors du rendu et des changements d'état/largeur |
 | `frontend/js/` | Regroupe l'état, l'API et les vues ES modules | Permet de suivre une responsabilité par fichier sans framework | Quand le navigateur charge le module principal |
-| `frontend/js/api.js` | Centralise fetch pour génération (photo et catégorie), galerie et santé du fournisseur | Empêche les vues de disperser les appels serveur | À chaque action et toutes les 30 secondes pour la disponibilité |
+| `frontend/js/api.js` | Centralise fetch pour génération, import GLB, copie d'exemple, galerie, catégories et santé | Empêche les vues de disperser les appels serveur | À chaque action et toutes les 30 secondes pour la disponibilité |
 | `frontend/js/router.js` | Résout les routes hash, conserve la page Créer pendant une navigation, active le lien courant et focalise le titre | Gère plusieurs pages sans framework et respecte le clavier et l'historique du navigateur | À l'ouverture, au clic dans le menu et lors de Précédent/Suivant |
 | `frontend/js/pages/` | Contient un module par page visible du vendeur | Isole le balisage et le montage de chaque route | Lorsqu'une route hash est ouverte |
 | `frontend/js/pages/create.js` | Présente photo, catégorie, progression réelle, viewer et détails techniques repliés si le service est arrêté | Conserve le parcours de création et son suivi durant une navigation temporaire | Sur `#/creer` |
-| `frontend/js/pages/models.js` | Filtre la galerie existante sur les identifiants UUID de générations de l'application | Sépare la collection du vendeur des exemples fixes sans nouvel endpoint | Sur `#/modeles` |
-| `frontend/js/pages/model-detail.js` | Charge état, modèle, photo source, date et lien de téléchargement pour un identifiant | Réutilise les routes API existantes et gère une fiche inconnue sans résultat inventé | Sur `#/modeles/{id}` |
+| `frontend/js/pages/models.js` | Affiche les modèles persistés, le formulaire d'import GLB, catégories et état vide | Réunit créations, imports et exemples copiés avec la même fiche | Sur `#/modeles` |
+| `frontend/js/pages/model-detail.js` | Charge état, origine, modèle, photo source facultative, date et téléchargement | Réutilise les routes d'état existantes et distingue un import d'une génération | Sur `#/modeles/{id}` |
 | `frontend/js/pages/categories.js` | Place la gestion existante dans une page séparée | Évite d'encombrer l'accueil et rend les actions de catalogue plus claires | Sur `#/categories` |
-| `frontend/js/pages/examples.js` | Présente les exemples autorisés par l'API galerie | Sépare les démonstrations de la collection du vendeur | Sur `#/exemples` |
+| `frontend/js/pages/examples.js` | Présente les exemples autorisés et propose de les copier dans Mes modèles avec une catégorie | Conserve les originaux dans la galerie d'exemples et crée une entrée locale séparée | Sur `#/exemples` |
 | `frontend/js/pages/viewer-markup.js` | Fournit le balisage du viewer utilisé par la page Créer | Évite de dupliquer les commandes accessibles | Au montage du parcours de création |
 | `frontend/js/state.js` | Garde en mémoire photo, statut, durée et minuteries de la session | Évite une base de données pour cet état temporaire | Pendant l'envoi et le suivi d'une demande |
 | `frontend/js/main.js` | Démarre le routeur et diffuse l'état de disponibilité | Garde le contrôle santé unique et indépendant des pages | Au chargement et toutes les 30 secondes |
@@ -99,7 +99,7 @@ Mis à jour le 9 novembre 2026. Le Sprint 2 est terminé : catégories partagée
 | `frontend/js/views/categories.js` | Gère le CRUD et demande confirmation avant suppression | Protège les actions destructives et traduit les erreurs en mots simples | Sur `#/categories` |
 | `frontend/js/views/progress.js` | Traduit les états observés et le temps réel en étape accessible | N'invente ni pourcentage ni délai restant | Pendant et après une génération |
 | `frontend/js/views/viewer.js` | Charge le GLB, applique l'éclairage PBR documenté et ouvre la photo source dans une boîte de dialogue accessible | Améliore le rendu et permet de comparer la source sans rétrécir la scène | Après une génération ou une sélection de galerie |
-| `frontend/js/views/gallery.js` | Crée la bande de vignettes 3D filtrable et permet l'ouverture au clic ou au clavier | Garde les étiquettes réelles et rend chaque résultat directement sélectionnable | Après le chargement de galerie et une génération terminée |
+| `frontend/js/views/gallery.js` | Crée les cartes 3D, filtres, dates et badges d'origine issus de l'API | Rend visibles les différences entre génération, import et exemple | Après le chargement de la galerie |
 
 ## Tests et vérification continue
 
@@ -119,6 +119,7 @@ Mis à jour le 9 novembre 2026. Le Sprint 2 est terminé : catégories partagée
 | `backend/tests/test_models_api.py` | Vérifie les réponses d'upload, de suivi, les erreurs et le refus de téléchargement prématuré | Stabilise le contrat HTTP sans appeler le fournisseur | À chaque suite pytest |
 | `backend/tests/test_frontend.py` | Vérifie les ressources, catégories dynamiques, santé, blocage hors ligne et avertissement photo | Protège les contrats statiques sans navigateur | À chaque suite pytest |
 | `backend/tests/test_demo_gallery.py` | Vérifie les modèles autorisés et les photos source facultatives sans réseau | Protège la galerie et sa comparaison photo/GLB | À chaque suite pytest |
+| `backend/tests/test_model_library.py` | Vérifie l'import GLB, limites, catégories, copie d'exemple et migration de `origin` | Couvre les cas de bibliothèque avec SQLite temporaire et sans fournisseur | À chaque suite pytest |
 | `.github/workflows/ci.yml` | Vérifie les documents puis installe les dépendances et exécute pytest | Donne un contrôle répétable sur GitHub | À chaque push ou pull request |
 
 ## Documentation et historique
@@ -129,7 +130,7 @@ Mis à jour le 9 novembre 2026. Le Sprint 2 est terminé : catégories partagée
 | `docs/etapes/` | Contient un guide par étape de chaque sprint | Permet de comprendre l'évolution sans mélanger les étapes | Pour apprendre et préparer la soutenance |
 | `docs/ETAT.md` | Résume les sprints, les étapes prouvées et les points encore ouverts | Distingue les preuves passées du travail non réalisé | Au début et à la fin d'une session |
 | `docs/STRUCTURE.md` | Explique chaque élément du dépôt | Aide l'étudiante à défendre les choix | À chaque ajout ou changement de structure |
-| `docs/STOCKAGE.md` | Explique le schéma SQLite, le chemin fixe, les connexions et la lecture de l'historique | Rend les choix de persistance présentables à la soutenance | À l'étape 8 et lors d'une évolution du stockage |
+| `docs/STOCKAGE.md` | Explique SQLite, migration d'origine, imports et copie de modèles | Rend les choix de persistance et la provenance présentables à la soutenance | À chaque évolution de la bibliothèque |
 | `docs/etapes/etape-01.md` | Explique FastAPI et GET `/health` | Garde une trace pédagogique du premier socle | Pour réviser l'étape 1 |
 | `docs/etapes/etape-02.md` | Explique le validateur et le contrat d'upload historique | Documente l'évolution de POST `/models` au fil du sprint | Pour réviser l'étape 2 |
 | `docs/etapes/etape-03.md` | Décrit l'API Hugging Face inspectée, les photos, la licence et les erreurs observées | Distingue l'implémentation de sa faisabilité non démontrée | Pour revoir le fournisseur ou expliquer l'essai au jury |
@@ -142,6 +143,7 @@ Mis à jour le 9 novembre 2026. Le Sprint 2 est terminé : catégories partagée
 | `docs/etapes/etape-09.md` | Explique le CRUD catégories backend/frontend, les règles de suppression et les tests | Permet de justifier le cycle de vie et la source SQLite | Pour réviser l'étape 9 |
 | `docs/etapes/etape-10.md` | Explique Pillow, le cadrage, les avertissements, la conservation de la source et les limites | Rend la préparation d'image défendable sans boîte noire lourde | Pour réviser l'étape 10 |
 | `docs/etapes/etape-11.md` | Documente les routes, le schéma, le focus, le menu et les vérifications manuelles | Explique la navigation frontend sans confondre l'étape avec le Sprint 3 | Pour présenter ou faire évoluer le Studio à pages |
+| `docs/etapes/etape-12.md` | Explique l'import, la validation GLB, la copie d'exemples, l'origine et les tests | Documente l'ajout à la bibliothèque sans démarrer le Sprint 5 | Pour réviser l'étape 12 |
 | `docs/etapes/.gitkeep` | Marqueur ancien du dossier de guides | Conservé sans rôle d'exécution | Au clonage du dépôt |
 | `docs/archive/` et `docs/archive/v1/` | Isolent les documents remplacés | Préservent l'historique tout en gardant les instructions v2 à la racine | Pour consulter l'ancienne vision |
 | `docs/archive/v1/etapes/` | Contient les guides des étapes v1 archivés | Évite de les confondre avec le Sprint 1 v2 | Consultation historique |
@@ -162,8 +164,8 @@ Mis à jour le 9 novembre 2026. Le Sprint 2 est terminé : catégories partagée
 | backend/data/feasibility-results/ | Contient les cinq GLB réellement téléchargés par l'application et validés GLB 2.0 | Les sorties de faisabilité ne sont pas versionnées ; aucune n'est simulée | Pour examiner les résultats ou les ouvrir dans un viewer |
 | `backend/storage/` | Dossier de runtime pour les photos et modèles des demandes | Conserve les uploads en dehors des sources | Créé automatiquement au premier upload |
 | `backend/storage/images/` | Photos reçues à l'exécution | Conserve les entrées hors du dépôt | Après un vrai upload |
-| `backend/storage/models/` | GLB reçus du fournisseur | Conserve les modèles générés hors du dépôt | Après une vraie génération réussie |
+| `backend/storage/models/` | GLB générés, importés ou copiés depuis les exemples | Conserve chaque modèle local sous un UUID et hors du dépôt | Après une génération, un import ou une copie |
 | `extension-debug.log` | Journal auxiliaire local de l'environnement de développement | N'est pas une entrée de l'application et est exclu de Git | Seulement si l'outil local le recrée |
 | `__pycache__/`, `.pytest_cache/` | Bytecode et cache de collecte | Ces fichiers se régénèrent automatiquement | Après imports et tests |
 
-Le registre des métadonnées est persisté dans `backend/data/forma3d.sqlite3` ; les photos sources et GLB restent dans `backend/storage/`. La gestion des catégories et la préparation Pillow sont terminées pour le Sprint 2. L'étape 11 modifie uniquement le frontend et reste hors Sprint 3. Les travaux PENDING/RUNNING du processus précédent deviennent FAILED au redémarrage, car une tâche de fond n'est pas reprise. Le Sprint 3 n'est pas démarré.
+Le registre des métadonnées est persisté dans `backend/data/forma3d.sqlite3` ; les photos sources et GLB restent dans `backend/storage/`. Le dépôt d'étape 12 conserve l'origine `generated`, `imported` ou `example` ; les imports/copies ne possèdent pas de photo source et ne reçoivent pas de durée de génération. Le Sprint 2 reste terminé, le Sprint 3 n'est pas démarré et l'étape 12 ne démarre pas le Sprint 5.

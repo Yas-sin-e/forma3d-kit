@@ -2,7 +2,7 @@
  * Rôle : rassemble les modèles de démonstration fournis par l'API dans une galerie distincte.
  * Exécution : router.js monte cette page sur #/exemples ; un clic ouvre la fiche du modèle.
  */
-import { listCategories } from "../api.js";
+import { copyExampleModel, listCategories } from "../api.js";
 import { setupGallery } from "../views/gallery.js";
 
 export const title = "Exemples de modèles";
@@ -18,18 +18,64 @@ export function render() {
         <div class="gallery-grid" id="gallery-grid" aria-live="polite"></div>
         <p class="gallery-message" id="gallery-message" role="status" hidden></p>
       </section>
+      <section class="panel model-import-panel" id="example-copy-panel" aria-labelledby="copy-example-title" hidden>
+        <h2 id="copy-example-title">Ajouter l’exemple à Mes modèles</h2>
+        <p id="copy-example-name"></p>
+        <form id="copy-example-form">
+          <label for="copy-example-category">Catégorie</label><select id="copy-example-category" required></select>
+          <div class="form-actions"><button class="button button-primary" type="submit">Ajouter à Mes modèles</button><button class="button button-secondary" id="cancel-copy-example" type="button">Annuler</button></div>
+          <p id="copy-example-feedback" role="status" aria-live="polite"></p>
+        </form>
+      </section>
     </section>`;
 }
 
 export function mount() {
+  const panel = document.querySelector("#example-copy-panel");
+  const categorySelect = document.querySelector("#copy-example-category");
+  const feedback = document.querySelector("#copy-example-feedback");
+  let selectedExample = null;
   const gallery = setupGallery(
     (model) => { window.location.hash = `#/modeles/${encodeURIComponent(model.id)}`; },
     {
       filter: (model) => !generationIdPattern.test(model.id),
       emptyMessage: "Aucun exemple n’est disponible pour le moment.",
       noMatchMessage: "Aucun exemple dans cette catégorie.",
-      sourceLabel: () => "Exemple du Studio",
+      actionLabel: "Ajouter à mes modèles",
+      onAction(model) {
+        selectedExample = model;
+        document.querySelector("#copy-example-name").textContent = model.name;
+        feedback.textContent = "";
+        panel.hidden = false;
+        categorySelect.focus();
+      },
     },
   );
-  void listCategories(true).then((response) => gallery.setCategories(response.items ?? [])).catch(() => {});
+  document.querySelector("#cancel-copy-example").addEventListener("click", () => { panel.hidden = true; });
+  void listCategories().then((response) => {
+    const categories = response.items ?? [];
+    gallery.setCategories(categories);
+    categorySelect.replaceChildren(new Option("Choisir une catégorie", ""));
+    categories.forEach((category) => categorySelect.add(new Option(category.label, category.slug)));
+  }).catch(() => { categorySelect.replaceChildren(new Option("Catégories indisponibles", "")); });
+  document.querySelector("#copy-example-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!selectedExample) return;
+    const submit = event.currentTarget.querySelector("button[type=submit]");
+    submit.disabled = true;
+    feedback.textContent = "Ajout de l’exemple…";
+    try {
+      const result = await copyExampleModel(selectedExample.id, selectedExample.name, categorySelect.value);
+      feedback.replaceChildren(document.createTextNode("Exemple ajouté à Mes modèles. "));
+      const libraryLink = document.createElement("a");
+      libraryLink.href = `#/modeles/${encodeURIComponent(result.id)}`;
+      libraryLink.textContent = "Ouvrir sa fiche";
+      feedback.append(libraryLink);
+      await gallery.reload();
+    } catch (error) {
+      feedback.textContent = error.message;
+    } finally {
+      submit.disabled = false;
+    }
+  });
 }

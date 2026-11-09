@@ -53,7 +53,7 @@ class DemoGallery:
                     name=name,
                     filename=filename,
                     category=category,
-                    source="generated_by_app",
+                    source="example",
                     size_bytes=path.stat().st_size,
                     model_url=f"/models/gallery/{model_id}",
                     source_image_url=(
@@ -86,12 +86,9 @@ class DemoGallery:
         return path if path.is_file() and path.suffix.casefold() in {".jpg", ".jpeg", ".png", ".webp"} else None
 
     @staticmethod
-    def _is_valid_glb_2(path: Path) -> bool:
-        """Vérifie l'en-tête, le JSON glTF 2.0 et les limites de chaque chunk."""
-        try:
-            data = path.read_bytes()
-        except OSError:
-            return False
+    def is_valid_glb_2(content: bytes) -> bool:
+        """Vérifie en mémoire la structure du conteneur GLB et son document glTF 2.0."""
+        data = content
         if len(data) < 20 or data[:4] != b"glTF":
             return False
         if int.from_bytes(data[4:8], "little") != 2:
@@ -126,3 +123,11 @@ class DemoGallery:
                 return False
             offset += 8 + chunk_length
         return offset == len(data)
+
+    @staticmethod
+    def _is_valid_glb_2(path: Path) -> bool:
+        """Vérifie l'en-tête, le JSON glTF 2.0 et les limites de chaque chunk."""
+        try:
+            return DemoGallery.is_valid_glb_2(path.read_bytes())
+        except OSError:
+            return False

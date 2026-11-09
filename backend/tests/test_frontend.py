@@ -109,6 +109,18 @@ def test_hash_router_and_pages_cover_accessible_seller_routes() -> None:
     assert "Exemples de modèles" in examples
     assert "window.confirm" in category_view
     assert "Ce nom de catégorie est déjà utilisé" in category_view
+    assert "Importer un modèle (.glb)" in models
+    assert "Créer à partir d’une photo" in models
+    assert "originLabels" in client.get("/static/js/views/gallery.js").text
+    assert "Ajouter à mes modèles" in examples
+    assert "copyExampleModel" in examples
+    assert "detail-origin" in detail
+
+    api = client.get("/static/js/api.js").text
+    viewer_markup = client.get("/static/js/pages/viewer-markup.js").text
+    assert 'fetch("/models/import"' in api
+    assert "/copy" in api
+    assert "Aperçu d’un fichier GLB (sans enregistrer)" in viewer_markup
 
 
 def test_local_model_controls_do_not_send_files_to_the_backend() -> None:

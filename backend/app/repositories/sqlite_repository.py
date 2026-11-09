@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Iterator
 
-from app.models import CategoryRecord, GenerationRecord, GenerationStatus, ProductCategory
+from app.models import CategoryRecord, GenerationRecord, GenerationStatus, ModelOrigin, ProductCategory
 from app.repositories.base import CategoryConflictError, CategoryInUseError, CategoryNotFoundError
 
 _INITIAL_CATEGORIES = (
@@ -73,6 +73,7 @@ class SQLiteGenerationRepository:
                     ),
                     error_message TEXT,
                     image_warning TEXT,
+                    origin TEXT NOT NULL DEFAULT 'generated' CHECK (origin IN ('generated', 'imported', 'example')),
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 )
@@ -84,6 +85,10 @@ class SQLiteGenerationRepository:
             }
             if "image_warning" not in generation_columns:
                 connection.execute("ALTER TABLE generations ADD COLUMN image_warning TEXT")
+            if "origin" not in generation_columns:
+                connection.execute(
+                    "ALTER TABLE generations ADD COLUMN origin TEXT NOT NULL DEFAULT 'generated'"
+                )
             connection.execute(
                 "CREATE INDEX IF NOT EXISTS idx_generations_status_created "
                 "ON generations(status, created_at DESC)"
@@ -112,11 +117,11 @@ class SQLiteGenerationRepository:
                 """
                 INSERT INTO generations (
                     id, category_id, status, filename, content_type,
-                    source_photo_path, glb_path, duration_seconds, error_message, image_warning,
+                    source_photo_path, glb_path, duration_seconds, error_message, image_warning, origin,
                     created_at, updated_at
                 )
                 VALUES (
-                    ?, (SELECT id FROM categories WHERE slug = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                    ?, (SELECT id FROM categories WHERE slug = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
                 )
                 ON CONFLICT(id) DO UPDATE SET
                     category_id = excluded.category_id,
@@ -128,6 +133,7 @@ class SQLiteGenerationRepository:
                     duration_seconds = excluded.duration_seconds,
                     error_message = excluded.error_message,
                     image_warning = excluded.image_warning,
+                    origin = excluded.origin,
                     created_at = excluded.created_at,
                     updated_at = excluded.updated_at
                 """,
@@ -137,11 +143,12 @@ class SQLiteGenerationRepository:
                     record.status.value,
                     record.filename,
                     record.content_type,
-                    str(record.image_path.resolve()),
+                    str(record.image_path.resolve()) if record.image_path is not None else "",
                     str(record.model_path.resolve()) if record.model_path is not None else None,
                     record.duration_seconds,
                     record.error_message,
                     record.image_warning,
+                    record.origin.value,
                     record.created_at.isoformat(),
                     record.updated_at.isoformat(),
                 ),
@@ -289,11 +296,12 @@ class SQLiteGenerationRepository:
             filename=row["filename"],
             content_type=row["content_type"],
             category=row["category_slug"],
-            image_path=Path(row["source_photo_path"]),
+            image_path=Path(row["source_photo_path"]) if row["source_photo_path"] else None,
             created_at=datetime.fromisoformat(row["created_at"]),
             updated_at=datetime.fromisoformat(row["updated_at"]),
             model_path=Path(row["glb_path"]) if row["glb_path"] is not None else None,
             error_message=row["error_message"],
             duration_seconds=row["duration_seconds"],
             image_warning=row["image_warning"],
+            origin=ModelOrigin(row["origin"]) if "origin" in row.keys() else ModelOrigin.GENERATED,
         )

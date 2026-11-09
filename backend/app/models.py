@@ -28,6 +28,14 @@ class GenerationStatus(StrEnum):
     FAILED = "FAILED"
 
 
+class ModelOrigin(StrEnum):
+    """Origine persistée d'un modèle visible dans la bibliothèque."""
+
+    GENERATED = "generated"
+    IMPORTED = "imported"
+    EXAMPLE = "example"
+
+
 class ProductCategory(StrEnum):
     """Catégories de mobilier prises en charge par le Sprint 1."""
 
@@ -45,10 +53,11 @@ class GenerationRecord:
     filename: str
     content_type: str
     category: str
-    image_path: Path
+    image_path: Path | None
     created_at: datetime
     updated_at: datetime
     model_path: Path | None = None
     error_message: str | None = None
     duration_seconds: float | None = None
     image_warning: str | None = None
+    origin: ModelOrigin = ModelOrigin.GENERATED

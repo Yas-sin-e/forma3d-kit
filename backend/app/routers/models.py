@@ -8,7 +8,7 @@ from typing import Annotated
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 
-from app.models import GenerationRecord, GenerationStatus
+from app.models import GenerationRecord, GenerationStatus, ModelOrigin
 from app.schemas import DemoGalleryResponse, DemoModelResponse, GenerationResponse
 from app.services.generation_service import GenerationService
 from app.services.demo_gallery import DemoGallery
@@ -46,6 +46,8 @@ def _to_response(record: GenerationRecord) -> GenerationResponse:
         model_url=f"/models/{record.id}/glb" if is_done else None,
         error_message=record.error_message,
         image_warning=record.image_warning,
+        origin=record.origin.value,
+        duration_seconds=record.duration_seconds,
     )
 
 
@@ -86,11 +88,11 @@ def list_demo_models(
     service: Annotated[GenerationService, Depends(get_generation_service)],
 ) -> DemoGalleryResponse:
     """Liste les cinq GLB de faisabilité et les générations réussies de la session."""
-    items = gallery.list_models()
+    items = [DemoModelResponse.model_validate(item) for item in gallery.list_models()]
     for record in service.list_completed_generations():
         model_path = service.get_model_path(record.id)
         source_path = service.get_source_image_path(record.id)
-        if model_path is None or source_path is None:
+        if model_path is None:
             continue
         items.append(
             DemoModelResponse(
@@ -98,13 +100,74 @@ def list_demo_models(
                 name=Path(record.filename).stem,
                 filename=f"{record.id}.glb",
                 category=record.category,
-                source="generated_by_app",
+                source=("generated_by_app" if record.origin is ModelOrigin.GENERATED else record.origin.value),
+                origin=record.origin.value,
+                created_at=record.created_at,
                 size_bytes=model_path.stat().st_size,
                 model_url=f"/models/{record.id}/glb",
-                source_image_url=f"/models/{record.id}/source-image",
+                source_image_url=f"/models/{record.id}/source-image" if source_path else None,
             )
         )
     return DemoGalleryResponse(items=items)
+
+
+@router.post("/import", response_model=GenerationResponse, status_code=201)
+async def import_model(
+    request: Request,
+    file: Annotated[UploadFile, File(description="Un modèle GLB 2.0 jusqu'à 30 Mo.")],
+    category: Annotated[str, Form(description="Slug d'une catégorie active.")],
+    service: GenerationService = Depends(get_generation_service),
+    title: Annotated[str, Form()] = "",
+) -> GenerationResponse:
+    """Valide et enregistre un fichier GLB local dans la bibliothèque."""
+    max_bytes = request.app.state.max_glb_upload_bytes
+    filename = file.filename or "modele.glb"
+    try:
+        if Path(filename.replace("\\", "/")).suffix.casefold() != ".glb":
+            raise HTTPException(status_code=415, detail="Choisissez un fichier avec l'extension .glb.")
+        content = await file.read(max_bytes + 1)
+        if len(content) > max_bytes:
+            raise HTTPException(status_code=413, detail="Le fichier dépasse la taille maximale autorisée.")
+        record = service.create_library_model(
+            content=content,
+            title=title,
+            filename=filename,
+            category=category,
+            origin=ModelOrigin.IMPORTED,
+            max_upload_bytes=max_bytes,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    finally:
+        await file.close()
+    return _to_response(record)
+
+
+@router.post("/examples/{example_id}/copy", response_model=GenerationResponse, status_code=201)
+def copy_example_to_library(
+    example_id: str,
+    request: Request,
+    category: Annotated[str, Form()],
+    service: GenerationService = Depends(get_generation_service),
+    gallery: DemoGallery = Depends(get_demo_gallery),
+    title: Annotated[str, Form()] = "",
+) -> GenerationResponse:
+    """Copie un exemple autorisé dans l'historique avec son origine conservée."""
+    source = gallery.get_model_path(example_id)
+    if source is None:
+        raise HTTPException(status_code=404, detail="Cet exemple n'est plus disponible.")
+    try:
+        record = service.create_library_model(
+            content=source.read_bytes(),
+            title=title or source.stem,
+            filename=source.name,
+            category=category,
+            origin=ModelOrigin.EXAMPLE,
+            max_upload_bytes=request.app.state.max_glb_upload_bytes,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    return _to_response(record)
 
 
 @router.get("/gallery/{model_id}")

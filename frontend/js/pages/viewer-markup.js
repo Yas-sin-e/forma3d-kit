@@ -11,7 +11,7 @@ export const viewerMarkup = `
       </div>
       <div class="viewer-actions">
         <span class="origin-badge" id="origin-badge" hidden></span>
-        <button class="button button-secondary local-open-button" id="open-local-glb" type="button">Ouvrir un modèle sur cet appareil</button>
+        <button class="button button-secondary local-open-button" id="open-local-glb" type="button">Aperçu d’un fichier GLB (sans enregistrer)</button>
         <input class="visually-hidden" id="local-glb-input" type="file" accept=".glb,model/gltf-binary" aria-label="Choisir un modèle sur cet appareil">
         <a class="button button-download" id="download-link" href="#" download hidden>Télécharger le modèle</a>
       </div>

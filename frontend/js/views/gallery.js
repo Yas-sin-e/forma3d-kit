@@ -14,6 +14,7 @@ export function setupGallery(onOpenModel, options = {}) {
   const grid = document.querySelector("#gallery-grid");
   const count = document.querySelector("#gallery-count");
   const message = document.querySelector("#gallery-message");
+  const emptyActions = document.querySelector("#library-empty-actions");
   let models = [];
   let categories = [];
   const includeModel = typeof options.filter === "function" ? options.filter : () => true;
@@ -21,6 +22,10 @@ export function setupGallery(onOpenModel, options = {}) {
   function createCard(model) {
     const article = document.createElement("article");
     article.className = "model-card";
+    const openButton = document.createElement("button");
+    openButton.className = "model-card-open";
+    openButton.type = "button";
+    openButton.setAttribute("aria-label", "Ouvrir « " + model.name + " » dans le viewer");
 
     const preview = document.createElement("div");
     preview.className = "model-card-preview";
@@ -50,25 +55,34 @@ export function setupGallery(onOpenModel, options = {}) {
 
     const source = document.createElement("span");
     source.className = "source-badge";
-    source.textContent = options.sourceLabel?.(model) ?? (model.source === "generated_by_app"
-      ? "Créé avec Forma3D"
-      : "Importé manuellement");
-
     const size = document.createElement("p");
     size.className = "model-card-size";
     size.textContent = "Modèle 3D · " + formatMegabytes(model.size_bytes);
 
     content.append(heading, category, source, size);
-    article.append(preview, content);
-    article.setAttribute("role", "button");
-    article.tabIndex = 0;
-    article.setAttribute("aria-label", "Ouvrir « " + model.name + " » dans le viewer");
-    article.addEventListener("click", () => onOpenModel(model));
-    article.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter" && event.key !== " ") return;
-      event.preventDefault();
-      onOpenModel(model);
-    });
+    const originLabels = {
+      generated: "Généré par l’application",
+      imported: "Importé",
+      example: "Exemple",
+    };
+    source.textContent = options.sourceLabel?.(model) ?? originLabels[model.origin] ?? "Origine inconnue";
+    const created = document.createElement("p");
+    created.className = "model-card-date";
+    created.textContent = model.created_at
+      ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(new Date(model.created_at))
+      : "Exemple du catalogue";
+    content.append(created);
+    openButton.append(preview, content);
+    openButton.addEventListener("click", () => onOpenModel(model));
+    article.append(openButton);
+    if (typeof options.onAction === "function") {
+      const action = document.createElement("button");
+      action.type = "button";
+      action.className = "button button-secondary model-card-action";
+      action.textContent = options.actionLabel ?? "Ajouter à mes modèles";
+      action.addEventListener("click", () => options.onAction(model));
+      article.append(action);
+    }
     return article;
   }
 
@@ -80,6 +94,7 @@ export function setupGallery(onOpenModel, options = {}) {
     grid.replaceChildren(...visibleModels.map(createCard));
     count.textContent = availableModels.length + (availableModels.length > 1 ? " modèles" : " modèle");
     message.hidden = visibleModels.length > 0;
+    if (emptyActions) emptyActions.hidden = availableModels.length > 0;
     if (!availableModels.length) {
       message.textContent = options.emptyMessage ?? "Aucun modèle n’est disponible pour le moment.";
     } else if (!visibleModels.length) {

@@ -24,6 +24,7 @@ class Settings:
     hf_retry_delay_seconds: float = 5.0
     foreground_ratio: float | None = None
     mc_resolution: int | None = None
+    max_glb_upload_mb: int = 30
 
     def __post_init__(self) -> None:
         """Refuse une cible distante invalide ou des délais non positifs."""
@@ -52,6 +53,8 @@ class Settings:
             raise ValueError("FOREGROUND_RATIO doit être un nombre fini.")
         if self.mc_resolution is not None and self.mc_resolution <= 0:
             raise ValueError("MC_RESOLUTION doit être un entier positif.")
+        if self.max_glb_upload_mb < 1 or self.max_glb_upload_mb > 512:
+            raise ValueError("MAX_GLB_UPLOAD_MB doit être compris entre 1 et 512.")
 
 
 def get_settings() -> Settings:
@@ -69,4 +72,5 @@ def get_settings() -> Settings:
         hf_retry_delay_seconds=float(os.getenv("HF_RETRY_DELAY_SECONDS", "5")),
         foreground_ratio=float(foreground_ratio) if foreground_ratio else None,
         mc_resolution=int(mc_resolution) if mc_resolution else None,
+        max_glb_upload_mb=int(os.getenv("MAX_GLB_UPLOAD_MB", "30")),
     )

@@ -23,6 +23,7 @@ export function render(route) {
           <dl class="detail-facts">
             <div><dt>État</dt><dd id="detail-status">Chargement…</dd></div>
             <div><dt>Catégorie</dt><dd id="detail-category">—</dd></div>
+            <div><dt>Origine</dt><dd id="detail-origin">—</dd></div>
             <div><dt>Date de création</dt><dd id="detail-date">—</dd></div>
             <div><dt>Durée</dt><dd id="detail-duration">—</dd></div>
           </dl>
@@ -60,6 +61,7 @@ export function mount(route) {
   const name = document.querySelector("#detail-name");
   const state = document.querySelector("#detail-status");
   const category = document.querySelector("#detail-category");
+  const origin = document.querySelector("#detail-origin");
   const date = document.querySelector("#detail-date");
   const duration = document.querySelector("#detail-duration");
   const download = document.querySelector("#detail-download");
@@ -87,6 +89,8 @@ export function mount(route) {
         : "Le modèle est encore en cours de création.";
     state.textContent = record.status === "DONE" ? "Prêt" : record.status === "RUNNING" ? "Création en cours" : record.status === "PENDING" ? "En attente" : record.status === "FAILED" ? "Échec" : "Exemple disponible";
     category.textContent = labels.find((item) => item.slug === (model?.category || record.category))?.label || model?.category || record.category || "Non classée";
+    const originLabels = { generated: "Généré par l’application", imported: "Importé", example: "Exemple" };
+    origin.textContent = originLabels[model?.origin || record.origin] || "Origine inconnue";
     date.textContent = record.created_at ? formatDate(record.created_at) : "Date non disponible pour cet exemple";
     duration.textContent = formatDuration(record.duration_seconds);
     error.hidden = true;

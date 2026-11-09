@@ -1,6 +1,6 @@
 # État du projet — Forma3D Studio
 
-Dernière mise à jour : 9 novembre 2026.
+Dernière mise à jour : 10 novembre 2026.
 
 ## Sprint 2 — Qualité et fiabilité (terminé)
 
@@ -50,6 +50,17 @@ Dernière mise à jour : 9 novembre 2026.
 - L'en-tête conserve le badge santé, le menu devient repliable sous 640 px, les erreurs courantes sont formulées pour un vendeur et les informations Colab/.env sont uniquement dans les détails techniques repliables de la page Créer.
 - Vérification automatisée : `backend/tests/test_frontend.py` (5 tests ciblés), suite complète (75 tests), puis analyse syntaxique Node.js des 15 modules JavaScript. Aucun parcours interactif navigateur ni génération réelle n'a été fait.
 - À vérifier manuellement : routes et historique Précédent/Suivant ; menu actif et burger ; filtres de Mes modèles et Exemples ; création/confirmation de suppression des catégories ; fiche inconnue ; photo source et téléchargement ; affichage à 360 px et 1440 px.
+
+## Étape 12 — Import GLB et liste unifiée (incrément distinct, hors Sprint 5)
+
+- Objectif : permettre au vendeur d'ajouter un GLB local ou de copier un exemple dans la bibliothèque, avec une origine visible et honnête. Le Sprint 2 reste terminé ; l'étape 12 ne démarre pas le Sprint 5.
+- `POST /models/import` vérifie l'extension `.glb`, la taille et la structure GLB 2.0, puis exige une catégorie active. `MAX_GLB_UPLOAD_MB` est configurable dans `.env.example` (30 Mo par défaut ; 1 à 512 Mo). Le nom stocké est un UUID serveur et un fichier existant n'est pas écrasé.
+- `POST /models/examples/{example_id}/copy` copie uniquement un GLB de la liste d'exemples autorisés. Les deux routes créent un état `DONE` dans SQLite et un fichier dans `backend/storage/models/`.
+- La migration SQLite ajoute `origin` avec `generated` pour les anciennes lignes ; les nouveaux objets ont `generated`, `imported` ou `example`. Les imports/copies n'ont ni photo source ni durée de génération. Le dépôt les relit malgré l'absence de photo ; la galerie et la fiche affichent l'origine.
+- `#/modeles` propose l'import, un état vide avec les deux actions attendues, les filtres actifs de l'API, et la date/origine sur les cartes. `#/exemples` permet de choisir une catégorie avant la copie. La fiche détaille l'origine ; l'aperçu local de Créer porte maintenant le libellé « Aperçu d’un fichier GLB (sans enregistrer) ».
+- Vérification : suite complète pytest, 83 tests réussis en 5,44 s ; les 31 tests ciblés correspondants avaient également réussi. Node `--check` a accepté les modules JavaScript et `git diff --check` n'a trouvé aucune erreur d'espacement. Les tests utilisent SQLite temporaire et un GLB minimal construit uniquement pour vérifier le format ; aucun fournisseur distant n'a été appelé.
+- Non vérifié : navigation et formulaire dans un vrai navigateur, import d'un GLB réel depuis le poste, affichage visuel du nouveau modèle, fonctionnement à 360 px et CI GitHub. Le fournisseur 3D et le modèle choisi n'ont pas été modifiés. `backend/.env` n'a pas été consulté ni modifié.
+- Suivi pédagogique : `docs/etapes/etape-12.md`; détail de persistance : `docs/STOCKAGE.md`; structure des fichiers : `docs/STRUCTURE.md`.
 
 ## Sprint 1 — terminé (état documenté au 3 novembre)
 

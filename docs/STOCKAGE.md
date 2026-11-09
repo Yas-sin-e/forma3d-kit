@@ -1,37 +1,37 @@
-# Stockage local des générations
+# Stockage local des modèles
 
-## Choix retenu
+## Décision
 
-Les métadonnées de l'application sont conservées dans `backend/data/forma3d.sqlite3`. Le chemin est fixe dans `backend/app/main.py` : il n'y a donc pas de variable de configuration à ajouter dans `config.py` ou `.env.example`. Le dossier `backend/data/` et les extensions SQLite sont ignorés par Git. Les photos sources et les fichiers GLB restent dans le stockage local existant, sous `backend/storage/`.
+Les métadonnées de catégorie et de modèle restent dans SQLite, via `SQLiteGenerationRepository`. Les fichiers restent sous `backend/storage/`. SQLite est fourni par Python ; l'étape n'ajoute aucun serveur de base de données.
 
-Cette base SQLite locale ne nécessite ni service distant, ni abonnement, ni nouvelle dépendance Python. Elle est adaptée au prototype exécuté sur une seule machine. Elle n'apporte pas de réplication ni de sauvegarde automatique ; les fichiers locaux doivent être sauvegardés séparément si l'historique doit être conservé.
+La base garde son chemin fixe `backend/data/forma3d.sqlite3`, ignoré par Git. Le plafond des imports est configurable séparément par `MAX_GLB_UPLOAD_MB` dans `.env.example` ; il vaut 30 Mo par défaut.
 
-## Tables
+## Tables et origines
 
-`categories` contient `id`, `slug` unique, `label`, `is_active` et `created_at`. Au premier démarrage, le dépôt insère `chair` / « Chaise », `stool` / « Tabouret » et `side-table` / « Table d’appoint » si ces catégories n'existent pas. Les conflits de slug sont ignorés pour préserver les catégories existantes. L'API de l'étape 9 permet leur création, renommage, activation/désactivation et suppression contrôlée. Une catégorie référencée par une génération ne peut pas être supprimée ; la désactiver la retire des nouveaux envois, tout en conservant son lien et les modèles existants dans la galerie.
+`categories` contient le slug, le libellé, l'état actif et la date de création. Les générations et modèles de bibliothèque référencent une catégorie par sa clé étrangère.
 
-`generations` contient l'identifiant, la catégorie liée, l'état, le nom et le type du fichier source, les chemins locaux de la photo et du GLB, la durée, le message d'erreur, un éventuel `image_warning`, ainsi que les dates de création et de mise à jour. Les champs `filename`, `content_type`, `updated_at` et `image_warning` complètent les données métier pour reconstruire les réponses API. Le statut est limité à `PENDING`, `RUNNING`, `DONE` ou `FAILED`. À l'étape 10, le dépôt ajoute `image_warning` par `ALTER TABLE` si la base existante ne possède pas encore cette colonne ; les générations déjà présentes restent intactes.
+`generations` contient l'identifiant UUID, la catégorie, le statut, le nom d'affichage, le type de contenu, les chemins source/GLB, la durée, l'erreur, l'avertissement photo, les dates et l'origine. `origin` vaut `generated`, `imported` ou `example`.
 
-La base stocke les chemins et métadonnées, pas les octets des images ou des modèles. Le stockage de fichiers reste donc distinct de l'historique relationnel.
+La migration ajoute `origin` avec la valeur historique `generated` par défaut. Elle conserve les anciennes lignes et leurs chemins. `source_photo_path` reste non nul pour éviter de reconstruire la table SQLite : pour un modèle importé ou copié sans photo, le dépôt stocke une chaîne vide puis la convertit en `image_path=None` lors de la lecture. Cette convention évite une migration destructive.
 
-## Dépôt et connexions
+Les cinq exemples restent un catalogue de fichiers autorisés, pas des lignes SQLite au premier démarrage. Le clic « Ajouter à mes modèles » copie l'exemple dans `backend/storage/models/`, crée une ligne terminée avec `origin=example` et la catégorie choisie.
 
-`backend/app/repositories/base.py` définit le contrat `GenerationRepository`. `backend/app/repositories/sqlite_repository.py` l'implémente avec le module standard `sqlite3`. `GenerationService` dépend de l'interface et n'a pas besoin de connaître les requêtes SQL.
+## Parcours d'import
 
-Chaque opération du dépôt ouvre sa propre connexion SQLite, effectue sa lecture ou transaction, puis la ferme. Le fournisseur 3D s'exécute comme tâche de fond et peut prendre plusieurs minutes. Une connexion conservée et partagée entre requêtes ou threads risquerait d'être utilisée depuis un autre thread ; les connexions courtes isolent les opérations et évitent de partager un objet SQLite entre le thread HTTP et la tâche de génération. Le travail distant ne garde aucune transaction SQLite ouverte.
+`POST /models/import` reçoit le GLB, son titre et une catégorie active. Le service vérifie l'extension, la taille configurée, l'en-tête et la structure GLB 2.0 avec le validateur commun à `DemoGallery`. Il nettoie le titre et ne reprend jamais le nom client comme chemin. `LocalStorage` crée le fichier sous un UUID aléatoire et refuse d'écraser un chemin existant.
 
-## Redémarrage et galerie
+`POST /models/examples/{example_id}/copy` ne résout qu'un identifiant de l'allowlist d'exemples, puis passe par la même validation métier et le même stockage. Les deux parcours créent un enregistrement `DONE` sans durée de génération et sans photo source. Un import n'est donc jamais présenté comme une conversion photo-vers-3D.
 
-À l'initialisation du dépôt au démarrage, les lignes restées `PENDING` ou `RUNNING` sont passées à `FAILED`, avec le message « Génération interrompue au redémarrage du serveur. » Cela reflète le fait qu'une tâche Python en mémoire ne reprend pas après l'arrêt du processus ; aucune génération interrompue n'est annoncée comme réussie.
+## Connexions et lecture de la bibliothèque
 
-La galerie est assemblée par `backend/app/routers/models.py`, dans la route `GET /models/gallery`. Cette route garde les modèles de démonstration autorisés puis demande à `GenerationService.list_completed_generations()` les productions de l'application. Le service lit le dépôt SQLite et ne retourne que les entrées `DONE` dont le GLB et la photo source existent encore. L'API et le viewer gardent leur format et leurs interactions.
+Chaque opération SQLite ouvre, utilise puis ferme sa propre connexion. C'est important car le traitement photo peut continuer dans une tâche de fond pendant que d'autres requêtes lisent l'historique ; aucune connexion ne traverse les threads ou un appel au fournisseur.
 
-La photo source reste dans `backend/storage/images/` et est la seule affichée comme photo d'origine. `GenerationService.run()` crée une copie temporaire carrée avec Pillow dans un répertoire temporaire, avec une marge, un redimensionnement LANCZOS et un côté de sortie d'au moins 512 px. Le fournisseur reçoit cette copie ; le fichier temporaire est supprimé après l'appel. Une source petite ou jugée floue produit `image_warning`, conservé dans SQLite et rendu par l'API. Si Pillow ne peut pas décoder une source pourtant acceptée par le validateur, le service signale le problème et transmet l'original pour ne pas bloquer l'envoi.
+La route `GET /models/gallery`, dans `backend/app/routers/models.py`, rassemble les exemples autorisés et les modèles terminés du service. `GenerationService.list_completed_generations()` garde les entrées dont le GLB existe ; une photo source est exigée seulement pour les modèles `generated`, jamais pour `imported` ou `example`. La page Mes modèles ne retient que les identifiants UUID persistés, tandis que la page Exemples ne montre que le catalogue fixe. La fiche réutilise les routes d'état, GLB et photo source existantes.
 
-## Vérification et limites
+Les badges visibles sont dérivés d'`origin` : « Généré par l'application », « Importé » et « Exemple ». Le champ historique `source` suit également la provenance afin d'éviter de présenter un import comme une génération.
 
-`backend/tests/test_generation_repository.py` utilise une base temporaire et un fournisseur simulé local. Il vérifie les catégories initiales, l'ouverture d'une nouvelle connexion par opération, la récupération d'une génération terminée par un nouveau dépôt/service, et l'échec des travaux interrompus. Le GLB minimal du test sert uniquement à tester le cycle de persistance : ce n'est pas un résultat de génération ni un modèle de démonstration.
+## Vérifications et limites
 
-La persistance concerne les données écrites après l'introduction de SQLite. Les anciennes entrées qui n'existaient qu'en mémoire avant le changement ne peuvent pas être récupérées automatiquement. La base locale et les fichiers `backend/storage/` sont ignorés par Git et ne sont pas partagés entre clones.
+`backend/tests/test_model_library.py` contrôle l'import valide, l'extension et le contenu incorrects, la taille maximale, les catégories absentes/inactives, la copie d'un exemple et la migration sans perte. `backend/tests/test_generation_repository.py` contrôle la persistance SQLite générale. Tous les cas utilisent des fichiers temporaires, des conteneurs GLB minimaux de test et des appels HTTP locaux ; aucun fichier test n'est un modèle réel généré par le fournisseur.
 
-Le contrôle de netteté est une mesure heuristique des contours ; ce n'est pas une estimation de qualité visuelle ni une garantie d'amélioration du modèle. Pillow est léger par rapport à des pipelines de segmentation ou d'inférence. Aucun service externe ni traitement payant n'est requis pour le recadrage.
+La liste locale n'est pas un compte multi-utilisateur : les modèles sont partagés dans le stockage local de cette instance. Aucune génération réelle, import depuis le navigateur, inspection visuelle ou vérification CI GitHub n'est déduite des tests automatiques.

@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import tempfile
 from dataclasses import replace
 from datetime import UTC, datetime
@@ -13,12 +14,13 @@ from threading import RLock
 from time import monotonic
 from uuid import uuid4
 
-from app.models import GenerationRecord, GenerationStatus
+from app.models import GenerationRecord, GenerationStatus, ModelOrigin
 from app.providers.base import Image3DProvider, ProviderError
 from app.repositories.base import GenerationRepository
 from app.services.upload_validator import ValidatedUpload
 from app.services.image_preparer import ImagePreparer, ImagePreparationError
 from app.storage.base import Storage
+from app.services.demo_gallery import DemoGallery
 
 logger = logging.getLogger(__name__)
 
@@ -62,6 +64,7 @@ class GenerationService:
             image_path=image_path,
             created_at=now,
             updated_at=now,
+            origin=ModelOrigin.GENERATED,
         )
         with self._lock:
             self._repository.save_generation(record)
@@ -90,7 +93,7 @@ class GenerationService:
         record = self.get_generation(generation_id)
         if record is None or record.status is not GenerationStatus.DONE:
             return None
-        return record.image_path if record.image_path.is_file() else None
+        return record.image_path if record.image_path is not None and record.image_path.is_file() else None
 
     def list_completed_generations(self) -> list[GenerationRecord]:
         """Liste les générations persistées terminées, de la plus récente à l'ancienne."""
@@ -101,8 +104,67 @@ class GenerationService:
             for record in records
             if record.model_path is not None
             and record.model_path.is_file()
-            and record.image_path.is_file()
+            and (record.origin is not ModelOrigin.GENERATED or (
+                record.image_path is not None and record.image_path.is_file()
+            ))
         ]
+
+    @staticmethod
+    def _clean_model_title(title: str, filename: str) -> str:
+        """Nettoie un titre importé sans conserver de chemin ou de caractère de contrôle."""
+        candidate = title.strip()
+        if not candidate:
+            candidate = re.sub(r"[._-]+", " ", Path(filename.replace("\\", "/")).stem)
+        else:
+            candidate = Path(candidate).stem
+        candidate = re.sub(r"[\\/:*?\"<>|\x00-\x1f]", " ", candidate)
+        candidate = " ".join(candidate.split())[:100].strip()
+        if not candidate:
+            raise ValueError("Le titre du modèle ne peut pas être vide.")
+        return candidate
+
+    def create_library_model(
+        self,
+        *,
+        content: bytes,
+        title: str,
+        filename: str,
+        category: str,
+        origin: ModelOrigin,
+        max_upload_bytes: int,
+    ) -> GenerationRecord:
+        """Valide et persiste un GLB importé ou copié dans la bibliothèque du vendeur."""
+        if not content:
+            raise ValueError("Le fichier GLB est vide.")
+        if len(content) > max_upload_bytes:
+            raise ValueError("Le fichier dépasse la taille maximale autorisée.")
+        if not DemoGallery.is_valid_glb_2(content):
+            raise ValueError("Le fichier n'est pas un modèle GLB 2.0 valide.")
+        category_slug = str(getattr(category, "value", category)).strip()
+        if self._repository.get_category(category_slug) is None:
+            raise ValueError("Cette catégorie est inconnue ou désactivée.")
+        if origin not in {ModelOrigin.IMPORTED, ModelOrigin.EXAMPLE}:
+            raise ValueError("L'origine du modèle est invalide.")
+
+        clean_title = self._clean_model_title(title, filename)
+        model_id = str(uuid4())
+        model_path = self._storage.save_model(model_id, content)
+        now = datetime.now(UTC)
+        record = GenerationRecord(
+            id=model_id,
+            status=GenerationStatus.DONE,
+            filename=f"{clean_title}.glb",
+            content_type="model/gltf-binary",
+            category=category_slug,
+            image_path=None,
+            created_at=now,
+            updated_at=now,
+            model_path=model_path,
+            origin=origin,
+        )
+        with self._lock:
+            self._repository.save_generation(record)
+        return record
 
     def run(self, generation_id: str) -> None:
         """Exécute le fournisseur et publie DONE ou FAILED de façon atomique."""

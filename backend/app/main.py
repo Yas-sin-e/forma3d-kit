@@ -59,6 +59,7 @@ app.state.generation_service = GenerationService(
 app.state.generation_repository = generation_repository
 app.state.category_service = CategoryService(generation_repository)
 app.state.generation_provider = provider
+app.state.max_glb_upload_bytes = provider.settings.max_glb_upload_mb * 1024 * 1024
 app.state.demo_gallery = DemoGallery()
 
 app.include_router(models_router)
