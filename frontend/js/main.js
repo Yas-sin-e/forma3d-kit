@@ -14,6 +14,7 @@ const uploader = setupUploader(startGeneration);
 const progress = createProgressView();
 const viewer = setupViewer();
 const progressPanel = document.querySelector("#progress-panel");
+const imagePreparationWarning = document.querySelector("#image-preparation-warning");
 const providerBadge = document.querySelector("#provider-badge");
 const providerLabel = document.querySelector("#provider-label");
 const providerNotice = document.querySelector("#provider-notice");
@@ -58,6 +59,11 @@ function sameOriginPath(value) {
 }
 
 async function applyStatus(data) {
+  imagePreparationWarning.hidden = !data.image_warning;
+  imagePreparationWarning.textContent = data.image_warning
+    ? `${data.image_warning} Conseil : utilisez une photo nette, bien éclairée et cadrée sur un seul objet.`
+    : "";
+
   if (data.status === "PENDING" || data.status === "RUNNING") {
     updateGenerationStatus(data.status);
     updateProgress(data.status);
@@ -114,6 +120,8 @@ async function startGeneration(photo, category) {
   if (appState.isGenerating || !photo) return;
   stopTracking();
   beginGeneration(photo);
+  imagePreparationWarning.hidden = true;
+  imagePreparationWarning.textContent = "";
   viewer.clear();
   uploader.setBusy(true);
   progress.render("SENDING", { elapsedSeconds: 0 });

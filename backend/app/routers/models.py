@@ -45,6 +45,7 @@ def _to_response(record: GenerationRecord) -> GenerationResponse:
         status_url=f"/models/{record.id}",
         model_url=f"/models/{record.id}/glb" if is_done else None,
         error_message=record.error_message,
+        image_warning=record.image_warning,
     )
 
 

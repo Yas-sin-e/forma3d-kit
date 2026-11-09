@@ -2,14 +2,17 @@
 
 Dernière mise à jour : 9 novembre 2026.
 
-## Sprint 2 — Qualité et fiabilité (actif)
+## Sprint 2 — Qualité et fiabilité (terminé)
 
-- Objectif : rendre l'historique des générations persistant, gérer les catégories partagées, puis ajouter une préparation d'image légère.
+- Objectif : rendre l'historique persistant après redémarrage, gérer les catégories partagées et préparer les photos avec des outils légers.
 - Livrable vérifiable de l'étape 8 : un GLB terminé et ses métadonnées sont encore consultables après redémarrage du backend, et la galerie les lit depuis SQLite.
-- Fichier de suivi : `docs/ETAT.md` ; structure expliquée dans `docs/STRUCTURE.md` et détails de l'étape dans `docs/etapes/etape-08.md`.
+- Livrable vérifiable de l'étape 9 : CRUD des catégories persisté et utilisé par le formulaire et les filtres de galerie. Livrable vérifiable de l'étape 10 : une copie carrée préparée est envoyée au fournisseur, avec avertissement de netteté/taille, tandis que l'original reste intact.
+- Fichier de suivi : `docs/ETAT.md` ; structure expliquée dans `docs/STRUCTURE.md` et détails dans `docs/etapes/etape-08.md`, `etape-09.md` et `etape-10.md`.
 - Étape 8 : SQLite local derrière `GenerationRepository`, catégories initiales, historique relu par la galerie et récupération des travaux interrompus sont implémentés. Chemin fixe : `backend/data/forma3d.sqlite3` ; aucun changement à `config.py` ou `.env.example`. Suite complète : 61 tests réussis en 2,52 s ; tests isolés du fournisseur et de `backend/.env`.
-- Étape 9 : CRUD de catégories (création, renommage, désactivation ; refus de suppression si utilisée), routes et écran de gestion — en attente de l'étape 8 et d'un OK distinct.
-- Étape 10 : recadrage carré, agrandissement des petites images et contrôles de taille/netteté avec outils légers — en attente d'un OK distinct. Pas de `rembg`, OpenCV ou PyTorch sans confirmation explicite.
+- Étape 9a : routes GET/POST/PATCH/DELETE `/categories`, validations de slug/libellé et gestion de conflit ; suppression utilisée refusée en 409. Une catégorie inactive n'est plus proposée aux uploads, mais reste liée aux générations existantes. Commit `cb82ece` ; suite complète : 68 tests réussis.
+- Étape 9b : écran de gestion, formulaire et filtres de galerie alimentés par l'API ; les erreurs API sont présentées dans l'interface. Interface non vérifiée manuellement dans le navigateur durant cette session. Commit `1c3f1ac` ; suite complète : 68 tests réussis.
+- Étape 10 : `ImagePreparer` s'appuie sur Pillow 13.0.0, ajouté à `backend/requirements.txt` (Pillow n'était pas installé dans le venv avant cette étape). La copie envoyée est carrée, conserve 12 % de marge, a un côté de sortie d'au moins 512 px et utilise LANCZOS ; la photo source n'est pas modifiée. Les images petites/floues reçoivent un avertissement non bloquant. En cas de décodage impossible, le service conserve le comportement existant et envoie l'original avec un avertissement. Aucune dépendance `rembg`, OpenCV ou PyTorch n'a été ajoutée.
+- Vérification finale étape 10 : 74 tests pytest réussis, sans réseau fournisseur, avec `backend/.env` protégé contre la lecture. Les tests couvrent les avertissements, le cadrage, la conservation de la source, la migration SQLite, l'envoi de la copie préparée et le contrat HTTP/UI de l'avertissement. Pas de test de génération réelle ni de vérification visuelle navigateur pour cette étape. Sprint 3 non démarré.
 - Le choix du fournisseur et du modèle reste inchangé. `backend/.env` n'est ni lu ni modifié. Toute base de données prévue sera locale, dans `backend/data/`, ignorée par Git.
 
 ### Étape 8 — SQLite et historique persistant (Sprint 2)
@@ -24,6 +27,19 @@ Dernière mise à jour : 9 novembre 2026.
 - La suite complète a passé 61 tests en 2,52 s. Elle a été lancée avec `HF_SPACE_ID` vide et un garde-fou qui refuse le chargement de `.env` à la racine ou dans `backend/`, tout en laissant le test de configuration lire ses `.env` temporaires. Le bac à sable bloquait les sockets locales de FastAPI `TestClient` ; pytest a donc été exécuté avec l'autorisation requise pour cette vérification. Aucun fournisseur distant n'a été appelé.
 - Vérification visuelle dans le navigateur local sur le port 8012, processus lancé avec `PYTHON_DOTENV_DISABLED=1` et `HF_SPACE_ID` vide : badge « Serveur 3D : hors ligne », bouton de génération désactivé, cinq modèles de démonstration présents ; le clic sur « Chaise en bois cintré » a affiché le viewer, sa photo source et le lien de téléchargement. Cette galerie est celle des résultats de faisabilité, pas une nouvelle génération ; aucun appel fournisseur n'a eu lieu. Edge n'était pas accessible par le pilote de navigateur, la vérification a donc été faite dans le navigateur intégré.
 - `git check-ignore -v` confirme que `backend/data/forma3d.sqlite3` et `backend/data/probe.db` sont ignorés par la règle `backend/data/`.
+
+### Étape 9 — Catégories partagées (Sprint 2)
+
+- `backend/app/services/category_service.py` applique les règles métier ; `backend/app/routers/categories.py` expose la liste et le CRUD. Le dépôt SQLite est la source de vérité. Les doublons de slug et les libellés vides sont refusés avec un message lisible.
+- La suppression d'une catégorie référencée par une génération renvoie HTTP 409 ; une catégorie inutilisée peut être supprimée. Désactiver une catégorie la retire des choix de nouvel upload, sans retirer ses anciens modèles de l'historique ni de la galerie.
+- `frontend/js/views/categories.js` fournit l'écran de gestion ; `uploader.js` reçoit les catégories actives ; `gallery.js` charge les catégories pour filtrer les modèles. Vérification automatique : la suite complète a réussi après 9a et 9b (68 tests à chaque commit). Pas de vérification manuelle navigateur durant la finalisation.
+
+### Étape 10 — Préparation locale de la photo (Sprint 2)
+
+- `backend/app/services/image_preparer.py` utilise Pillow, sans modèle IA ni dépendance lourde. La photo d'origine reste dans `backend/storage/images/` et sert à l'aperçu ; seul un PNG carré temporaire préparé est transmis au fournisseur.
+- Le préparateur ajoute une marge de 12 %, agrandit la sortie à 512 px minimum et émet un avertissement si un côté source est inférieur à 512 px ou si la mesure locale des contours signale un manque de netteté. Ces avertissements ne bloquent pas la tâche. Si Pillow ne peut pas décoder le fichier, l'original est utilisé avec un avertissement.
+- Le champ `image_warning` est persisté dans SQLite, ajouté par migration non destructive, retourné par les réponses de génération et affiché dans le panneau de suivi avec un conseil photo.
+- Vérifications : 74 tests passent via pytest avec fournisseurs simulés. Aucune photo réelle n'a été générée avec le service 3D dans cette étape ; le navigateur n'a pas été piloté et l'apparence de l'avertissement reste à vérifier manuellement.
 
 ## Sprint 1 — terminé (état documenté au 3 novembre)
 

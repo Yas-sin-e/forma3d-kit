@@ -51,3 +51,4 @@ class GenerationRecord:
     model_path: Path | None = None
     error_message: str | None = None
     duration_seconds: float | None = None
+    image_warning: str | None = None

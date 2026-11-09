@@ -1,6 +1,6 @@
 # Structure expliquée — Forma3D Studio
 
-Mis à jour le 9 novembre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le backend Forma3D et TripoSR. L'étape 7 ajoute le contrôle de disponibilité, les catégories obligatoires pour les nouvelles photos, les réglages qualité et les photos source. L'interface du studio est compacte, son viewer est limité en hauteur et la galerie défile en bande de vignettes. L'étape 8 persiste l'historique dans SQLite, sous `backend/data/forma3d.sqlite3`, derrière une interface de dépôt.
+Mis à jour le 9 novembre 2026. Le Sprint 2 est terminé : catégories partagées gérées par API/SQLite et préparation locale des photos via Pillow. La source reste conservée ; seul un PNG carré temporaire est envoyé au fournisseur. Le Sprint 3 n'a pas commencé.
 
 ## Racine et documents de cadrage
 
@@ -43,24 +43,27 @@ Mis à jour le 9 novembre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le 
 | `backend/app/providers/` | Regroupe les adaptateurs image-vers-3D | Isole les SDK et APIs externes | Quand une photo doit être convertie |
 | `backend/app/storage/` | Regroupe contrat et implémentation de stockage | Permet de remplacer le disque local sans réécrire le service | À l'enregistrement et au téléchargement |
 | `backend/README.md` | Explique l'API, ses limites et ses commandes | Permet de lancer le serveur sans deviner les étapes | À l'installation et au développement |
-| `backend/requirements.txt` | Déclare FastAPI, Uvicorn, HTTPX2, pytest, multipart, Gradio Client et python-dotenv | Recrée les dépendances dans le venv | À l'installation et en CI |
+| `backend/requirements.txt` | Déclare FastAPI, Uvicorn, HTTPX2, pytest, multipart, Gradio Client, python-dotenv et Pillow | Recrée les dépendances du service et de la préparation légère dans le venv | À l'installation et en CI |
 | `backend/app/__init__.py` | Marque `app` comme paquet Python | Rend les imports déterministes | Au démarrage et pendant les tests |
 | `backend/app/main.py` | Construit FastAPI, choisit le chemin SQLite fixe, initialise le dépôt et journalise `.env`/HF_SPACE_ID absents sans exposer la cible | Configure l'adaptateur une fois tout en gardant les variables fournisseur inchangées | À l'import et au démarrage d'Uvicorn |
 | backend/.env | Configuration locale, dont la cible d'un serveur Gradio autorisé | Fichier ignoré par Git ; ne jamais copier son contenu dans un document, un journal ou un commit | Pour configurer un fournisseur disponible |
-| `backend/app/models.py` | Définit les états, la fiche de génération et sa durée mesurée | Sépare les données métier du format de stockage | Pendant le suivi et la relecture d'une génération |
+| `backend/app/models.py` | Définit les catégories, les états, la fiche de génération, sa durée et son avertissement photo | Sépare les données métier du format de stockage | Pendant la gestion, le suivi et la relecture |
 | `backend/app/repositories/` | Regroupe le contrat de dépôt et les adaptateurs de persistance | Isole SQL des règles métier | Quand le service lit ou écrit l'historique |
 | `backend/app/repositories/__init__.py` | Marque le paquet Python des dépôts | Rend leur rôle d'accès aux données explicite | À l'import du service ou de l'adaptateur |
 | `backend/app/repositories/base.py` | Définit `GenerationRepository` sans imposer SQLite au service | Permet de tester ou remplacer l'adaptateur indépendamment | Dans `GenerationService` et ses tests |
 | `backend/app/repositories/sqlite_repository.py` | Crée les tables et gère catégories, générations, connexions courtes et récupération après redémarrage | Utilise `sqlite3` standard et une connexion par opération | Au démarrage, à chaque transition et à la lecture de la galerie |
 | `backend/app/config.py` | Charge la cible, les délais et les réglages TripoSR facultatifs sans valeur par défaut de cible | Le projet peut démarrer et signaler proprement un fournisseur non configuré | À la création du fournisseur et au démarrage |
 | `backend/app/providers/huggingface.py` | Sonde la cible sous 5 secondes, découvre les appels et bornes de TripoSR et valide le GLB 2.0 | Évite les noms/plages inventés et n'affiche pas d'adresse dans l'état de santé | Au badge de santé et à chaque génération |
-| `backend/app/schemas.py` | Fixe les réponses JSON, dont la catégorie choisie et la photo source facultative | Stabilise les réponses et empêche les catégories hors MVP | Sur les routes /models |
+| `backend/app/schemas.py` | Fixe les réponses JSON des catégories, générations et galerie, dont l'avertissement photo | Stabilise les contrats HTTP sans exposer les chemins locaux | Sur les routes `/categories` et `/models` |
 | `backend/app/routers/__init__.py` | Marque le paquet des routes | Clarifie l'organisation Python | À l'import des routes |
+| `backend/app/routers/categories.py` | Expose lister, créer, renommer, activer/désactiver et supprimer les catégories | Garde la validation HTTP distincte des règles métier | Aux actions de gestion et au chargement des choix |
 | `backend/app/routers/models.py` | Reçoit la photo et sa catégorie, expose les états, puis sert les GLB et photos source par identifiant | Sépare HTTP du métier et place chaque génération réussie dans le bon filtre de galerie | À l'envoi, au suivi et à la consultation de la galerie |
 | `backend/app/services/__init__.py` | Marque le paquet métier | Clarifie les imports de services | À l'import du validateur et du service |
+| `backend/app/services/category_service.py` | Vérifie les catégories, les slugs et les libellés puis traduit les erreurs de persistance | Centralise les règles réutilisables par les routes et les tests | Lors du CRUD et avant chaque upload |
 | `backend/app/services/upload_validator.py` | Contrôle extension, MIME, signature et plafond de 10 Mo | Le nom ou le type annoncé seul ne suffit pas | Avant d'enregistrer une photo |
+| `backend/app/services/image_preparer.py` | Redresse, compose une image carrée avec marges et mesure petite taille/netteté via Pillow | Prépare une copie temporaire sans modifier l'original ni ajouter de modèle | Juste avant l'appel du fournisseur |
 | `backend/app/services/demo_gallery.py` | Liste seulement cinq GLB autorisés, valide leur structure 2.0 et ajoute la photo source seulement si elle existe | N'expose aucun chemin fourni par le client et exclut les fichiers absents ou invalides | À l'ouverture de la galerie ou d'un modèle d'essai |
-| `backend/app/services/generation_service.py` | Orchestre les états, le fournisseur, le stockage des fichiers et le dépôt de métadonnées | Garde les règles métier indépendantes de SQLite | Après un upload, pendant le traitement et à la lecture de l'historique |
+| `backend/app/services/generation_service.py` | Orchestre états, préparation de copie, fournisseur, fichiers et historique ; conserve les avertissements | Garde le métier indépendant de SQLite et préserve la photo source | Après un upload, pendant le traitement et à la lecture de l'historique |
 | `backend/app/providers/__init__.py` | Marque le paquet d'adaptateurs | Isole les fournisseurs externes | À l'import fournisseur |
 | `backend/app/providers/base.py` | Définit `Image3DProvider.generate(Path) -> bytes` et l'erreur commune | Permet de remplacer Hugging Face sans réécrire le service | Dans GenerationService et les adaptateurs |
 | backend/app/providers/huggingface.py | Découvre le contrat avec view_api, lit les valeurs courantes de client.config, exécute les étapes TripoSR et valide GLB 2.0 | Évite d'interpréter les exemples comme des valeurs par défaut et prend la vraie sortie GLB | À chaque génération distante |
@@ -78,13 +81,14 @@ Mis à jour le 9 novembre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le 
 | `frontend/index.html` | Définit le studio compact, les conseils repliables, la photo agrandissable, le viewer, le suivi et la galerie | Garde l'interface accessible tout en donnant la priorité à la scène 3D | Quand FastAPI sert la page d'accueil |
 | `frontend/css/` | Regroupe le thème et les styles de composants | Sépare les jetons visuels de la mise en page | Au chargement de la page et pour une retouche visuelle |
 | `frontend/css/theme.css` | Définit la palette sombre, les fontes, le focus et la réduction du mouvement | Centralise les règles globales et lisibles | Avant les styles des composants |
-| `frontend/css/components.css` | Met en page le panneau d'entrée étroit, le viewer limité à 70 vh, sa miniature source, sa barre flottante et la bande de vignettes | Conserve les couleurs DESIGN.md, le focus clavier et le fonctionnement à partir de 360 px | Lors du rendu du studio et aux changements de largeur |
+| `frontend/css/components.css` | Met en page le panneau d'entrée étroit, le viewer limité à 70 vh, la bande de galerie et les avertissements photo | Conserve la palette DESIGN.md, le focus clavier et le fonctionnement à partir de 360 px | Lors du rendu et des changements d'état/largeur |
 | `frontend/js/` | Regroupe l'état, l'API et les vues ES modules | Permet de suivre une responsabilité par fichier sans framework | Quand le navigateur charge le module principal |
 | `frontend/js/api.js` | Centralise fetch pour génération (photo et catégorie), galerie et santé du fournisseur | Empêche les vues de disperser les appels serveur | À chaque action et toutes les 30 secondes pour la disponibilité |
 | `frontend/js/state.js` | Garde en mémoire photo, statut, durée et minuteries de la session | Évite une base de données pour cet état temporaire | Pendant l'envoi et le suivi d'une demande |
-| `frontend/js/main.js` | Coordonne formulaire, suivi, galerie et viewer ; rafraîchit le filtre après une génération réussie | Montre le résultat dans sa catégorie sans logique HTTP dans les vues | À l'ouverture et aux changements d'état |
+| `frontend/js/main.js` | Coordonne formulaire, suivi, galerie et viewer ; montre l'avertissement de préparation reçu par l'API | Affiche les retours du service sans ajouter d'appels HTTP dans les vues | À l'ouverture et aux changements d'état |
 | `frontend/js/views/` | Regroupe les vues de l'interface | Isole les responsabilités visibles du studio | Quand une vue est modifiée ou réutilisée |
 | `frontend/js/views/uploader.js` | Gère dépôt, validation photo et choix obligatoire parmi les trois catégories | Évite les générations sans type d'objet clair ou avec fournisseur hors ligne | Avant toute soumission |
+| `frontend/js/views/categories.js` | Charge et affiche les opérations CRUD, puis rafraîchit les choix et filtres | Maintient formulaire et galerie alignés sur les catégories partagées | À l'ouverture et après une modification de catégorie |
 | `frontend/js/views/progress.js` | Traduit les états observés et le temps réel en étape accessible | N'invente ni pourcentage ni délai restant | Pendant et après une génération |
 | `frontend/js/views/viewer.js` | Charge le GLB, applique l'éclairage PBR documenté et ouvre la photo source dans une boîte de dialogue accessible | Améliore le rendu et permet de comparer la source sans rétrécir la scène | Après une génération ou une sélection de galerie |
 | `frontend/js/views/gallery.js` | Crée la bande de vignettes 3D filtrable et permet l'ouverture au clic ou au clavier | Garde les étiquettes réelles et rend chaque résultat directement sélectionnable | Après le chargement de galerie et une génération terminée |
@@ -99,9 +103,13 @@ Mis à jour le 9 novembre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le 
 | backend/tests/test_huggingface_provider.py | Simule view_api et client.config pour tester la découverte d'endpoints, les vrais défauts lus dans config et la validation GLB | Aucun réseau ni GPU dans les tests | À chaque suite pytest |
 | backend/tests/test_generation_service.py | Vérifie les transitions d'état et le masquage du jeton et de l'URL dans les logs d'erreur | Protège le diagnostic des secrets locaux | À chaque suite pytest |
 | `backend/tests/test_generation_repository.py` | Vérifie schéma, catégories initiales, connexions indépendantes, persistance après redémarrage et récupération des tâches interrompues | Utilise un SQLite temporaire et un fournisseur simulé, sans réseau | À chaque suite pytest |
+| `backend/tests/test_category_repository.py` | Vérifie le CRUD SQLite, les conflits et les catégories utilisées | Protège les contraintes relationnelles | À chaque suite pytest |
+| `backend/tests/test_category_service.py` | Vérifie validation, normalisation et renommage des catégories | Teste les règles métier sans HTTP | À chaque suite pytest |
+| `backend/tests/test_categories_api.py` | Vérifie les routes CRUD, les conflits, l'inactivation et le refus d'upload | Stabilise l'API sans réseau | À chaque suite pytest |
+| `backend/tests/test_image_preparer.py` | Vérifie carré, agrandissement, avertissements flou/petite image et erreurs de décodage | Utilise des images déterministes générées localement | À chaque suite pytest |
 | `backend/tests/test_local_storage.py` | Contrôle écritures atomiques, noms et garde-fous de chemin | Protège le stockage local contre un chemin client | À chaque suite pytest |
 | `backend/tests/test_models_api.py` | Vérifie les réponses d'upload, de suivi, les erreurs et le refus de téléchargement prématuré | Stabilise le contrat HTTP sans appeler le fournisseur | À chaque suite pytest |
-| `backend/tests/test_frontend.py` | Vérifie les ressources, le polling santé, le blocage hors ligne et les conseils | Protège la structure du frontend sans navigateur | À chaque suite pytest |
+| `backend/tests/test_frontend.py` | Vérifie les ressources, catégories dynamiques, santé, blocage hors ligne et avertissement photo | Protège les contrats statiques sans navigateur | À chaque suite pytest |
 | `backend/tests/test_demo_gallery.py` | Vérifie les modèles autorisés et les photos source facultatives sans réseau | Protège la galerie et sa comparaison photo/GLB | À chaque suite pytest |
 | `.github/workflows/ci.yml` | Vérifie les documents puis installe les dépendances et exécute pytest | Donne un contrôle répétable sur GitHub | À chaque push ou pull request |
 
@@ -123,6 +131,8 @@ Mis à jour le 9 novembre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le 
 | docs/etapes/etape-06-colab.md | Explique l'essai historique, l'échec actuel d'attribution et la restriction de Colab sur les services web | Ne confond pas le succès d'octobre avec une disponibilité actuelle | Pour comprendre pourquoi le serveur est suspendu |
 | docs/etapes/etape-07.md | Explique le contrôle de santé, les réglages qualité, les essais vides et les limites des fournisseurs | Garde les notes visuelles et résultats à compléter par l'étudiante | Pour réviser l'étape et planifier une preuve autorisée |
 | `docs/etapes/etape-08.md` | Décrit le dépôt SQLite, les catégories initiales, le redémarrage et la galerie | Documente un seul incrément du Sprint 2 et ses tests | Pour expliquer ou vérifier l'étape 8 |
+| `docs/etapes/etape-09.md` | Explique le CRUD catégories backend/frontend, les règles de suppression et les tests | Permet de justifier le cycle de vie et la source SQLite | Pour réviser l'étape 9 |
+| `docs/etapes/etape-10.md` | Explique Pillow, le cadrage, les avertissements, la conservation de la source et les limites | Rend la préparation d'image défendable sans boîte noire lourde | Pour réviser l'étape 10 |
 | `docs/etapes/.gitkeep` | Marqueur ancien du dossier de guides | Conservé sans rôle d'exécution | Au clonage du dépôt |
 | `docs/archive/` et `docs/archive/v1/` | Isolent les documents remplacés | Préservent l'historique tout en gardant les instructions v2 à la racine | Pour consulter l'ancienne vision |
 | `docs/archive/v1/etapes/` | Contient les guides des étapes v1 archivés | Évite de les confondre avec le Sprint 1 v2 | Consultation historique |
@@ -147,4 +157,4 @@ Mis à jour le 9 novembre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le 
 | `extension-debug.log` | Journal auxiliaire local de l'environnement de développement | N'est pas une entrée de l'application et est exclu de Git | Seulement si l'outil local le recrée |
 | `__pycache__/`, `.pytest_cache/` | Bytecode et cache de collecte | Ces fichiers se régénèrent automatiquement | Après imports et tests |
 
-Le registre des métadonnées est persisté dans `backend/data/forma3d.sqlite3` ; les photos et GLB restent dans `backend/storage/`. Les travaux PENDING/RUNNING du processus précédent deviennent FAILED au redémarrage, car une tâche de fond n'est pas reprise. Le dossier `frontend/` contient la page actuelle. Les étapes 9 et 10 restent hors de l'étape 8 : CRUD des catégories et préparation d'image.
+Le registre des métadonnées est persisté dans `backend/data/forma3d.sqlite3` ; les photos sources et GLB restent dans `backend/storage/`. La gestion des catégories et la préparation Pillow sont terminées pour le Sprint 2. Les travaux PENDING/RUNNING du processus précédent deviennent FAILED au redémarrage, car une tâche de fond n'est pas reprise. Le Sprint 3 n'est pas démarré.

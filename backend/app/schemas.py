@@ -21,6 +21,10 @@ class GenerationResponse(BaseModel):
     status_url: str
     model_url: str | None = None
     error_message: str | None = None
+    image_warning: str | None = Field(
+        default=None,
+        description="Avertissement non bloquant issu de la préparation locale de la photo.",
+    )
 
 
 class DemoModelResponse(BaseModel):

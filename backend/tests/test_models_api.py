@@ -59,6 +59,7 @@ def test_upload_returns_job_and_status_records_provider_failure(tmp_path: Path) 
         assert status_response.json()["error_message"] == (
             "Space public indisponible pour ce test."
         )
+        assert "n'a pas pu être préparée localement" in status_response.json()["image_warning"]
 
         download_response = client.get(f"/models/{generation_id}/glb")
         assert download_response.status_code == 409

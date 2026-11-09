@@ -51,10 +51,10 @@ Ne pas faire au Sprint 1 : OpenCV, rembg, comptes, base de données, Next.js, Do
 ## Sprint 2 — qualité et fiabilité
 Objectif : conserver l'historique des générations après redémarrage, gérer les catégories partagées et préparer les photos avec des contrôles légers.
 
-Étapes, une à la fois et seulement après l'OK de l'étudiante :
+Étapes de référence, réalisées une à la fois. Pour les sous-étapes restantes, attendre l'OK de l'étudiante :
 8. SQLite et historique persistant derrière une interface de dépôt ; tables `categories` et `generations`, catégories initiales chaise/tabouret/table d'appoint, galerie inchangée côté API/viewer ; test de persistance après redémarrage ; écrire `docs/STOCKAGE.md`.
-9. CRUD des catégories partagées : créer, renommer, désactiver et refuser la suppression d'une catégorie utilisée ; routes et interface de gestion.
-10. Préparation de la photo : recadrage carré, agrandissement des petites images, contrôle de taille et de netteté avec les outils légers déjà présents ou ajoutés après validation.
+9. CRUD des catégories partagées : créer, renommer, désactiver/réactiver et supprimer si inutilisée ; routes API, menu d'envoi et filtres de galerie alimentés par SQLite.
+10. Préparation locale avec Pillow : carré avec marges, côté de sortie d'au moins 512 px, avertissement non bloquant pour photo petite/floue, original conservé et copie préparée envoyée au fournisseur.
 
 Ne pas changer le fournisseur 3D ni le modèle retenu au Sprint 2. Ne pas ajouter `rembg`, OpenCV ou PyTorch sans confirmation explicite de l'étudiante. Le fichier SQLite local reste dans `backend/data/`, ignoré par Git.
 
@@ -118,7 +118,7 @@ Au début de chaque session, lire AGENTS.md, docs/ETAT.md et docs/STRUCTURE.md, 
 - Les étiquettes `Chaise métal 01/02` ne changent qu'après validation de l'étudiante.
 
 ## État au 9 novembre 2026
-- Sprint actif : 2 — Qualité et fiabilité. L'étape 8 est implémentée ; consulter `docs/ETAT.md` pour les résultats des vérifications et ne commencer l'étape 9 qu'après un « OK » distinct.
+- Sprint 2 — Qualité et fiabilité : terminé (étapes 8, 9 et 10). Sprint 3 : non démarré.
 - Sprint 1 considéré terminé par l'étudiante ; la vérification de la CI GitHub reste à sa charge.
-- Livrable vérifiable de l'étape 8 : une génération terminée reste consultable après redémarrage du backend et apparaît dans la galerie depuis SQLite. Suivi : `docs/ETAT.md`, `docs/STRUCTURE.md` et `docs/etapes/etape-08.md`.
+- Livrable vérifiable de l'étape 8 : une génération terminée reste consultable après redémarrage du backend et apparaît dans la galerie depuis SQLite. Livrable de l'étape 9 : catégories CRUD pilotées par SQLite dans API, formulaire et galerie. Livrable de l'étape 10 : photo source conservée et copie préparée carrée envoyée au fournisseur, avec avertissement non bloquant. Suivi : `docs/ETAT.md`, `docs/STRUCTURE.md` et `docs/etapes/`.
 - Aucun changement au fournisseur ou au choix du modèle n'est autorisé au Sprint 2. Aucun secret n'est requis ni consulté pour le travail prévu.

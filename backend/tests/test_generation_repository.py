@@ -148,3 +148,46 @@ def test_repository_opens_a_fresh_connection_for_each_operation(
 
     assert len(opened_connections) == 2
     assert opened_connections[0] is not opened_connections[1]
+
+
+def test_initialize_migrates_preparation_warning_column(tmp_path: Path) -> None:
+    database_path = tmp_path / "history.sqlite3"
+    with sqlite3.connect(database_path) as connection:
+        connection.execute(
+            """
+            CREATE TABLE categories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                slug TEXT NOT NULL UNIQUE,
+                label TEXT NOT NULL,
+                is_active INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE TABLE generations (
+                id TEXT PRIMARY KEY,
+                category_id INTEGER NOT NULL REFERENCES categories(id),
+                status TEXT NOT NULL,
+                filename TEXT NOT NULL,
+                content_type TEXT NOT NULL,
+                source_photo_path TEXT NOT NULL,
+                glb_path TEXT,
+                duration_seconds REAL,
+                error_message TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+
+    SQLiteGenerationRepository(database_path).initialize()
+
+    with sqlite3.connect(database_path) as connection:
+        columns = {
+            row[1]
+            for row in connection.execute("PRAGMA table_info(generations)").fetchall()
+        }
+
+    assert "image_warning" in columns

@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import logging
+import tempfile
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -16,6 +17,7 @@ from app.models import GenerationRecord, GenerationStatus
 from app.providers.base import Image3DProvider, ProviderError
 from app.repositories.base import GenerationRepository
 from app.services.upload_validator import ValidatedUpload
+from app.services.image_preparer import ImagePreparer, ImagePreparationError
 from app.storage.base import Storage
 
 logger = logging.getLogger(__name__)
@@ -29,10 +31,12 @@ class GenerationService:
         provider: Image3DProvider,
         storage: Storage,
         repository: GenerationRepository,
+        image_preparer: ImagePreparer | None = None,
     ) -> None:
         self._provider = provider
         self._storage = storage
         self._repository = repository
+        self._image_preparer = image_preparer or ImagePreparer()
         self._lock = RLock()
 
     def create_generation(
@@ -115,8 +119,30 @@ class GenerationService:
             self._repository.save_generation(running_record)
 
         try:
-            model_bytes = self._provider.generate(running_record.image_path)
-            model_path = self._storage.save_model(generation_id, model_bytes)
+            with tempfile.TemporaryDirectory(prefix="forma3d-photo-") as temporary_directory:
+                prepared_path = Path(temporary_directory) / "prepared.png"
+                provider_image_path = running_record.image_path
+                try:
+                    preparation = self._image_preparer.prepare(
+                        running_record.image_path,
+                        prepared_path,
+                    )
+                    provider_image_path = preparation.prepared_path
+                    image_warning = preparation.warning
+                except ImagePreparationError:
+                    image_warning = (
+                        "La photo n'a pas pu être préparée localement ; la photo originale sera envoyée. "
+                        "Vérifiez qu'il s'agit d'une image JPG, PNG ou WebP lisible."
+                    )
+                running_record = replace(
+                    running_record,
+                    image_warning=image_warning,
+                    updated_at=datetime.now(UTC),
+                )
+                with self._lock:
+                    self._repository.save_generation(running_record)
+                model_bytes = self._provider.generate(provider_image_path)
+                model_path = self._storage.save_model(generation_id, model_bytes)
         except ProviderError as error:
             provider_settings = getattr(self._provider, "settings", None)
             protected_values = (

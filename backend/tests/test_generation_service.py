@@ -6,6 +6,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from uuid import uuid4
 
+from PIL import Image
+
 from app.models import GenerationStatus, ProductCategory
 from app.providers.base import ProviderError
 from app.repositories.sqlite_repository import SQLiteGenerationRepository
@@ -57,6 +59,36 @@ def test_run_records_provider_failure_without_creating_a_model(tmp_path: Path) -
     assert updated.status is GenerationStatus.FAILED
     assert updated.error_message == "Space indisponible dans ce test."
     assert service.get_model_path(record.id) is None
+
+
+def test_run_sends_prepared_copy_and_preserves_original_photo(tmp_path: Path) -> None:
+    class InspectingProvider:
+        received_size: tuple[int, int] | None = None
+
+        def generate(self, image_path: Path) -> bytes:
+            with Image.open(image_path) as prepared:
+                self.received_size = prepared.size
+            raise ProviderError("Arrêt volontaire après vérification de la photo préparée.")
+
+    provider = InspectingProvider()
+    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    repository.initialize()
+    service = GenerationService(provider, LocalStorage(tmp_path), repository)
+    source = tmp_path / "upload.png"
+    Image.new("RGB", (128, 96), "white").save(source, format="PNG")
+    source_bytes = source.read_bytes()
+    upload = ValidatedUpload(filename="chair.png", content_type="image/png", size_bytes=len(source_bytes))
+    record = service.create_generation(upload, source_bytes, ProductCategory.CHAIR)
+
+    service.run(record.id)
+
+    updated = service.get_generation(record.id)
+    assert provider.received_size == (512, 512)
+    assert record.image_path.read_bytes() == source_bytes
+    assert updated is not None
+    assert updated.status is GenerationStatus.FAILED
+    assert updated.image_warning is not None
+    assert "moins de 512 px" in updated.image_warning
 
 
 def test_run_logs_provider_cause_while_masking_remote_credentials(
