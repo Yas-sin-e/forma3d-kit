@@ -30,6 +30,7 @@ export function setupUploader(onSubmit) {
   let selectedPhoto = null;
   let busy = false;
   let providerAvailable = false;
+  let categoriesLoaded = false;
 
   function setFeedback(message = "") {
     uploadFeedback.textContent = message;
@@ -46,7 +47,7 @@ export function setupUploader(onSubmit) {
       return;
     }
     const error = validatePhoto(selectedPhoto);
-    submitButton.disabled = busy || !providerAvailable || !categoryInput.value || Boolean(error);
+    submitButton.disabled = busy || !providerAvailable || !categoriesLoaded || !categoryInput.value || Boolean(error);
     if (error) setFeedback(error);
   }
 
@@ -55,7 +56,7 @@ export function setupUploader(onSubmit) {
     photoInput.disabled = isBusy;
     categoryInput.disabled = isBusy;
     openLocalButton.disabled = isBusy;
-    submitButton.disabled = isBusy || !providerAvailable || !selectedPhoto || !categoryInput.value || Boolean(validatePhoto(selectedPhoto));
+    submitButton.disabled = isBusy || !providerAvailable || !categoriesLoaded || !selectedPhoto || !categoryInput.value || Boolean(validatePhoto(selectedPhoto));
     submitButton.setAttribute("aria-busy", isBusy ? "true" : "false");
     const label = submitButton.querySelector(".button-label");
     label.textContent = isBusy ? "Génération en cours" : "Créer le modèle 3D";
@@ -63,7 +64,7 @@ export function setupUploader(onSubmit) {
 
   photoInput.addEventListener("change", () => setSelectedPhoto(photoInput.files[0]));
   categoryInput.addEventListener("change", () => {
-    submitButton.disabled = busy || !providerAvailable || !selectedPhoto || !categoryInput.value || Boolean(validatePhoto(selectedPhoto));
+    submitButton.disabled = busy || !providerAvailable || !categoriesLoaded || !selectedPhoto || !categoryInput.value || Boolean(validatePhoto(selectedPhoto));
     setFeedback("");
   });
 
@@ -114,9 +115,23 @@ export function setupUploader(onSubmit) {
     getSelectedCategory: () => categoryInput.value,
     setBusy,
     setError: setFeedback,
+    setCategories(categories) {
+      const previousValue = categoryInput.value;
+      const activeCategories = categories.filter((category) => category.is_active);
+      categoryInput.replaceChildren(new Option("Choisir une catégorie", ""));
+      for (const category of activeCategories) {
+        categoryInput.add(new Option(category.label, category.slug));
+      }
+      categoriesLoaded = true;
+      categoryInput.value = activeCategories.some((category) => category.slug === previousValue)
+        ? previousValue
+        : "";
+      submitButton.disabled = busy || !providerAvailable || !activeCategories.length || !selectedPhoto || !categoryInput.value || Boolean(validatePhoto(selectedPhoto));
+      if (!activeCategories.length) setFeedback("Aucune catégorie active. Créez ou réactivez une catégorie pour continuer.");
+    },
     setProviderAvailable(isAvailable) {
       providerAvailable = isAvailable;
-      submitButton.disabled = busy || !providerAvailable || !selectedPhoto || !categoryInput.value || Boolean(validatePhoto(selectedPhoto));
+      submitButton.disabled = busy || !providerAvailable || !categoriesLoaded || !selectedPhoto || !categoryInput.value || Boolean(validatePhoto(selectedPhoto));
     },
   };
 }

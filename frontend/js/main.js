@@ -8,6 +8,7 @@ import { setupUploader } from "./views/uploader.js";
 import { createProgressView } from "./views/progress.js";
 import { setupViewer } from "./views/viewer.js";
 import { setupGallery } from "./views/gallery.js";
+import { setupCategoryManager } from "./views/categories.js";
 
 const uploader = setupUploader(startGeneration);
 const progress = createProgressView();
@@ -164,6 +165,11 @@ const gallery = setupGallery((model) => {
   } catch (error) {
     viewer.announce(error.message);
   }
+});
+
+const categoryManager = setupCategoryManager(async (categories) => {
+  uploader.setCategories(categories);
+  gallery.setCategories(categories);
 });
 
 async function refreshProviderHealth() {

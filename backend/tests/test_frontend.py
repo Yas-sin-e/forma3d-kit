@@ -32,6 +32,8 @@ def test_home_serves_the_modular_studio_and_model_viewer() -> None:
     assert 'id="open-demo-model"' in html
     assert 'id="photo-guidance-title"' in html
     assert 'id="source-photo-image"' in html
+    assert 'id="category-management"' in html
+    assert 'id="category-create-form"' in html
     assert "Modèle approximatif créé à partir d’une seule photo" in html
 
 
@@ -46,6 +48,7 @@ def test_static_frontend_assets_are_served_and_only_api_module_calls_fetch() -> 
         "/static/js/views/progress.js",
         "/static/js/views/viewer.js",
         "/static/js/views/gallery.js",
+        "/static/js/views/categories.js",
     )
 
     assert api_response.status_code == 200
@@ -63,6 +66,7 @@ def test_provider_health_polling_and_offline_demo_fallback_are_in_api_modules() 
     main = client.get("/static/js/main.js").text
     uploader = client.get("/static/js/views/uploader.js").text
     gallery = client.get("/static/js/views/gallery.js").text
+    categories = client.get("/static/js/views/categories.js").text
 
     assert 'fetch("/health/provider"' in api
     assert "30_000" in main
@@ -72,6 +76,12 @@ def test_provider_health_polling_and_offline_demo_fallback_are_in_api_modules() 
     assert "gallery.openFirstModel()" in main
     assert "providerAvailable" in uploader
     assert "openFirstModel" in gallery
+    assert "setCategories(categories)" in uploader
+    assert "setCategories(nextCategories)" in gallery
+    assert "category.is_active" in gallery
+    assert "createCategory" in categories
+    assert "updateCategory" in categories
+    assert "deleteCategory" in categories
 
 
 def test_local_model_controls_do_not_send_files_to_the_backend() -> None:

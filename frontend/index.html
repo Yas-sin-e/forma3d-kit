@@ -30,6 +30,7 @@
       <nav class="header-nav" aria-label="Navigation principale">
         <a href="#studio" aria-current="page">Studio</a>
         <a href="#gallery">Modèles de démonstration</a>
+        <a href="#category-management">Catégories</a>
       </nav>
       <span class="provider-badge" id="provider-badge" data-status="checking" role="status" aria-live="polite">
         <span class="status-dot" aria-hidden="true"></span>
@@ -72,9 +73,6 @@
               <label for="product-category">Catégorie du produit</label>
               <select class="category-select" id="product-category" name="category" required>
                 <option value="" selected disabled>Choisir une catégorie</option>
-                <option value="chair">Chaise</option>
-                <option value="stool">Tabouret</option>
-                <option value="side-table">Table d’appoint</option>
               </select>
               <p class="format-note">La catégorie choisie classe le nouveau GLB dans la galerie.</p>
             </div>
@@ -237,14 +235,33 @@
           </div>
           <span class="gallery-count" id="gallery-count" aria-live="polite">Chargement des modèles…</span>
         </div>
-        <div class="filter-list" id="gallery-filters" role="group" aria-label="Filtrer les modèles par catégorie">
-          <button class="filter-chip" type="button" data-category="all" aria-pressed="true">Tous</button>
-          <button class="filter-chip" type="button" data-category="chair" aria-pressed="false">Chaises</button>
-          <button class="filter-chip" type="button" data-category="stool" aria-pressed="false">Tabourets</button>
-          <button class="filter-chip" type="button" data-category="side-table" aria-pressed="false">Tables d’appoint</button>
-        </div>
+        <div class="filter-list" id="gallery-filters" role="group" aria-label="Filtrer les modèles par catégorie"></div>
         <div class="gallery-grid" id="gallery-grid" aria-live="polite"></div>
         <p class="gallery-message" id="gallery-message" role="status" hidden></p>
+      </section>
+
+      <section class="category-management panel" id="category-management" aria-labelledby="category-management-title">
+        <div class="gallery-heading">
+          <div>
+            <p class="eyebrow">Catalogue partagé</p>
+            <h2 id="category-management-title">Gestion des catégories</h2>
+            <p class="gallery-copy">Les catégories actives sont proposées pour les prochaines générations. Les modèles existants conservent leur catégorie.</p>
+          </div>
+          <span class="gallery-count" id="category-count" aria-live="polite">Chargement des catégories…</span>
+        </div>
+        <form class="category-create-form" id="category-create-form">
+          <label>
+            <span>Identifiant (slug)</span>
+            <input id="new-category-slug" name="slug" maxlength="64" placeholder="ex. lampe-de-bureau" required>
+          </label>
+          <label>
+            <span>Nom affiché</span>
+            <input id="new-category-label" name="label" maxlength="100" placeholder="ex. Lampe de bureau" required>
+          </label>
+          <button class="button button-primary" type="submit">Créer la catégorie</button>
+        </form>
+        <p class="category-feedback" id="category-feedback" role="status" aria-live="polite" hidden></p>
+        <div class="category-list" id="category-list" aria-live="polite"></div>
       </section>
 
       <aside class="honesty-note">

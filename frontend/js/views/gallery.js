@@ -5,12 +5,6 @@
 import { listGalleryModels } from "../api.js";
 import { appState } from "../state.js";
 
-const categoryLabels = {
-  chair: "Chaise",
-  stool: "Tabouret",
-  "side-table": "Table d’appoint",
-};
-
 function formatMegabytes(bytes) {
   return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 }).format(bytes / (1024 * 1024)) + " Mo";
 }
@@ -21,6 +15,7 @@ export function setupGallery(onOpenModel) {
   const count = document.querySelector("#gallery-count");
   const message = document.querySelector("#gallery-message");
   let models = [];
+  let categories = [];
 
   function createCard(model) {
     const article = document.createElement("article");
@@ -50,7 +45,7 @@ export function setupGallery(onOpenModel) {
 
     const category = document.createElement("p");
     category.className = "model-card-category";
-    category.textContent = categoryLabels[model.category] ?? "Mobilier";
+    category.textContent = categories.find((item) => item.slug === model.category)?.label ?? model.category;
 
     const source = document.createElement("span");
     source.className = "source-badge";
@@ -90,6 +85,29 @@ export function setupGallery(onOpenModel) {
     }
   }
 
+  function renderFilters() {
+    const allButton = document.createElement("button");
+    allButton.className = "filter-chip";
+    allButton.type = "button";
+    allButton.dataset.category = "all";
+    allButton.setAttribute("aria-pressed", appState.selectedGalleryCategory === "all" ? "true" : "false");
+    allButton.textContent = "Tous";
+    const buttons = categories.map((category) => {
+      const button = document.createElement("button");
+      button.className = "filter-chip";
+      button.type = "button";
+      button.dataset.category = category.slug;
+      button.setAttribute("aria-pressed", appState.selectedGalleryCategory === category.slug ? "true" : "false");
+      button.textContent = category.label + (category.is_active ? "" : " · inactive");
+      return button;
+    });
+    filters.replaceChildren(allButton, ...buttons);
+    if (appState.selectedGalleryCategory !== "all" && !categories.some((item) => item.slug === appState.selectedGalleryCategory)) {
+      appState.selectedGalleryCategory = "all";
+      allButton.setAttribute("aria-pressed", "true");
+    }
+  }
+
   filters.addEventListener("click", (event) => {
     const button = event.target.closest("button[data-category]");
     if (!button) return;
@@ -118,6 +136,11 @@ export function setupGallery(onOpenModel) {
   void load();
   return {
     reload: load,
+    setCategories(nextCategories) {
+      categories = Array.isArray(nextCategories) ? nextCategories : [];
+      renderFilters();
+      render();
+    },
     selectCategory(category) {
       const button = filters.querySelector(`button[data-category="${category}"]`);
       if (!button) return;

@@ -56,3 +56,39 @@ export async function getProviderHealth() {
   });
   return readResponse(response, "Le contrôle du serveur 3D est indisponible.");
 }
+
+export async function listCategories(includeInactive = false) {
+  const query = includeInactive ? "?include_inactive=true" : "";
+  const response = await fetch("/categories" + query, {
+    cache: "no-store",
+    headers: { Accept: "application/json" },
+  });
+  return readResponse(response, "Impossible de charger les catégories.");
+}
+
+export async function createCategory(payload) {
+  const response = await fetch("/categories", {
+    method: "POST",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return readResponse(response, "Impossible de créer la catégorie.");
+}
+
+export async function updateCategory(slug, payload) {
+  const response = await fetch("/categories/" + encodeURIComponent(slug), {
+    method: "PATCH",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return readResponse(response, "Impossible de modifier la catégorie.");
+}
+
+export async function deleteCategory(slug) {
+  const response = await fetch("/categories/" + encodeURIComponent(slug), {
+    method: "DELETE",
+    headers: { Accept: "application/json" },
+  });
+  if (response.status === 204) return null;
+  return readResponse(response, "Impossible de supprimer la catégorie.");
+}
