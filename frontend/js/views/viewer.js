@@ -87,7 +87,7 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
       originBadge.textContent = categoryLabels[category]
         ? origin + " · " + categoryLabels[category]
         : origin;
-      announce(filename ? "Chargement du modèle : " + filename + "." : "Chargement du GLB fourni par le serveur.");
+      announce(filename ? "Chargement du modèle : " + filename + "." : "Chargement du modèle 3D.");
     }
 
     if (sourcePhoto) {
@@ -191,7 +191,7 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
     if (!file) return;
     if (!file.name.toLowerCase().endsWith(".glb") || file.size === 0) {
       localInput.value = "";
-      announce("Le fichier local doit être un GLB non vide.");
+      announce("Choisissez un fichier de modèle 3D valide.");
       return;
     }
     showModel({ url: file, filename: file.name, source: "local" });
@@ -209,8 +209,8 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
   viewer.addEventListener("error", () => {
     const isLocal = activeModel?.source === "local";
     const message = isLocal
-      ? "Le fichier local ne peut pas être lu comme modèle GLB."
-      : "Le fichier existe, mais le navigateur n’a pas pu afficher le modèle. Le téléchargement reste disponible.";
+      ? "Ce fichier ne peut pas être affiché comme modèle 3D."
+      : "Le fichier existe, mais le modèle n’a pas pu être affiché. Le téléchargement reste disponible.";
     announce(message);
     onError(message);
   });

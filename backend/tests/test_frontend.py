@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 
 
-def test_home_serves_the_modular_studio_and_model_viewer() -> None:
+def test_home_serves_the_studio_shell_and_separate_navigation() -> None:
     client = TestClient(app)
     response = client.get("/")
     html = response.content.decode("utf-8")
@@ -15,27 +15,25 @@ def test_home_serves_the_modular_studio_and_model_viewer() -> None:
     assert response.status_code == 200
     assert "text/html" in response.headers["content-type"]
     assert 'lang="fr"' in html
-    assert "<model-viewer" in html
+    assert 'id="app"' in html
     assert "model-viewer/4.4.0/model-viewer.min.js" in html
-    assert 'accept=".jpg,.jpeg,.png,.webp' in html
     assert "/static/css/theme.css" in html
     assert "/static/css/components.css" in html
     assert "/static/js/main.js" in html
-    assert 'id="progress-steps"' in html
-    assert 'id="gallery-filters"' in html
-    assert 'id="gallery-grid"' in html
-    assert 'id="open-local-glb"' in html
-    assert 'accept=".glb,model/gltf-binary"' in html
-    assert 'id="ar-button"' in html
+    assert 'href="#/creer"' in html
+    assert 'href="#/modeles"' in html
+    assert 'href="#/categories"' in html
+    assert 'href="#/exemples"' in html
     assert 'id="provider-badge"' in html
-    assert 'id="provider-notice"' in html
-    assert 'id="open-demo-model"' in html
-    assert 'id="photo-guidance-title"' in html
-    assert 'id="source-photo-image"' in html
-    assert 'id="image-preparation-warning"' in html
-    assert 'id="category-management"' in html
-    assert 'id="category-create-form"' in html
-    assert "Modèle approximatif créé à partir d’une seule photo" in html
+
+    create_page = client.get("/static/js/pages/create.js").text
+    viewer = client.get("/static/js/pages/viewer-markup.js").text
+    assert 'id="progress-steps"' in create_page
+    assert 'id="photo-guidance-title"' in create_page
+    assert 'id="image-preparation-warning"' in create_page
+    assert 'id="model-viewer"' in viewer
+    assert 'id="source-photo-image"' in viewer
+    assert "Modèle approximatif créé à partir d’une seule photo" in create_page
 
 
 def test_static_frontend_assets_are_served_and_only_api_module_calls_fetch() -> None:
@@ -44,7 +42,14 @@ def test_static_frontend_assets_are_served_and_only_api_module_calls_fetch() -> 
     css_response = client.get("/static/css/components.css")
     module_paths = (
         "/static/js/main.js",
+        "/static/js/router.js",
         "/static/js/state.js",
+        "/static/js/pages/create.js",
+        "/static/js/pages/models.js",
+        "/static/js/pages/model-detail.js",
+        "/static/js/pages/categories.js",
+        "/static/js/pages/examples.js",
+        "/static/js/pages/viewer-markup.js",
         "/static/js/views/uploader.js",
         "/static/js/views/progress.js",
         "/static/js/views/viewer.js",
@@ -68,23 +73,42 @@ def test_provider_health_polling_and_offline_demo_fallback_are_in_api_modules() 
     uploader = client.get("/static/js/views/uploader.js").text
     gallery = client.get("/static/js/views/gallery.js").text
     categories = client.get("/static/js/views/categories.js").text
-    assert "data.image_warning" in main
-    assert "photo nette" in main
-
     assert 'fetch("/health/provider"' in api
     assert "30_000" in main
-    assert "uploader.setProviderAvailable(false)" in main
-    assert "uploader.setProviderAvailable(available)" in main
-    assert "Le serveur 3D (Colab) est arrêté ou son lien a expiré (72 h)." in main
-    assert "gallery.openFirstModel()" in main
+    assert "publishHealth" in main
+    assert 'window.dispatchEvent(new CustomEvent("forma3d:health"' in main
     assert "providerAvailable" in uploader
-    assert "openFirstModel" in gallery
     assert "setCategories(categories)" in uploader
     assert "setCategories(nextCategories)" in gallery
     assert "category.is_active" in gallery
     assert "createCategory" in categories
     assert "updateCategory" in categories
     assert "deleteCategory" in categories
+    create = client.get("/static/js/pages/create.js").text
+    assert "data.image_warning" in create
+    assert "photo nette" in create
+
+
+def test_hash_router_and_pages_cover_accessible_seller_routes() -> None:
+    client = TestClient(app)
+    router = client.get("/static/js/router.js").text
+    models = client.get("/static/js/pages/models.js").text
+    detail = client.get("/static/js/pages/model-detail.js").text
+    categories_page = client.get("/static/js/pages/categories.js").text
+    examples = client.get("/static/js/pages/examples.js").text
+    category_view = client.get("/static/js/views/categories.js").text
+
+    assert 'window.addEventListener("hashchange", renderRoute)' in router
+    assert 'setAttribute("aria-current", "page")' in router
+    assert "document.title" in router
+    assert "heading.focus({ preventScroll: true })" in router
+    assert "generationIdPattern.test(model.id)" in models
+    assert "Ce modèle est introuvable" in detail
+    assert "detail-duration" in detail
+    assert "Catégories" in categories_page
+    assert "Exemples de modèles" in examples
+    assert "window.confirm" in category_view
+    assert "Ce nom de catégorie est déjà utilisé" in category_view
 
 
 def test_local_model_controls_do_not_send_files_to_the_backend() -> None:

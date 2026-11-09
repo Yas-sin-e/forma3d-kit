@@ -6,9 +6,9 @@ const statusCopy = {
   IDLE: ["Aucune génération lancée.", "Le suivi affichera uniquement les états renvoyés par le serveur."],
   SENDING: ["Envoi de la photo…", "Le navigateur transmet la photo validée au serveur."],
   PENDING: ["Photo reçue · demande en file", "Le serveur a accepté la photo et la génération est en attente."],
-  RUNNING: ["Génération 3D en cours", "Le fournisseur pré-entraîné reconstruit le modèle."],
-  DONE: ["Modèle terminé", "Le serveur a validé le GLB 2.0 et l’a rendu disponible dans le viewer."],
-  FAILED: ["La génération a échoué", "Le serveur n’a pas fourni de GLB. Vous pouvez réessayer avec la même photo."],
+  RUNNING: ["Création du modèle 3D en cours", "Votre modèle est en préparation à partir de la photo."],
+  DONE: ["Modèle prêt", "Votre modèle est disponible dans l’aperçu."],
+  FAILED: ["La création a échoué", "Aucun modèle n’a été créé. Vous pouvez réessayer avec la même photo."],
 };
 
 const stepForStatus = {

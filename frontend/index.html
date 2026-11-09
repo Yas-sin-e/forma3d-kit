@@ -1,6 +1,6 @@
 <!--
-  Rôle : structure accessible et compacte du studio photo-vers-3D, du viewer et de la galerie réelle.
-  Exécution : FastAPI sert cette page sur GET / ; les feuilles et modules viennent de /static/.
+  Rôle : héberge la navigation persistante et le point de montage des pages du Studio.
+  Exécution : FastAPI sert cette coque ; router.js affiche la page correspondant au hash.
 -->
 <!doctype html>
 <html lang="fr">
@@ -8,17 +8,17 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#0E1218">
-    <meta name="description" content="Transformez la photo d'un meuble en modèle 3D interactif avec Forma3D Studio.">
-    <title>Forma3D Studio — atelier 3D</title>
+    <meta name="description" content="Créez et consultez des modèles 3D de produits avec Forma3D Studio.">
+    <title>Forma3D Studio — Créer</title>
     <link rel="stylesheet" href="/static/css/theme.css">
     <link rel="stylesheet" href="/static/css/components.css">
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.4.0/model-viewer.min.js"></script>
     <script type="module" src="/static/js/main.js"></script>
   </head>
   <body>
-    <a class="skip-link" href="#main-content">Aller au contenu</a>
+    <a class="skip-link" href="#app">Aller au contenu</a>
     <header class="site-header">
-      <a class="brand" href="/" aria-label="Forma3D Studio, accueil">
+      <a class="brand" href="#/creer" aria-label="Forma3D Studio, accueil">
         <span class="brand-mark" aria-hidden="true">
           <svg viewBox="0 0 32 32" fill="none">
             <path d="m16 3 11 6.2v13.6L16 29 5 22.8V9.2L16 3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
@@ -27,253 +27,26 @@
         </span>
         <span>Forma3D <span class="brand-light">Studio</span></span>
       </a>
-      <nav class="header-nav" aria-label="Navigation principale">
-        <a href="#studio" aria-current="page">Studio</a>
-        <a href="#gallery">Modèles de démonstration</a>
-        <a href="#category-management">Catégories</a>
+      <button class="menu-toggle" id="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav" aria-label="Ouvrir le menu">
+        <span></span><span></span><span></span>
+      </button>
+      <nav class="header-nav" id="main-nav" aria-label="Navigation principale">
+        <a href="#/creer" data-nav="create">Créer</a>
+        <a href="#/modeles" data-nav="models">Mes modèles</a>
+        <a href="#/categories" data-nav="categories">Catégories</a>
+        <a href="#/exemples" data-nav="examples">Exemples</a>
       </nav>
       <span class="provider-badge" id="provider-badge" data-status="checking" role="status" aria-live="polite">
         <span class="status-dot" aria-hidden="true"></span>
-        <span id="provider-label">Serveur 3D : vérification en cours</span>
+        <span id="provider-label">Serveur 3D : vérification…</span>
       </span>
     </header>
 
-    <main id="main-content">
-      <section class="intro" aria-labelledby="page-title">
-        <p class="eyebrow">Atelier de modélisation produit</p>
-        <h1 id="page-title">Donnez du volume à vos produits.</h1>
-        <p class="intro-copy">Déposez une photo de petit mobilier et examinez le modèle 3D généré. Le résultat dépend de l’image et de la disponibilité du service gratuit.</p>
-      </section>
-
-      <section class="workspace" id="studio" aria-label="Création et visualisation du modèle 3D">
-        <aside class="control-column" aria-label="Entrée photo et suivi">
-          <form class="panel upload-panel" id="upload-form">
-            <div class="section-heading">
-              <span class="step-index" aria-hidden="true">01</span>
-              <div>
-                <h2>Photo du produit</h2>
-                <p>Une vue claire d’un seul objet donne le meilleur point de départ.</p>
-              </div>
-            </div>
-
-            <input class="visually-hidden" id="photo-input" name="file" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
-            <label class="drop-zone" id="drop-zone" for="photo-input" aria-describedby="format-note">
-              <span class="drop-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none">
-                  <path d="M12 15.5V4m0 0L7.5 8.5M12 4l4.5 4.5M5 14.5v4A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5v-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </span>
-              <span class="drop-title">Glissez une photo ici</span>
-              <span class="drop-divider">ou</span>
-              <span class="button button-secondary">Choisir une photo</span>
-              <span class="file-name" id="file-name">Aucun fichier sélectionné</span>
-            </label>
-            <p class="format-note" id="format-note">JPG, PNG ou WebP · 10 Mo maximum.</p>
-            <div class="category-field">
-              <label for="product-category">Catégorie du produit</label>
-              <select class="category-select" id="product-category" name="category" required>
-                <option value="" selected disabled>Choisir une catégorie</option>
-              </select>
-              <p class="format-note">La catégorie choisie classe le nouveau GLB dans la galerie.</p>
-            </div>
-            <p class="privacy-note"><span aria-hidden="true">ⓘ</span> N’envoyez pas de visages ni de données personnelles. La photo peut être traitée par un fournisseur public.</p>
-            <p class="upload-feedback" id="upload-feedback" role="alert" hidden></p>
-            <button class="button button-primary submit-button" id="submit-button" type="submit" disabled>
-              <span class="button-label">Créer le modèle 3D</span>
-              <span aria-hidden="true">→</span>
-            </button>
-          </form>
-
-          <aside class="provider-notice" id="provider-notice" aria-labelledby="provider-notice-title" hidden>
-            <h2 id="provider-notice-title">Le serveur 3D est hors ligne</h2>
-            <p id="provider-message">Le serveur 3D (Colab) est arrêté ou son lien a expiré (72 h). Relance le notebook, copie la nouvelle ligne dans backend/.env, redémarre le serveur.</p>
-            <button class="button button-secondary" id="open-demo-model" type="button">Ouvrir un modèle de démonstration</button>
-          </aside>
-
-          <details class="photo-guidance" aria-labelledby="photo-guidance-title">
-            <summary id="photo-guidance-title">Conseils photo</summary>
-            <div class="photo-guidance-content">
-              <ul>
-                <li>Photographiez un seul objet sur un fond uni.</li>
-                <li>Choisissez une lumière douce et une vue de trois quarts.</li>
-                <li>Faites occuper environ 70 % de l’image par l’objet.</li>
-                <li>Utilisez une vraie photo, jamais une capture d’écran.</li>
-              </ul>
-            </div>
-          </details>
-
-          <section class="panel progress-panel" id="progress-panel" aria-labelledby="progress-title" aria-busy="false">
-            <div class="section-heading compact-heading">
-              <span class="step-index" aria-hidden="true">02</span>
-              <div>
-                <h2 id="progress-title">Suivi de génération</h2>
-                <p id="progress-summary" role="status" aria-live="polite">Aucune génération lancée.</p>
-              </div>
-            </div>
-            <ol class="progress-steps" id="progress-steps" aria-label="Étapes de génération">
-              <li class="progress-step" data-step="0">
-                <span class="step-marker" aria-hidden="true">1</span>
-                <span>Photo envoyée</span>
-              </li>
-              <li class="progress-step" data-step="1">
-                <span class="step-marker" aria-hidden="true">2</span>
-                <span>En file</span>
-              </li>
-              <li class="progress-step" data-step="2">
-                <span class="step-marker" aria-hidden="true">3</span>
-                <span>Génération 3D</span>
-              </li>
-              <li class="progress-step" data-step="3">
-                <span class="step-marker" aria-hidden="true">4</span>
-                <span>Validation du GLB</span>
-              </li>
-              <li class="progress-step" data-step="4">
-                <span class="step-marker" aria-hidden="true">5</span>
-                <span>Terminé</span>
-              </li>
-            </ol>
-            <div class="progress-meta">
-              <span class="activity-indicator" id="activity-indicator" aria-hidden="true"></span>
-              <p id="progress-detail">Le suivi affichera uniquement les états renvoyés par le serveur.</p>
-            </div>
-            <p class="image-preparation-warning" id="image-preparation-warning" role="status" aria-live="polite" hidden></p>
-            <p class="timing-note">Sur nos cinq essais, une génération a pris environ 1 à 4 minutes. Le service gratuit ne garantit pas ce délai.</p>
-            <p class="elapsed-time" id="elapsed-time" hidden>Temps écoulé : <span id="elapsed-seconds">0</span> s</p>
-            <button class="button button-secondary retry-button" id="retry-button" type="button" hidden>Réessayer avec cette photo</button>
-          </section>
-        </aside>
-
-        <section class="panel viewer-panel" aria-labelledby="viewer-title">
-          <div class="viewer-heading">
-            <div>
-              <p class="eyebrow viewer-eyebrow">Espace de travail</p>
-              <h2 id="viewer-title">Aperçu du modèle</h2>
-            </div>
-            <div class="viewer-actions">
-              <span class="origin-badge" id="origin-badge" hidden></span>
-              <button class="button button-secondary local-open-button" id="open-local-glb" type="button">Ouvrir un GLB local</button>
-              <input class="visually-hidden" id="local-glb-input" type="file" accept=".glb,model/gltf-binary" aria-label="Choisir un fichier GLB local">
-              <a class="button button-download" id="download-link" href="#" download hidden>
-                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path d="M12 4v11m0 0 4-4m-4 4-4-4M5 16.5v2A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5v-2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                Télécharger le GLB
-              </a>
-            </div>
-          </div>
-
-          <div class="viewer-comparison">
-            <div class="viewer-stage" id="viewer-stage">
-              <div class="stage-grid" aria-hidden="true"></div>
-              <div class="empty-state" id="empty-state">
-              <span class="empty-cube" aria-hidden="true">
-                <svg viewBox="0 0 48 48" fill="none">
-                  <path d="m24 5 17 9.5v19L24 43 7 33.5v-19L24 5Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-                  <path d="m7.5 14.8 16.5 9.6 16.5-9.6M24 24.4V43" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-                </svg>
-              </span>
-              <h3>Votre modèle apparaîtra ici</h3>
-              <p>Envoyez une photo ou ouvrez l’un des cinq modèles réels de la galerie.</p>
-              </div>
-              <model-viewer id="model-viewer" alt="Modèle 3D du produit affiché dans le viewer" camera-controls touch-action="pan-y" interaction-prompt="none" environment-image="neutral" tone-mapping="neutral" shadow-intensity="0.72" shadow-softness="0.8" exposure="1.08" loading="eager" hidden>
-                <button class="ar-button" id="ar-button" slot="ar-button" type="button" hidden>Voir chez moi en AR</button>
-              </model-viewer>
-              <figure class="source-photo-preview" id="source-photo-preview" hidden>
-                <figcaption class="visually-hidden">Photo source</figcaption>
-                <button class="source-photo-trigger" id="source-photo-open" type="button" aria-label="Agrandir la photo source" aria-haspopup="dialog" aria-controls="source-photo-dialog">
-                  <img id="source-photo-image" alt="Photo source du produit">
-                  <span aria-hidden="true">Agrandir</span>
-                </button>
-              </figure>
-            </div>
-          </div>
-
-          <div class="viewer-toolbar-anchor">
-            <div class="viewer-toolbar" id="camera-controls" role="group" aria-label="Commandes du viewer" hidden>
-              <div class="camera-group" role="group" aria-label="Rotation">
-                <button class="icon-button" id="rotate-left" type="button" aria-label="Tourner à gauche de 15 degrés" title="Tourner à gauche">↶</button>
-                <button class="icon-button" id="rotate-right" type="button" aria-label="Tourner à droite de 15 degrés" title="Tourner à droite">↷</button>
-              </div>
-              <span class="toolbar-divider" aria-hidden="true"></span>
-              <div class="camera-group" role="group" aria-label="Déplacement">
-                <button class="icon-button" id="pan-left" type="button" aria-label="Déplacer la vue à gauche">←</button>
-                <button class="icon-button" id="pan-right" type="button" aria-label="Déplacer la vue à droite">→</button>
-                <button class="icon-button" id="pan-up" type="button" aria-label="Déplacer la vue vers le haut">↑</button>
-                <button class="icon-button" id="pan-down" type="button" aria-label="Déplacer la vue vers le bas">↓</button>
-              </div>
-              <span class="toolbar-divider" aria-hidden="true"></span>
-              <div class="camera-group" role="group" aria-label="Zoom">
-                <button class="icon-button" id="zoom-out" type="button" aria-label="Dézoomer">−</button>
-                <button class="icon-button" id="zoom-in" type="button" aria-label="Zoomer">+</button>
-              </div>
-              <span class="toolbar-spacer" aria-hidden="true"></span>
-              <button class="toolbar-text-button" id="auto-rotate" type="button" aria-pressed="false">Rotation auto</button>
-              <button class="toolbar-text-button" id="fullscreen" type="button">Plein écran</button>
-              <button class="toolbar-text-button" id="reset-camera" type="button">Réinitialiser</button>
-            </div>
-          </div>
-          <p class="stage-hint" id="stage-hint" hidden>Glisser pour tourner <span aria-hidden="true">·</span> Maj + glisser pour déplacer <span aria-hidden="true">·</span> Molette pour zoomer</p>
-          <p class="viewer-announcement" id="viewer-announcement" role="status" aria-live="polite"></p>
-        </section>
-      </section>
-
-      <dialog class="source-photo-dialog" id="source-photo-dialog" aria-labelledby="source-photo-dialog-title">
-        <div class="source-photo-dialog-heading">
-          <h2 id="source-photo-dialog-title">Photo source</h2>
-          <form method="dialog">
-            <button class="icon-button dialog-close" type="submit" aria-label="Fermer la photo agrandie">×</button>
-          </form>
-        </div>
-        <img id="source-photo-large" alt="Photo source agrandie du produit">
-      </dialog>
-
-      <section class="gallery-section" id="gallery" aria-labelledby="gallery-title">
-        <div class="gallery-heading">
-          <div>
-            <p class="eyebrow">Résultats de faisabilité</p>
-            <h2 id="gallery-title">Modèles de démonstration</h2>
-            <p class="gallery-copy">Cinq modèles de faisabilité et les générations réussies pendant cette session. Chaque nouvel objet apparaît dans sa catégorie.</p>
-          </div>
-          <span class="gallery-count" id="gallery-count" aria-live="polite">Chargement des modèles…</span>
-        </div>
-        <div class="filter-list" id="gallery-filters" role="group" aria-label="Filtrer les modèles par catégorie"></div>
-        <div class="gallery-grid" id="gallery-grid" aria-live="polite"></div>
-        <p class="gallery-message" id="gallery-message" role="status" hidden></p>
-      </section>
-
-      <section class="category-management panel" id="category-management" aria-labelledby="category-management-title">
-        <div class="gallery-heading">
-          <div>
-            <p class="eyebrow">Catalogue partagé</p>
-            <h2 id="category-management-title">Gestion des catégories</h2>
-            <p class="gallery-copy">Les catégories actives sont proposées pour les prochaines générations. Les modèles existants conservent leur catégorie.</p>
-          </div>
-          <span class="gallery-count" id="category-count" aria-live="polite">Chargement des catégories…</span>
-        </div>
-        <form class="category-create-form" id="category-create-form">
-          <label>
-            <span>Identifiant (slug)</span>
-            <input id="new-category-slug" name="slug" maxlength="64" placeholder="ex. lampe-de-bureau" required>
-          </label>
-          <label>
-            <span>Nom affiché</span>
-            <input id="new-category-label" name="label" maxlength="100" placeholder="ex. Lampe de bureau" required>
-          </label>
-          <button class="button button-primary" type="submit">Créer la catégorie</button>
-        </form>
-        <p class="category-feedback" id="category-feedback" role="status" aria-live="polite" hidden></p>
-        <div class="category-list" id="category-list" aria-live="polite"></div>
-      </section>
-
-      <aside class="honesty-note">
-        <span class="note-mark" aria-hidden="true">i</span>
-        <p>Modèle approximatif créé à partir d’une seule photo. Il ne garantit ni les dimensions exactes ni une géométrie adaptée à la fabrication.</p>
-      </aside>
-    </main>
+    <main id="app" tabindex="-1" aria-live="off"></main>
 
     <footer class="site-footer">
       <span>Forma3D Studio</span>
-      <span>Prototype de soutenance · Aucun entraînement de modèle</span>
+      <span>Prototype de démonstration · Aucun entraînement de modèle</span>
     </footer>
   </body>
 </html>

@@ -1,6 +1,6 @@
 # Structure expliquée — Forma3D Studio
 
-Mis à jour le 9 novembre 2026. Le Sprint 2 est terminé : catégories partagées gérées par API/SQLite et préparation locale des photos via Pillow. La source reste conservée ; seul un PNG carré temporaire est envoyé au fournisseur. Le Sprint 3 n'a pas commencé.
+Mis à jour le 9 novembre 2026. Le Sprint 2 est terminé : catégories partagées gérées par API/SQLite et préparation locale des photos via Pillow. L'étape 11 est une refonte UX indépendante du Sprint 3, qui n'a pas commencé.
 
 ## Racine et documents de cadrage
 
@@ -78,17 +78,25 @@ Mis à jour le 9 novembre 2026. Le Sprint 2 est terminé : catégories partagée
 |---|---|---|---|
 | `frontend/` | Contient la page, les styles et les modules JavaScript du Sprint 1 | Offre une interface modulaire sans deuxième serveur ni build | Quand une personne visite / |
 | `frontend/README.md` | Explique les modules, le parcours et les limites du navigateur | Rend les responsabilités et dépendances compréhensibles | Avant de lancer ou modifier le frontend |
-| `frontend/index.html` | Définit le studio compact, les conseils repliables, la photo agrandissable, le viewer, le suivi et la galerie | Garde l'interface accessible tout en donnant la priorité à la scène 3D | Quand FastAPI sert la page d'accueil |
+| `frontend/index.html` | Définit la coque commune, l'en-tête, le menu responsive, le badge santé et le point de montage `#app` | Sépare la navigation persistante des pages chargées au hash | À chaque visite du Studio |
 | `frontend/css/` | Regroupe le thème et les styles de composants | Sépare les jetons visuels de la mise en page | Au chargement de la page et pour une retouche visuelle |
 | `frontend/css/theme.css` | Définit la palette sombre, les fontes, le focus et la réduction du mouvement | Centralise les règles globales et lisibles | Avant les styles des composants |
-| `frontend/css/components.css` | Met en page le panneau d'entrée étroit, le viewer limité à 70 vh, la bande de galerie et les avertissements photo | Conserve la palette DESIGN.md, le focus clavier et le fonctionnement à partir de 360 px | Lors du rendu et des changements d'état/largeur |
+| `frontend/css/components.css` | Met en page le studio, les pages de catalogue, le viewer et le menu repliable | Conserve la palette DESIGN.md, le focus clavier et le fonctionnement de 360 à 1440 px | Lors du rendu et des changements d'état/largeur |
 | `frontend/js/` | Regroupe l'état, l'API et les vues ES modules | Permet de suivre une responsabilité par fichier sans framework | Quand le navigateur charge le module principal |
 | `frontend/js/api.js` | Centralise fetch pour génération (photo et catégorie), galerie et santé du fournisseur | Empêche les vues de disperser les appels serveur | À chaque action et toutes les 30 secondes pour la disponibilité |
+| `frontend/js/router.js` | Résout les routes hash, conserve la page Créer pendant une navigation, active le lien courant et focalise le titre | Gère plusieurs pages sans framework et respecte le clavier et l'historique du navigateur | À l'ouverture, au clic dans le menu et lors de Précédent/Suivant |
+| `frontend/js/pages/` | Contient un module par page visible du vendeur | Isole le balisage et le montage de chaque route | Lorsqu'une route hash est ouverte |
+| `frontend/js/pages/create.js` | Présente photo, catégorie, progression réelle, viewer et détails techniques repliés si le service est arrêté | Conserve le parcours de création et son suivi durant une navigation temporaire | Sur `#/creer` |
+| `frontend/js/pages/models.js` | Filtre la galerie existante sur les identifiants UUID de générations de l'application | Sépare la collection du vendeur des exemples fixes sans nouvel endpoint | Sur `#/modeles` |
+| `frontend/js/pages/model-detail.js` | Charge état, modèle, photo source, date et lien de téléchargement pour un identifiant | Réutilise les routes API existantes et gère une fiche inconnue sans résultat inventé | Sur `#/modeles/{id}` |
+| `frontend/js/pages/categories.js` | Place la gestion existante dans une page séparée | Évite d'encombrer l'accueil et rend les actions de catalogue plus claires | Sur `#/categories` |
+| `frontend/js/pages/examples.js` | Présente les exemples autorisés par l'API galerie | Sépare les démonstrations de la collection du vendeur | Sur `#/exemples` |
+| `frontend/js/pages/viewer-markup.js` | Fournit le balisage du viewer utilisé par la page Créer | Évite de dupliquer les commandes accessibles | Au montage du parcours de création |
 | `frontend/js/state.js` | Garde en mémoire photo, statut, durée et minuteries de la session | Évite une base de données pour cet état temporaire | Pendant l'envoi et le suivi d'une demande |
-| `frontend/js/main.js` | Coordonne formulaire, suivi, galerie et viewer ; montre l'avertissement de préparation reçu par l'API | Affiche les retours du service sans ajouter d'appels HTTP dans les vues | À l'ouverture et aux changements d'état |
+| `frontend/js/main.js` | Démarre le routeur et diffuse l'état de disponibilité | Garde le contrôle santé unique et indépendant des pages | Au chargement et toutes les 30 secondes |
 | `frontend/js/views/` | Regroupe les vues de l'interface | Isole les responsabilités visibles du studio | Quand une vue est modifiée ou réutilisée |
 | `frontend/js/views/uploader.js` | Gère dépôt, validation photo et choix obligatoire parmi les trois catégories | Évite les générations sans type d'objet clair ou avec fournisseur hors ligne | Avant toute soumission |
-| `frontend/js/views/categories.js` | Charge et affiche les opérations CRUD, puis rafraîchit les choix et filtres | Maintient formulaire et galerie alignés sur les catégories partagées | À l'ouverture et après une modification de catégorie |
+| `frontend/js/views/categories.js` | Gère le CRUD et demande confirmation avant suppression | Protège les actions destructives et traduit les erreurs en mots simples | Sur `#/categories` |
 | `frontend/js/views/progress.js` | Traduit les états observés et le temps réel en étape accessible | N'invente ni pourcentage ni délai restant | Pendant et après une génération |
 | `frontend/js/views/viewer.js` | Charge le GLB, applique l'éclairage PBR documenté et ouvre la photo source dans une boîte de dialogue accessible | Améliore le rendu et permet de comparer la source sans rétrécir la scène | Après une génération ou une sélection de galerie |
 | `frontend/js/views/gallery.js` | Crée la bande de vignettes 3D filtrable et permet l'ouverture au clic ou au clavier | Garde les étiquettes réelles et rend chaque résultat directement sélectionnable | Après le chargement de galerie et une génération terminée |
@@ -133,6 +141,7 @@ Mis à jour le 9 novembre 2026. Le Sprint 2 est terminé : catégories partagée
 | `docs/etapes/etape-08.md` | Décrit le dépôt SQLite, les catégories initiales, le redémarrage et la galerie | Documente un seul incrément du Sprint 2 et ses tests | Pour expliquer ou vérifier l'étape 8 |
 | `docs/etapes/etape-09.md` | Explique le CRUD catégories backend/frontend, les règles de suppression et les tests | Permet de justifier le cycle de vie et la source SQLite | Pour réviser l'étape 9 |
 | `docs/etapes/etape-10.md` | Explique Pillow, le cadrage, les avertissements, la conservation de la source et les limites | Rend la préparation d'image défendable sans boîte noire lourde | Pour réviser l'étape 10 |
+| `docs/etapes/etape-11.md` | Documente les routes, le schéma, le focus, le menu et les vérifications manuelles | Explique la navigation frontend sans confondre l'étape avec le Sprint 3 | Pour présenter ou faire évoluer le Studio à pages |
 | `docs/etapes/.gitkeep` | Marqueur ancien du dossier de guides | Conservé sans rôle d'exécution | Au clonage du dépôt |
 | `docs/archive/` et `docs/archive/v1/` | Isolent les documents remplacés | Préservent l'historique tout en gardant les instructions v2 à la racine | Pour consulter l'ancienne vision |
 | `docs/archive/v1/etapes/` | Contient les guides des étapes v1 archivés | Évite de les confondre avec le Sprint 1 v2 | Consultation historique |
@@ -157,4 +166,4 @@ Mis à jour le 9 novembre 2026. Le Sprint 2 est terminé : catégories partagée
 | `extension-debug.log` | Journal auxiliaire local de l'environnement de développement | N'est pas une entrée de l'application et est exclu de Git | Seulement si l'outil local le recrée |
 | `__pycache__/`, `.pytest_cache/` | Bytecode et cache de collecte | Ces fichiers se régénèrent automatiquement | Après imports et tests |
 
-Le registre des métadonnées est persisté dans `backend/data/forma3d.sqlite3` ; les photos sources et GLB restent dans `backend/storage/`. La gestion des catégories et la préparation Pillow sont terminées pour le Sprint 2. Les travaux PENDING/RUNNING du processus précédent deviennent FAILED au redémarrage, car une tâche de fond n'est pas reprise. Le Sprint 3 n'est pas démarré.
+Le registre des métadonnées est persisté dans `backend/data/forma3d.sqlite3` ; les photos sources et GLB restent dans `backend/storage/`. La gestion des catégories et la préparation Pillow sont terminées pour le Sprint 2. L'étape 11 modifie uniquement le frontend et reste hors Sprint 3. Les travaux PENDING/RUNNING du processus précédent deviennent FAILED au redémarrage, car une tâche de fond n'est pas reprise. Le Sprint 3 n'est pas démarré.

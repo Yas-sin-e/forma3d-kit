@@ -13,6 +13,7 @@ export const appState = {
   pollingTimer: null,
   clockTimer: null,
   pollingInFlight: false,
+  providerHealth: { status: "UNCONFIGURED", message: "Le serveur 3D n'est pas configuré." },
 };
 
 export function beginGeneration(photo) {

@@ -13,6 +13,7 @@ Dernière mise à jour : 9 novembre 2026.
 - Étape 9b : écran de gestion, formulaire et filtres de galerie alimentés par l'API ; les erreurs API sont présentées dans l'interface. Interface non vérifiée manuellement dans le navigateur durant cette session. Commit `1c3f1ac` ; suite complète : 68 tests réussis.
 - Étape 10 : `ImagePreparer` s'appuie sur Pillow 13.0.0, ajouté à `backend/requirements.txt` (Pillow n'était pas installé dans le venv avant cette étape). La copie envoyée est carrée, conserve 12 % de marge, a un côté de sortie d'au moins 512 px et utilise LANCZOS ; la photo source n'est pas modifiée. Les images petites/floues reçoivent un avertissement non bloquant. En cas de décodage impossible, le service conserve le comportement existant et envoie l'original avec un avertissement. Aucune dépendance `rembg`, OpenCV ou PyTorch n'a été ajoutée.
 - Vérification finale étape 10 : 74 tests pytest réussis, sans réseau fournisseur, avec `backend/.env` protégé contre la lecture. Les tests couvrent les avertissements, le cadrage, la conservation de la source, la migration SQLite, l'envoi de la copie préparée et le contrat HTTP/UI de l'avertissement. Pas de test de génération réelle ni de vérification visuelle navigateur pour cette étape. Sprint 3 non démarré.
+- Étape 11 (travail UX distinct, hors Sprint 3) : navigation hash et cinq pages vendeur ajoutées au frontend uniquement. Aucun endpoint, modèle, fournisseur ou configuration n'a changé. Vérification finale : suite pytest complète de 75 tests, sans fournisseur distant ; 15 fichiers JavaScript vérifiés syntaxiquement. Pas de vérification visuelle navigateur. Commit et push sur `main`.
 - Le choix du fournisseur et du modèle reste inchangé. `backend/.env` n'est ni lu ni modifié. Toute base de données prévue sera locale, dans `backend/data/`, ignorée par Git.
 
 ### Étape 8 — SQLite et historique persistant (Sprint 2)
@@ -40,6 +41,15 @@ Dernière mise à jour : 9 novembre 2026.
 - Le préparateur ajoute une marge de 12 %, agrandit la sortie à 512 px minimum et émet un avertissement si un côté source est inférieur à 512 px ou si la mesure locale des contours signale un manque de netteté. Ces avertissements ne bloquent pas la tâche. Si Pillow ne peut pas décoder le fichier, l'original est utilisé avec un avertissement.
 - Le champ `image_warning` est persisté dans SQLite, ajouté par migration non destructive, retourné par les réponses de génération et affiché dans le panneau de suivi avec un conseil photo.
 - Vérifications : 74 tests passent via pytest avec fournisseurs simulés. Aucune photo réelle n'a été générée avec le service 3D dans cette étape ; le navigateur n'a pas été piloté et l'apparence de l'avertissement reste à vérifier manuellement.
+
+## Étape 11 — Refonte UX de la navigation (hors Sprint 3)
+
+- `frontend/index.html` ne contient plus qu'une coque persistante ; `frontend/js/router.js` résout `#/creer`, `#/modeles`, `#/modeles/{id}`, `#/categories` et `#/exemples`, suit Précédent/Suivant via `hashchange`, met à jour le titre et le lien actif, puis place le focus sur le titre de page.
+- `frontend/js/pages/` contient un module par page. Mes modèles filtre les générations UUID provenant de l'API galerie ; Exemples affiche les cinq modèles de démonstration. Les deux vues utilisent les catégories retournées par l'API.
+- La fiche réutilise les endpoints existants de galerie, état, téléchargement et photo source. L'API ne communique pas la durée : la page affiche « Non communiquée » au lieu de calculer ou inventer une valeur. Aucun nouvel endpoint backend n'était nécessaire.
+- L'en-tête conserve le badge santé, le menu devient repliable sous 640 px, les erreurs courantes sont formulées pour un vendeur et les informations Colab/.env sont uniquement dans les détails techniques repliables de la page Créer.
+- Vérification automatisée : `backend/tests/test_frontend.py` (5 tests ciblés), suite complète (75 tests), puis analyse syntaxique Node.js des 15 modules JavaScript. Aucun parcours interactif navigateur ni génération réelle n'a été fait.
+- À vérifier manuellement : routes et historique Précédent/Suivant ; menu actif et burger ; filtres de Mes modèles et Exemples ; création/confirmation de suppression des catégories ; fiche inconnue ; photo source et téléchargement ; affichage à 360 px et 1440 px.
 
 ## Sprint 1 — terminé (état documenté au 3 novembre)
 

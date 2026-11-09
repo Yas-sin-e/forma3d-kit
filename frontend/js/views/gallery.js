@@ -9,13 +9,14 @@ function formatMegabytes(bytes) {
   return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 }).format(bytes / (1024 * 1024)) + " Mo";
 }
 
-export function setupGallery(onOpenModel) {
+export function setupGallery(onOpenModel, options = {}) {
   const filters = document.querySelector("#gallery-filters");
   const grid = document.querySelector("#gallery-grid");
   const count = document.querySelector("#gallery-count");
   const message = document.querySelector("#gallery-message");
   let models = [];
   let categories = [];
+  const includeModel = typeof options.filter === "function" ? options.filter : () => true;
 
   function createCard(model) {
     const article = document.createElement("article");
@@ -49,13 +50,13 @@ export function setupGallery(onOpenModel) {
 
     const source = document.createElement("span");
     source.className = "source-badge";
-    source.textContent = model.source === "generated_by_app"
-      ? "Généré par l’application"
-      : "Importé manuellement";
+    source.textContent = options.sourceLabel?.(model) ?? (model.source === "generated_by_app"
+      ? "Créé avec Forma3D"
+      : "Importé manuellement");
 
     const size = document.createElement("p");
     size.className = "model-card-size";
-    size.textContent = "GLB · " + formatMegabytes(model.size_bytes);
+    size.textContent = "Modèle 3D · " + formatMegabytes(model.size_bytes);
 
     content.append(heading, category, source, size);
     article.append(preview, content);
@@ -72,16 +73,17 @@ export function setupGallery(onOpenModel) {
   }
 
   function render() {
+    const availableModels = models.filter(includeModel);
     const visibleModels = appState.selectedGalleryCategory === "all"
-      ? models
-      : models.filter((model) => model.category === appState.selectedGalleryCategory);
+      ? availableModels
+      : availableModels.filter((model) => model.category === appState.selectedGalleryCategory);
     grid.replaceChildren(...visibleModels.map(createCard));
-    count.textContent = models.length + (models.length > 1 ? " modèles réels" : " modèle réel");
+    count.textContent = availableModels.length + (availableModels.length > 1 ? " modèles" : " modèle");
     message.hidden = visibleModels.length > 0;
-    if (!models.length) {
-      message.textContent = "Aucun GLB de faisabilité réel n’est disponible sur ce poste. Aucun modèle fictif n’est affiché.";
+    if (!availableModels.length) {
+      message.textContent = options.emptyMessage ?? "Aucun modèle n’est disponible pour le moment.";
     } else if (!visibleModels.length) {
-      message.textContent = "Aucun modèle réel dans cette catégorie.";
+      message.textContent = options.noMatchMessage ?? "Aucun modèle dans cette catégorie.";
     }
   }
 

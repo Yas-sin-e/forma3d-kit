@@ -28,11 +28,6 @@ export function setupCategoryManager(onCategoriesChanged) {
 
     const form = document.createElement("form");
     form.className = "category-edit-form";
-    const slug = document.createElement("input");
-    slug.name = "slug";
-    slug.value = category.slug;
-    slug.maxLength = 64;
-    slug.setAttribute("aria-label", "Identifiant de " + category.label);
     const label = document.createElement("input");
     label.name = "label";
     label.value = category.label;
@@ -42,10 +37,10 @@ export function setupCategoryManager(onCategoriesChanged) {
     save.className = "button button-secondary";
     save.type = "submit";
     save.textContent = "Enregistrer";
-    form.append(slug, label, save);
+    form.append(label, save);
     form.addEventListener("submit", async (event) => {
       event.preventDefault();
-      await runAction(() => updateCategory(category.slug, { slug: slug.value, label: label.value }), "Catégorie mise à jour.");
+      await runAction(() => updateCategory(category.slug, { label: label.value }), "Nom de catégorie mis à jour.");
     });
 
     const actions = document.createElement("div");
@@ -66,6 +61,7 @@ export function setupCategoryManager(onCategoriesChanged) {
     remove.type = "button";
     remove.textContent = "Supprimer";
     remove.addEventListener("click", async () => {
+      if (!window.confirm(`Supprimer la catégorie « ${category.label} » ? Cette action est définitive.`)) return;
       await runAction(() => deleteCategory(category.slug), "Catégorie supprimée.");
     });
     actions.append(toggle, remove);
@@ -101,12 +97,25 @@ export function setupCategoryManager(onCategoriesChanged) {
       showMessage(successMessage);
       await reload();
     } catch (error) {
-      showMessage(error.message, true);
+      const detail = error.message.toLocaleLowerCase("fr-FR").includes("slug")
+        ? "Ce nom de catégorie est déjà utilisé ou ne peut pas être créé. Choisissez un autre nom."
+        : error.message.toLocaleLowerCase("fr-FR").includes("libellé")
+          ? "Entrez un nom de catégorie de 100 caractères maximum."
+          : error.message;
+      showMessage(detail, true);
     }
   }
 
   createForm.addEventListener("submit", async (event) => {
     event.preventDefault();
+    slugInput.value = labelInput.value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLocaleLowerCase("fr-FR")
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 64);
     await runAction(
       () => createCategory({ slug: slugInput.value, label: labelInput.value }),
       "Catégorie créée.",
