@@ -1,6 +1,6 @@
-# Rôle : teste le registre et le passage d'une génération en échec sans faux modèle.
-# Exécution : Pytest lance ces tests depuis le dossier backend.
-"""Tests du cycle d'état qui n'ont pas besoin d'un Space Hugging Face."""
+# Rôle : teste les états persistés et les erreurs sans faux résultat de génération.
+# Exécution : Pytest lance ces tests avec un dépôt SQLite temporaire et sans réseau.
+"""Tests du cycle de génération indépendant d'un Space Hugging Face."""
 
 from pathlib import Path
 from types import SimpleNamespace
@@ -8,6 +8,7 @@ from uuid import uuid4
 
 from app.models import GenerationStatus, ProductCategory
 from app.providers.base import ProviderError
+from app.repositories.sqlite_repository import SQLiteGenerationRepository
 from app.services.generation_service import GenerationService
 from app.services.upload_validator import ValidatedUpload
 from app.storage.local_storage import LocalStorage
@@ -30,7 +31,9 @@ def _validated_upload() -> ValidatedUpload:
 
 
 def test_create_generation_stores_image_and_starts_pending(tmp_path: Path) -> None:
-    service = GenerationService(UnavailableProvider(), LocalStorage(tmp_path))
+    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    repository.initialize()
+    service = GenerationService(UnavailableProvider(), LocalStorage(tmp_path), repository)
     image_content = b"\xff\xd8\xffvalidated test photo"
 
     record = service.create_generation(_validated_upload(), image_content, ProductCategory.CHAIR)
@@ -42,7 +45,9 @@ def test_create_generation_stores_image_and_starts_pending(tmp_path: Path) -> No
 
 def test_run_records_provider_failure_without_creating_a_model(tmp_path: Path) -> None:
     storage = LocalStorage(tmp_path)
-    service = GenerationService(UnavailableProvider(), storage)
+    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    repository.initialize()
+    service = GenerationService(UnavailableProvider(), storage, repository)
     record = service.create_generation(_validated_upload(), b"\xff\xd8\xffphoto", ProductCategory.CHAIR)
 
     service.run(record.id)
@@ -71,10 +76,9 @@ def test_run_logs_provider_cause_while_masking_remote_credentials(
                 "écriture en échec pour https://temporary-space.gradio.live"
             )
 
-    service = GenerationService(
-        DetailedUnavailableProvider(),
-        LocalStorage(tmp_path),
-    )
+    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    repository.initialize()
+    service = GenerationService(DetailedUnavailableProvider(), LocalStorage(tmp_path), repository)
     record = service.create_generation(_validated_upload(), b"\xff\xd8\xffphoto", ProductCategory.CHAIR)
 
     service.run(record.id)
@@ -91,6 +95,8 @@ def test_run_logs_provider_cause_while_masking_remote_credentials(
 
 
 def test_run_ignores_unknown_generation_ids(tmp_path: Path) -> None:
-    service = GenerationService(UnavailableProvider(), LocalStorage(tmp_path))
+    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    repository.initialize()
+    service = GenerationService(UnavailableProvider(), LocalStorage(tmp_path), repository)
 
     service.run(str(uuid4()))

@@ -1,0 +1,183 @@
+# Rôle : persiste les catégories et les générations dans une base SQLite locale.
+# Exécution : l'API initialise le dépôt au démarrage ; chaque opération ouvre sa connexion.
+"""Dépôt SQLite avec connexions courtes et réouvertes à chaque opération."""
+
+from __future__ import annotations
+
+import sqlite3
+from contextlib import contextmanager
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Iterator
+
+from app.models import GenerationRecord, GenerationStatus, ProductCategory
+
+_INITIAL_CATEGORIES = (
+    (ProductCategory.CHAIR.value, "Chaise"),
+    (ProductCategory.STOOL.value, "Tabouret"),
+    (ProductCategory.SIDE_TABLE.value, "Table d’appoint"),
+)
+_INTERRUPTED_MESSAGE = "Génération interrompue au redémarrage du serveur."
+
+
+class SQLiteGenerationRepository:
+    """Lit et écrit les générations avec une connexion SQLite par opération."""
+
+    def __init__(self, database_path: Path) -> None:
+        self.database_path = database_path.resolve()
+
+    @contextmanager
+    def _connection(self) -> Iterator[sqlite3.Connection]:
+        """Fournit une connexion indépendante, avec commit/rollback et fermeture garantis."""
+        connection = sqlite3.connect(self.database_path, timeout=5.0)
+        try:
+            connection.row_factory = sqlite3.Row
+            connection.execute("PRAGMA foreign_keys = ON")
+            yield connection
+            connection.commit()
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+
+    def initialize(self) -> None:
+        """Crée les tables, insère les catégories de départ et échoue les travaux interrompus."""
+        self.database_path.parent.mkdir(parents=True, exist_ok=True)
+        now = datetime.now(UTC).isoformat()
+        with self._connection() as connection:
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS categories (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    slug TEXT NOT NULL UNIQUE,
+                    label TEXT NOT NULL,
+                    is_active INTEGER NOT NULL DEFAULT 1 CHECK (is_active IN (0, 1)),
+                    created_at TEXT NOT NULL
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS generations (
+                    id TEXT PRIMARY KEY,
+                    category_id INTEGER NOT NULL REFERENCES categories(id),
+                    status TEXT NOT NULL CHECK (status IN ('PENDING', 'RUNNING', 'DONE', 'FAILED')),
+                    filename TEXT NOT NULL,
+                    content_type TEXT NOT NULL,
+                    source_photo_path TEXT NOT NULL,
+                    glb_path TEXT,
+                    duration_seconds REAL CHECK (
+                        duration_seconds IS NULL OR duration_seconds >= 0
+                    ),
+                    error_message TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+                """
+            )
+            connection.execute(
+                "CREATE INDEX IF NOT EXISTS idx_generations_status_created "
+                "ON generations(status, created_at DESC)"
+            )
+            connection.executemany(
+                """
+                INSERT INTO categories (slug, label, is_active, created_at)
+                VALUES (?, ?, 1, ?)
+                ON CONFLICT(slug) DO NOTHING
+                """,
+                [(slug, label, now) for slug, label in _INITIAL_CATEGORIES],
+            )
+            connection.execute(
+                """
+                UPDATE generations
+                SET status = 'FAILED', error_message = ?, updated_at = ?, duration_seconds = NULL
+                WHERE status IN ('PENDING', 'RUNNING')
+                """,
+                (_INTERRUPTED_MESSAGE, now),
+            )
+
+    def save_generation(self, record: GenerationRecord) -> None:
+        """Insère ou met à jour une génération en reliant sa catégorie par slug."""
+        with self._connection() as connection:
+            connection.execute(
+                """
+                INSERT INTO generations (
+                    id, category_id, status, filename, content_type,
+                    source_photo_path, glb_path, duration_seconds, error_message,
+                    created_at, updated_at
+                )
+                VALUES (
+                    ?, (SELECT id FROM categories WHERE slug = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?
+                )
+                ON CONFLICT(id) DO UPDATE SET
+                    category_id = excluded.category_id,
+                    status = excluded.status,
+                    filename = excluded.filename,
+                    content_type = excluded.content_type,
+                    source_photo_path = excluded.source_photo_path,
+                    glb_path = excluded.glb_path,
+                    duration_seconds = excluded.duration_seconds,
+                    error_message = excluded.error_message,
+                    created_at = excluded.created_at,
+                    updated_at = excluded.updated_at
+                """,
+                (
+                    record.id,
+                    record.category.value,
+                    record.status.value,
+                    record.filename,
+                    record.content_type,
+                    str(record.image_path.resolve()),
+                    str(record.model_path.resolve()) if record.model_path is not None else None,
+                    record.duration_seconds,
+                    record.error_message,
+                    record.created_at.isoformat(),
+                    record.updated_at.isoformat(),
+                ),
+            )
+
+    def get_generation(self, generation_id: str) -> GenerationRecord | None:
+        """Reconstruit le modèle métier à partir d'une ligne persistée."""
+        with self._connection() as connection:
+            row = connection.execute(
+                """
+                SELECT generations.*, categories.slug AS category_slug
+                FROM generations
+                JOIN categories ON categories.id = generations.category_id
+                WHERE generations.id = ?
+                """,
+                (generation_id,),
+            ).fetchone()
+        return self._record_from_row(row) if row is not None else None
+
+    def list_completed_generations(self) -> list[GenerationRecord]:
+        """Liste les lignes DONE dans l'ordre chronologique inverse."""
+        with self._connection() as connection:
+            rows = connection.execute(
+                """
+                SELECT generations.*, categories.slug AS category_slug
+                FROM generations
+                JOIN categories ON categories.id = generations.category_id
+                WHERE generations.status = 'DONE'
+                ORDER BY generations.created_at DESC, generations.id
+                """
+            ).fetchall()
+        return [self._record_from_row(row) for row in rows]
+
+    @staticmethod
+    def _record_from_row(row: sqlite3.Row) -> GenerationRecord:
+        """Convertit une ligne SQLite en objet métier typé."""
+        return GenerationRecord(
+            id=row["id"],
+            status=GenerationStatus(row["status"]),
+            filename=row["filename"],
+            content_type=row["content_type"],
+            category=ProductCategory(row["category_slug"]),
+            image_path=Path(row["source_photo_path"]),
+            created_at=datetime.fromisoformat(row["created_at"]),
+            updated_at=datetime.fromisoformat(row["updated_at"]),
+            model_path=Path(row["glb_path"]) if row["glb_path"] is not None else None,
+            error_message=row["error_message"],
+            duration_seconds=row["duration_seconds"],
+        )

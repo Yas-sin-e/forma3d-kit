@@ -1,9 +1,9 @@
-# Rôle : construit l'API FastAPI, sert le frontend et configure les services du Sprint 1.
+# Rôle : construit l'API FastAPI, initialise le dépôt SQLite et configure les services.
 # Exécution : Uvicorn importe ce module ; FastAPI sert la page, les ressources et les routes.
-"""Point d'entrée HTTP de Forma3D Studio.
+"""Point d'entrée HTTP et initialisation du dépôt SQLite de Forma3D Studio.
 
-Ce module crée l'application FastAPI et expose le contrôle GET /health.
-Uvicorn l'importe au démarrage du serveur ; les tests l'importent aussi.
+Uvicorn importe ce module au démarrage ; les tests l'importent aussi. FastAPI
+expose le contrôle GET /health et initialise le stockage des métadonnées.
 """
 
 import logging
@@ -16,6 +16,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.providers.huggingface import HuggingFaceSpaceProvider
+from app.repositories.sqlite_repository import SQLiteGenerationRepository
 from app.routers.models import router as models_router
 from app.services.demo_gallery import DemoGallery
 from app.services.generation_service import GenerationService
@@ -24,11 +25,17 @@ from app.storage.local_storage import LocalStorage
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 logger = logging.getLogger(__name__)
 provider = HuggingFaceSpaceProvider()
+generation_repository = SQLiteGenerationRepository(
+    _PROJECT_ROOT / "backend" / "data" / "forma3d.sqlite3"
+)
+# Le schéma existe aussi pour les tests qui utilisent TestClient sans cycle lifespan.
+generation_repository.initialize()
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    """Signale l'absence de configuration sans afficher de valeur sensible."""
+    """Initialise l'historique et signale l'absence de configuration sensible."""
+    generation_repository.initialize()
     backend_env = _PROJECT_ROOT / "backend" / ".env"
     if not backend_env.is_file():
         logger.warning("backend/.env est absent ; vérifiez le fichier local avant une génération distante.")
@@ -45,7 +52,9 @@ app = FastAPI(
 app.state.generation_service = GenerationService(
     provider=provider,
     storage=LocalStorage(),
+    repository=generation_repository,
 )
+app.state.generation_repository = generation_repository
 app.state.generation_provider = provider
 app.state.demo_gallery = DemoGallery()
 

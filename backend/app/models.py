@@ -1,6 +1,6 @@
-# Rôle : décrit un travail de génération et ses états en mémoire.
-# Exécution : GenerationService crée et met à jour ces objets pendant le processus API.
-"""Modèle de données en mémoire pour les demandes de génération du Sprint 1."""
+# Rôle : décrit les catégories et les générations conservées par l'application.
+# Exécution : le dépôt SQLite reconstruit ces objets pour GenerationService et les routes.
+"""Modèles métier des catégories et des générations image-vers-GLB."""
 
 from dataclasses import dataclass
 from datetime import datetime
@@ -27,7 +27,7 @@ class ProductCategory(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class GenerationRecord:
-    """Métadonnées gardées pendant la vie du serveur, sans base de données."""
+    """Métadonnées persistées d'une génération et de ses fichiers locaux."""
 
     id: str
     status: GenerationStatus
@@ -39,3 +39,4 @@ class GenerationRecord:
     updated_at: datetime
     model_path: Path | None = None
     error_message: str | None = None
+    duration_seconds: float | None = None

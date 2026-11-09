@@ -1,13 +1,40 @@
 # État du projet — Forma3D Studio
 
-Dernière mise à jour : 3 novembre 2026.
+Dernière mise à jour : 9 novembre 2026.
 
-## Étape 7 — fiabilité et qualité (en cours)
+## Sprint 2 — Qualité et fiabilité (actif)
+
+- Objectif : rendre l'historique des générations persistant, gérer les catégories partagées, puis ajouter une préparation d'image légère.
+- Livrable vérifiable de l'étape 8 : un GLB terminé et ses métadonnées sont encore consultables après redémarrage du backend, et la galerie les lit depuis SQLite.
+- Fichier de suivi : `docs/ETAT.md` ; structure expliquée dans `docs/STRUCTURE.md` et détails de l'étape dans `docs/etapes/etape-08.md`.
+- Étape 8 : SQLite local derrière `GenerationRepository`, catégories initiales, historique relu par la galerie et récupération des travaux interrompus sont implémentés. Chemin fixe : `backend/data/forma3d.sqlite3` ; aucun changement à `config.py` ou `.env.example`. Suite complète : 61 tests réussis en 2,52 s ; tests isolés du fournisseur et de `backend/.env`.
+- Étape 9 : CRUD de catégories (création, renommage, désactivation ; refus de suppression si utilisée), routes et écran de gestion — en attente de l'étape 8 et d'un OK distinct.
+- Étape 10 : recadrage carré, agrandissement des petites images et contrôles de taille/netteté avec outils légers — en attente d'un OK distinct. Pas de `rembg`, OpenCV ou PyTorch sans confirmation explicite.
+- Le choix du fournisseur et du modèle reste inchangé. `backend/.env` n'est ni lu ni modifié. Toute base de données prévue sera locale, dans `backend/data/`, ignorée par Git.
+
+### Étape 8 — SQLite et historique persistant (Sprint 2)
+
+- La persistance utilise le module `sqlite3` standard, derrière l'interface `GenerationRepository`. Les catégories `chair`, `stool` et `side-table` sont créées au premier démarrage sans remplacer une ligne existante.
+- Le chemin est fixe : `backend/data/forma3d.sqlite3`. Il n'est donc pas configurable ; `config.py` et `.env.example` restent inchangés. `.gitignore` couvre le dossier et les extensions SQLite.
+- Chaque opération du dépôt ouvre et ferme sa propre connexion. Cela évite de partager une connexion SQLite entre les requêtes HTTP et la tâche de génération exécutée en arrière-plan ; aucune transaction ne reste ouverte pendant l'appel au fournisseur.
+- Au démarrage, les générations restées `PENDING` ou `RUNNING` sont marquées `FAILED` avec le message « Génération interrompue au redémarrage du serveur. »
+- `GET /models/gallery`, défini dans `backend/app/routers/models.py`, garde les modèles de démonstration puis ajoute les générations `DONE` retournées par `GenerationService.list_completed_generations()`. Le service consulte SQLite et filtre les entrées dont le GLB ou la photo a disparu ; le format API et le viewer restent inchangés.
+- Le guide de conception du stockage est `docs/STOCKAGE.md` ; l'explication pédagogique et le test de persistance sont dans `docs/etapes/etape-08.md`.
+- Aucun appel fournisseur n'est fait par les tests. La preuve de persistance emploie un fournisseur et un GLB minimal de test, qui ne sont pas un résultat réel de génération.
+- La suite complète a passé 61 tests en 2,52 s. Elle a été lancée avec `HF_SPACE_ID` vide et un garde-fou qui refuse le chargement de `.env` à la racine ou dans `backend/`, tout en laissant le test de configuration lire ses `.env` temporaires. Le bac à sable bloquait les sockets locales de FastAPI `TestClient` ; pytest a donc été exécuté avec l'autorisation requise pour cette vérification. Aucun fournisseur distant n'a été appelé.
+- Vérification visuelle dans le navigateur local sur le port 8012, processus lancé avec `PYTHON_DOTENV_DISABLED=1` et `HF_SPACE_ID` vide : badge « Serveur 3D : hors ligne », bouton de génération désactivé, cinq modèles de démonstration présents ; le clic sur « Chaise en bois cintré » a affiché le viewer, sa photo source et le lien de téléchargement. Cette galerie est celle des résultats de faisabilité, pas une nouvelle génération ; aucun appel fournisseur n'a eu lieu. Edge n'était pas accessible par le pilote de navigateur, la vérification a donc été faite dans le navigateur intégré.
+- `git check-ignore -v` confirme que `backend/data/forma3d.sqlite3` et `backend/data/probe.db` sont ignorés par la règle `backend/data/`.
+
+## Sprint 1 — terminé (état documenté au 3 novembre)
+
+L'étudiante considère le Sprint 1 terminé. Elle prend en charge elle-même la vérification de la CI GitHub ; celle-ci n'est pas déclarée verte ici.
+
+### Étape 7 — fiabilité et qualité
 
 - Ajout d'une sonde `GET /health/provider` avec délai de 5 secondes. Elle ne renvoie que `ONLINE`, `OFFLINE` ou `UNCONFIGURED`, jamais la cible distante.
 - L'interface vérifie le fournisseur au chargement puis toutes les 30 secondes. Hors ligne, la génération est bloquée et le bouton de secours ouvre un modèle réel de la galerie.
 - Les conseils photo, la phrase d'approximation et la photo source éventuelle ont été ajoutés. Aucun nom de modèle `Chaise métal 01/02` n'a été changé.
-- Le formulaire exige maintenant une catégorie (chaise, tabouret ou table d'appoint). Après une génération réussie, le modèle et sa photo source rejoignent la galerie dans le filtre choisi ; cette liste de session est en mémoire et se réinitialise au redémarrage.
+- Le formulaire exige maintenant une catégorie (chaise, tabouret ou table d'appoint). Après une génération réussie, le modèle et sa photo source rejoignent la galerie dans le filtre choisi. À l'étape 7, cette liste était en mémoire ; l'étape 8 la persiste désormais dans SQLite.
 - Le lancement local passe par `scripts/dev.ps1`, qui crée le venv s'il manque, lance pytest, démarre Uvicorn puis ouvre Edge.
 - Les réglages facultatifs `FOREGROUND_RATIO` et `MC_RESOLUTION` ne sont validés qu'avec des noms et bornes tirés du contrat Gradio observé ; aucune plage n'est codée en dur.
 - Historique : le 1 novembre, Edge/Colab a affiché « Échec : backend non attribué ». Le 2 novembre, l'étudiante a fourni le lien d'une session déjà active et accepté l'usage personnel de démonstration à ses risques. L'API locale a répondu `ONLINE`, puis une photo libre de tabouret a été traitée par l'application et a produit un GLB valide.
@@ -62,7 +89,7 @@ Les tailles ont été mesurées sur les photos et GLB présents localement. Les 
 - Stable Fast 3D : cinq essais antérieurs sur des photos libres ont rencontré la même exception interne générique. Aucun GLB n'a été reçu de ces essais.
 - Space Hugging Face officiel stabilityai/TripoSR : son état runtime empêchait la lecture de l'API à l'époque. L'adaptateur actuel vise le serveur Gradio officiel autonome, dont le contrat a ensuite été réellement lu.
 - L'installation Colab a d'abord échoué dans torchmcubes, puis la commande de secours a échoué. Le notebook a été ajusté avec les outils de build du README torchmcubes et --no-build-isolation ; cette installation a ensuite réussi sur le runtime T4 Python 3.12.12. onnxruntime a été ajouté au runtime Colab et huggingface-hub fixé à 0.34.0 pour résoudre deux erreurs de démarrage. Rien de cela n'a modifié l'environnement local.
-- Le journal des générations est en mémoire et disparaît quand FastAPI redémarre. Les GLB de faisabilité restent dans le dossier local ignoré par Git.
+- Avant l'étape 8, le journal des générations était en mémoire et disparaissait au redémarrage ; il est maintenant persisté dans SQLite. Les GLB de faisabilité et la base restent dans les dossiers locaux ignorés par Git.
 - Le lien Gradio utilisé lors de la génération est historique, public et sans authentification ; aucun lien utilisable n'est enregistré dans le dépôt. Les règles actuelles de Colab géré gratuit suspendent son redémarrage par notebook ; voir `docs/etapes/etape-06-colab.md`.
 - Le GPU gratuit, sa disponibilité, sa durée et le temps d'inactivité ne sont pas garantis. Le modèle est une approximation visuelle, pas une reconstruction dimensionnelle pour fabriquer un meuble.
 - Les droits des photos doivent être vérifiés indépendamment de la licence MIT du code et des poids pré-entraînés.

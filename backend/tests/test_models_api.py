@@ -1,6 +1,6 @@
-# Rôle : vérifie l'acceptation, le suivi et le refus de téléchargement prématuré.
-# Exécution : Pytest appelle l'application FastAPI en mémoire depuis le dossier backend.
-"""Tests HTTP locaux du cycle asynchrone sans appel à un fournisseur distant."""
+# Rôle : vérifie les routes du cycle de génération avec un dépôt persistant temporaire.
+# Exécution : Pytest appelle FastAPI en mémoire, sans appel à un fournisseur distant.
+"""Tests HTTP locaux du cycle asynchrone et de sa galerie persistante."""
 
 import json
 import struct
@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.models import ProductCategory
 from app.providers.base import ProviderError
+from app.repositories.sqlite_repository import SQLiteGenerationRepository
 from app.routers.models import get_demo_gallery, get_generation_service
 from app.services.generation_service import GenerationService
 from app.services.demo_gallery import DemoGallery
@@ -35,7 +36,9 @@ class SuccessfulProvider:
 
 
 def test_upload_returns_job_and_status_records_provider_failure(tmp_path: Path) -> None:
-    service = GenerationService(UnavailableProvider(), LocalStorage(tmp_path))
+    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    repository.initialize()
+    service = GenerationService(UnavailableProvider(), LocalStorage(tmp_path), repository)
     app.dependency_overrides[get_generation_service] = lambda: service
     client = TestClient(app)
     try:
@@ -65,7 +68,9 @@ def test_upload_returns_job_and_status_records_provider_failure(tmp_path: Path) 
 
 
 def test_upload_rejects_invalid_image_before_scheduling_generation(tmp_path: Path) -> None:
-    service = GenerationService(UnavailableProvider(), LocalStorage(tmp_path))
+    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    repository.initialize()
+    service = GenerationService(UnavailableProvider(), LocalStorage(tmp_path), repository)
     app.dependency_overrides[get_generation_service] = lambda: service
     client = TestClient(app)
     try:
@@ -97,7 +102,13 @@ def test_upload_requires_a_supported_category() -> None:
 
 
 def test_completed_upload_appears_in_its_category_with_source_and_glb(tmp_path: Path) -> None:
-    service = GenerationService(SuccessfulProvider(), LocalStorage(tmp_path / "storage"))
+    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    repository.initialize()
+    service = GenerationService(
+        SuccessfulProvider(),
+        LocalStorage(tmp_path / "storage"),
+        repository,
+    )
     app.dependency_overrides[get_generation_service] = lambda: service
     app.dependency_overrides[get_demo_gallery] = lambda: DemoGallery(tmp_path / "demos")
     client = TestClient(app)
@@ -128,7 +139,14 @@ def test_completed_upload_appears_in_its_category_with_source_and_glb(tmp_path: 
     assert model.content[:4] == b"glTF"
 
 
-def test_status_route_returns_not_found_for_unknown_id() -> None:
-    response = TestClient(app).get("/models/not-a-generation")
+def test_status_route_returns_not_found_for_unknown_id(tmp_path: Path) -> None:
+    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    repository.initialize()
+    service = GenerationService(UnavailableProvider(), LocalStorage(tmp_path), repository)
+    app.dependency_overrides[get_generation_service] = lambda: service
+    try:
+        response = TestClient(app).get("/models/not-a-generation")
+    finally:
+        app.dependency_overrides.pop(get_generation_service, None)
 
     assert response.status_code == 404

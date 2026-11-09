@@ -1,6 +1,6 @@
-# Rôle : orchestre l'acceptation, la génération et l'enregistrement des modèles.
+# Rôle : orchestre les états de génération via un dépôt persistant et le stockage de fichiers.
 # Exécution : les routes lancent run() comme tâche de fond après un upload validé.
-"""Service de génération et registre des états conservé en mémoire."""
+"""Service de génération indépendant du fournisseur et du dépôt de métadonnées."""
 
 from __future__ import annotations
 
@@ -9,10 +9,12 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 from threading import RLock
+from time import monotonic
 from uuid import uuid4
 
 from app.models import GenerationRecord, GenerationStatus, ProductCategory
 from app.providers.base import Image3DProvider, ProviderError
+from app.repositories.base import GenerationRepository
 from app.services.upload_validator import ValidatedUpload
 from app.storage.base import Storage
 
@@ -20,12 +22,17 @@ logger = logging.getLogger(__name__)
 
 
 class GenerationService:
-    """Coordonne un fournisseur et un stockage sans base de données."""
+    """Coordonne le fournisseur, les fichiers locaux et l'historique persistant."""
 
-    def __init__(self, provider: Image3DProvider, storage: Storage) -> None:
+    def __init__(
+        self,
+        provider: Image3DProvider,
+        storage: Storage,
+        repository: GenerationRepository,
+    ) -> None:
         self._provider = provider
         self._storage = storage
-        self._records: dict[str, GenerationRecord] = {}
+        self._repository = repository
         self._lock = RLock()
 
     def create_generation(
@@ -50,20 +57,26 @@ class GenerationService:
             updated_at=now,
         )
         with self._lock:
-            self._records[generation_id] = record
+            self._repository.save_generation(record)
         return record
 
     def get_generation(self, generation_id: str) -> GenerationRecord | None:
         """Retourne l'état courant d'une génération connue."""
         with self._lock:
-            return self._records.get(generation_id)
+            return self._repository.get_generation(generation_id)
 
     def get_model_path(self, generation_id: str) -> Path | None:
         """Retourne uniquement un modèle lié à une génération DONE."""
         record = self.get_generation(generation_id)
-        if record is None or record.status is not GenerationStatus.DONE:
+        if (
+            record is None
+            or record.status is not GenerationStatus.DONE
+            or record.model_path is None
+            or not record.model_path.is_file()
+        ):
             return None
-        return self._storage.get_model_path(generation_id)
+        model_path = self._storage.get_model_path(generation_id)
+        return model_path if model_path == record.model_path and model_path.is_file() else None
 
     def get_source_image_path(self, generation_id: str) -> Path | None:
         """Retourne la photo source locale d'une génération réellement terminée."""
@@ -73,21 +86,22 @@ class GenerationService:
         return record.image_path if record.image_path.is_file() else None
 
     def list_completed_generations(self) -> list[GenerationRecord]:
-        """Liste les générations terminées de la session courante, de la plus récente à l'ancienne."""
+        """Liste les générations persistées terminées, de la plus récente à l'ancienne."""
         with self._lock:
-            records = [
-                record
-                for record in self._records.values()
-                if record.status is GenerationStatus.DONE
-                and record.model_path is not None
-                and record.model_path.is_file()
-            ]
-        return sorted(records, key=lambda record: record.created_at, reverse=True)
+            records = self._repository.list_completed_generations()
+        return [
+            record
+            for record in records
+            if record.model_path is not None
+            and record.model_path.is_file()
+            and record.image_path.is_file()
+        ]
 
     def run(self, generation_id: str) -> None:
         """Exécute le fournisseur et publie DONE ou FAILED de façon atomique."""
+        started_at = monotonic()
         with self._lock:
-            record = self._records.get(generation_id)
+            record = self._repository.get_generation(generation_id)
             if record is None or record.status is not GenerationStatus.PENDING:
                 return
             running_record = replace(
@@ -95,7 +109,7 @@ class GenerationService:
                 status=GenerationStatus.RUNNING,
                 updated_at=datetime.now(UTC),
             )
-            self._records[generation_id] = running_record
+            self._repository.save_generation(running_record)
 
         try:
             model_bytes = self._provider.generate(running_record.image_path)
@@ -123,6 +137,7 @@ class GenerationService:
                 status=GenerationStatus.FAILED,
                 updated_at=datetime.now(UTC),
                 error_message=redact(str(error)),
+                duration_seconds=max(0.0, monotonic() - started_at),
             )
 
             cause = error.__cause__
@@ -143,6 +158,7 @@ class GenerationService:
                 status=GenerationStatus.FAILED,
                 updated_at=datetime.now(UTC),
                 error_message="La génération a échoué à cause d'une erreur interne.",
+                duration_seconds=max(0.0, monotonic() - started_at),
             )
             logger.error(
                 "Generation %s failed with %s",
@@ -156,10 +172,11 @@ class GenerationService:
                 updated_at=datetime.now(UTC),
                 model_path=model_path,
                 error_message=None,
+                duration_seconds=max(0.0, monotonic() - started_at),
             )
             with self._lock:
-                self._records[generation_id] = completed_record
+                self._repository.save_generation(completed_record)
             return
 
         with self._lock:
-            self._records[generation_id] = failed_record
+            self._repository.save_generation(failed_record)

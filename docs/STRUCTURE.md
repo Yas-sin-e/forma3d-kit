@@ -1,6 +1,6 @@
 # Structure expliquée — Forma3D Studio
 
-Mis à jour le 3 novembre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le backend Forma3D et TripoSR. L'étape 7 ajoute le contrôle de disponibilité, les catégories obligatoires pour les nouvelles photos, l'affichage des générations réussies dans le filtre correspondant, les réglages qualité validés dynamiquement et les photos source. L'interface du studio est compacte, son viewer est limité en hauteur et la galerie défile en bande de vignettes. Les nouvelles générations restent en mémoire jusqu'au redémarrage du backend.
+Mis à jour le 9 novembre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le backend Forma3D et TripoSR. L'étape 7 ajoute le contrôle de disponibilité, les catégories obligatoires pour les nouvelles photos, les réglages qualité et les photos source. L'interface du studio est compacte, son viewer est limité en hauteur et la galerie défile en bande de vignettes. L'étape 8 persiste l'historique dans SQLite, sous `backend/data/forma3d.sqlite3`, derrière une interface de dépôt.
 
 ## Racine et documents de cadrage
 
@@ -45,9 +45,13 @@ Mis à jour le 3 novembre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le 
 | `backend/README.md` | Explique l'API, ses limites et ses commandes | Permet de lancer le serveur sans deviner les étapes | À l'installation et au développement |
 | `backend/requirements.txt` | Déclare FastAPI, Uvicorn, HTTPX2, pytest, multipart, Gradio Client et python-dotenv | Recrée les dépendances dans le venv | À l'installation et en CI |
 | `backend/app/__init__.py` | Marque `app` comme paquet Python | Rend les imports déterministes | Au démarrage et pendant les tests |
-| `backend/app/main.py` | Construit FastAPI, journalise `.env`/HF_SPACE_ID absents sans exposer la cible et sert `/health/provider` | Fournit les contrôles locaux et distants au même point d'entrée | Au démarrage d'Uvicorn et au chargement du badge |
+| `backend/app/main.py` | Construit FastAPI, choisit le chemin SQLite fixe, initialise le dépôt et journalise `.env`/HF_SPACE_ID absents sans exposer la cible | Configure l'adaptateur une fois tout en gardant les variables fournisseur inchangées | À l'import et au démarrage d'Uvicorn |
 | backend/.env | Configuration locale, dont la cible d'un serveur Gradio autorisé | Fichier ignoré par Git ; ne jamais copier son contenu dans un document, un journal ou un commit | Pour configurer un fournisseur disponible |
-| `backend/app/models.py` | Définit états et fiche de génération en mémoire | Représente le cycle sans installer une base au Sprint 1 | Pendant la vie du serveur |
+| `backend/app/models.py` | Définit les états, la fiche de génération et sa durée mesurée | Sépare les données métier du format de stockage | Pendant le suivi et la relecture d'une génération |
+| `backend/app/repositories/` | Regroupe le contrat de dépôt et les adaptateurs de persistance | Isole SQL des règles métier | Quand le service lit ou écrit l'historique |
+| `backend/app/repositories/__init__.py` | Marque le paquet Python des dépôts | Rend leur rôle d'accès aux données explicite | À l'import du service ou de l'adaptateur |
+| `backend/app/repositories/base.py` | Définit `GenerationRepository` sans imposer SQLite au service | Permet de tester ou remplacer l'adaptateur indépendamment | Dans `GenerationService` et ses tests |
+| `backend/app/repositories/sqlite_repository.py` | Crée les tables et gère catégories, générations, connexions courtes et récupération après redémarrage | Utilise `sqlite3` standard et une connexion par opération | Au démarrage, à chaque transition et à la lecture de la galerie |
 | `backend/app/config.py` | Charge la cible, les délais et les réglages TripoSR facultatifs sans valeur par défaut de cible | Le projet peut démarrer et signaler proprement un fournisseur non configuré | À la création du fournisseur et au démarrage |
 | `backend/app/providers/huggingface.py` | Sonde la cible sous 5 secondes, découvre les appels et bornes de TripoSR et valide le GLB 2.0 | Évite les noms/plages inventés et n'affiche pas d'adresse dans l'état de santé | Au badge de santé et à chaque génération |
 | `backend/app/schemas.py` | Fixe les réponses JSON, dont la catégorie choisie et la photo source facultative | Stabilise les réponses et empêche les catégories hors MVP | Sur les routes /models |
@@ -56,13 +60,14 @@ Mis à jour le 3 novembre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le 
 | `backend/app/services/__init__.py` | Marque le paquet métier | Clarifie les imports de services | À l'import du validateur et du service |
 | `backend/app/services/upload_validator.py` | Contrôle extension, MIME, signature et plafond de 10 Mo | Le nom ou le type annoncé seul ne suffit pas | Avant d'enregistrer une photo |
 | `backend/app/services/demo_gallery.py` | Liste seulement cinq GLB autorisés, valide leur structure 2.0 et ajoute la photo source seulement si elle existe | N'expose aucun chemin fourni par le client et exclut les fichiers absents ou invalides | À l'ouverture de la galerie ou d'un modèle d'essai |
-| backend/app/services/generation_service.py | Orchestre les états, la catégorie choisie, le fournisseur et le stockage ; journalise les erreurs sans secrets | Associe la génération à un type de meuble sans base de données au Sprint 1 | Après un upload valide, pour la galerie de session ou en cas d'échec |
+| `backend/app/services/generation_service.py` | Orchestre les états, le fournisseur, le stockage des fichiers et le dépôt de métadonnées | Garde les règles métier indépendantes de SQLite | Après un upload, pendant le traitement et à la lecture de l'historique |
 | `backend/app/providers/__init__.py` | Marque le paquet d'adaptateurs | Isole les fournisseurs externes | À l'import fournisseur |
 | `backend/app/providers/base.py` | Définit `Image3DProvider.generate(Path) -> bytes` et l'erreur commune | Permet de remplacer Hugging Face sans réécrire le service | Dans GenerationService et les adaptateurs |
 | backend/app/providers/huggingface.py | Découvre le contrat avec view_api, lit les valeurs courantes de client.config, exécute les étapes TripoSR et valide GLB 2.0 | Évite d'interpréter les exemples comme des valeurs par défaut et prend la vraie sortie GLB | À chaque génération distante |
 | `backend/app/storage/__init__.py` | Marque le paquet des adaptateurs de stockage | Sépare les fichiers de persistance du métier | À l'import du stockage |
 | `backend/app/storage/base.py` | Définit le contrat `Storage` pour photos et GLB | Permet de changer la persistance derrière une interface | Dans GenerationService et ses tests |
 | `backend/app/storage/local_storage.py` | Écrit de façon atomique avec des noms UUID créés par le serveur | Démarre sans service payant et évite les chemins du client | À l'acceptation et à la fin d'une génération |
+| `backend/data/forma3d.sqlite3` | Contient les métadonnées locales des catégories et générations | Base fixe, sans configuration ni dépendance serveur ; ignorée par Git | Créée et ouverte au démarrage et lors des opérations du dépôt |
 
 ## Interface
 
@@ -93,6 +98,7 @@ Mis à jour le 3 novembre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le 
 | `backend/tests/test_upload_validator.py` | Couvre formats, taille, signatures et erreurs | Empêche les uploads mal formés sans réseau | À chaque suite pytest |
 | backend/tests/test_huggingface_provider.py | Simule view_api et client.config pour tester la découverte d'endpoints, les vrais défauts lus dans config et la validation GLB | Aucun réseau ni GPU dans les tests | À chaque suite pytest |
 | backend/tests/test_generation_service.py | Vérifie les transitions d'état et le masquage du jeton et de l'URL dans les logs d'erreur | Protège le diagnostic des secrets locaux | À chaque suite pytest |
+| `backend/tests/test_generation_repository.py` | Vérifie schéma, catégories initiales, connexions indépendantes, persistance après redémarrage et récupération des tâches interrompues | Utilise un SQLite temporaire et un fournisseur simulé, sans réseau | À chaque suite pytest |
 | `backend/tests/test_local_storage.py` | Contrôle écritures atomiques, noms et garde-fous de chemin | Protège le stockage local contre un chemin client | À chaque suite pytest |
 | `backend/tests/test_models_api.py` | Vérifie les réponses d'upload, de suivi, les erreurs et le refus de téléchargement prématuré | Stabilise le contrat HTTP sans appeler le fournisseur | À chaque suite pytest |
 | `backend/tests/test_frontend.py` | Vérifie les ressources, le polling santé, le blocage hors ligne et les conseils | Protège la structure du frontend sans navigateur | À chaque suite pytest |
@@ -104,9 +110,10 @@ Mis à jour le 3 novembre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le 
 | Chemin | À quoi ça sert | Pourquoi ce choix | Quand on l'utilise |
 |---|---|---|---|
 | `docs/` | Regroupe l'état, la structure et les guides | Sépare les explications du code exécutable | Tout au long du projet |
-| `docs/etapes/` | Contient un guide par étape du Sprint 1 | Permet de comprendre l'évolution sans mélanger les étapes | Pour apprendre et préparer la soutenance |
-| docs/ETAT.md | Résume l'étape 6 historique et les changements/points bloqués de l'étape 7 | Distingue une preuve passée d'une génération non réalisée aujourd'hui | Au début et à la fin d'une session |
+| `docs/etapes/` | Contient un guide par étape de chaque sprint | Permet de comprendre l'évolution sans mélanger les étapes | Pour apprendre et préparer la soutenance |
+| `docs/ETAT.md` | Résume les sprints, les étapes prouvées et les points encore ouverts | Distingue les preuves passées du travail non réalisé | Au début et à la fin d'une session |
 | `docs/STRUCTURE.md` | Explique chaque élément du dépôt | Aide l'étudiante à défendre les choix | À chaque ajout ou changement de structure |
+| `docs/STOCKAGE.md` | Explique le schéma SQLite, le chemin fixe, les connexions et la lecture de l'historique | Rend les choix de persistance présentables à la soutenance | À l'étape 8 et lors d'une évolution du stockage |
 | `docs/etapes/etape-01.md` | Explique FastAPI et GET `/health` | Garde une trace pédagogique du premier socle | Pour réviser l'étape 1 |
 | `docs/etapes/etape-02.md` | Explique le validateur et le contrat d'upload historique | Documente l'évolution de POST `/models` au fil du sprint | Pour réviser l'étape 2 |
 | `docs/etapes/etape-03.md` | Décrit l'API Hugging Face inspectée, les photos, la licence et les erreurs observées | Distingue l'implémentation de sa faisabilité non démontrée | Pour revoir le fournisseur ou expliquer l'essai au jury |
@@ -115,6 +122,7 @@ Mis à jour le 3 novembre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le 
 | docs/etapes/etape-06.md | Consigne le contrat observé, les cinq appels, les temps, les tailles et les limites de visualisation | Fournit une trace exacte et pédagogique pour reproduire la soutenance | Pour analyser les résultats et attribuer les notes visuelles |
 | docs/etapes/etape-06-colab.md | Explique l'essai historique, l'échec actuel d'attribution et la restriction de Colab sur les services web | Ne confond pas le succès d'octobre avec une disponibilité actuelle | Pour comprendre pourquoi le serveur est suspendu |
 | docs/etapes/etape-07.md | Explique le contrôle de santé, les réglages qualité, les essais vides et les limites des fournisseurs | Garde les notes visuelles et résultats à compléter par l'étudiante | Pour réviser l'étape et planifier une preuve autorisée |
+| `docs/etapes/etape-08.md` | Décrit le dépôt SQLite, les catégories initiales, le redémarrage et la galerie | Documente un seul incrément du Sprint 2 et ses tests | Pour expliquer ou vérifier l'étape 8 |
 | `docs/etapes/.gitkeep` | Marqueur ancien du dossier de guides | Conservé sans rôle d'exécution | Au clonage du dépôt |
 | `docs/archive/` et `docs/archive/v1/` | Isolent les documents remplacés | Préservent l'historique tout en gardant les instructions v2 à la racine | Pour consulter l'ancienne vision |
 | `docs/archive/v1/etapes/` | Contient les guides des étapes v1 archivés | Évite de les confondre avec le Sprint 1 v2 | Consultation historique |
@@ -129,7 +137,8 @@ Mis à jour le 3 novembre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le 
 |---|---|---|---|
 | `backend/.venv/` | Environnement Python local et ses paquets | Évite les dépendances globales ; ne se partage pas dans Git | Au lancement et aux tests locaux |
 | backend/.env | Configuration locale, dont la cible d'un serveur Gradio autorisé | Fichier ignoré par Git ; ne jamais copier son contenu dans un document, un journal ou un commit | Pour configurer un fournisseur disponible |
-| `backend/data/` | Stocke les entrées et sorties locales des essais | Garde les médias hors de Git | Pendant la faisabilité |
+| `backend/data/` | Stocke les données locales de faisabilité et l'historique SQLite | Garde les médias et la base hors de Git | Pendant les essais et l'exécution locale |
+| `backend/data/forma3d.sqlite3` | Contient les catégories et métadonnées des générations | Chemin fixe ; ignoré par `backend/data/` et les motifs d'extensions SQLite | À chaque opération de persistance |
 | `backend/data/feasibility-inputs/` | Photos libres choisies pour les essais ; trois autres photos écartées ne doivent pas être envoyées car elles montrent des personnes | Garde une provenance et protège les personnes visibles | Pendant les essais réels |
 | backend/data/feasibility-results/ | Contient les cinq GLB réellement téléchargés par l'application et validés GLB 2.0 | Les sorties de faisabilité ne sont pas versionnées ; aucune n'est simulée | Pour examiner les résultats ou les ouvrir dans un viewer |
 | `backend/storage/` | Dossier de runtime pour les photos et modèles des demandes | Conserve les uploads en dehors des sources | Créé automatiquement au premier upload |
@@ -138,4 +147,4 @@ Mis à jour le 3 novembre 2026. L'étape 6 a produit cinq GLB 2.0 réels via le 
 | `extension-debug.log` | Journal auxiliaire local de l'environnement de développement | N'est pas une entrée de l'application et est exclu de Git | Seulement si l'outil local le recrée |
 | `__pycache__/`, `.pytest_cache/` | Bytecode et cache de collecte | Ces fichiers se régénèrent automatiquement | Après imports et tests |
 
-Le registre de générations est actuellement en mémoire et se vide au redémarrage. Le dossier `frontend/` n'est donc plus un emplacement futur : la page Sprint 1 y est présente. Sont toujours hors Sprint 1 : authentification, base de données, OpenCV, rembg, Next.js, comptes vendeurs, catalogue commercial complet, widget distribuable, Docker, Celery, Redis et MinIO.
+Le registre des métadonnées est persisté dans `backend/data/forma3d.sqlite3` ; les photos et GLB restent dans `backend/storage/`. Les travaux PENDING/RUNNING du processus précédent deviennent FAILED au redémarrage, car une tâche de fond n'est pas reprise. Le dossier `frontend/` contient la page actuelle. Les étapes 9 et 10 restent hors de l'étape 8 : CRUD des catégories et préparation d'image.

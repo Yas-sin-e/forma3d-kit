@@ -20,8 +20,8 @@ Pour chaque fichier ou dossier créé :
 3. Avant d'écrire du code, annoncer la liste des fichiers et leur intérêt, puis attendre l'accord de l'étudiante.
 
 ## Découpage en six sprints de deux semaines
-1. De la photo au modèle 3D — sprint actif.
-2. Qualité et fiabilité : qualité d'image, arrière-plan, base de données, historique.
+1. De la photo au modèle 3D — terminé (contrôle CI GitHub laissé à l'étudiante).
+2. Qualité et fiabilité : qualité d'image, arrière-plan, base de données, historique — sprint actif depuis le 9 novembre 2026.
 3. Comptes vendeurs et produits.
 4. Boutique vitrine : catalogue et fiches produits 3D.
 5. Intégration : widget, code à copier, API avec clé.
@@ -31,6 +31,8 @@ Ne jamais passer à une étape ou à un sprint suivant sans « OK » explicite.
 Avant chaque étape, rappeler l'objectif et le livrable vérifiable.
 
 ## Sprint 1 — périmètre essentiel
+État : terminé par décision de l'étudiante, sauf la vérification de la CI GitHub, qu'elle traite elle-même.
+
 Objectif : le vendeur envoie une photo, obtient un GLB via un fournisseur gratuit de modèle pré-entraîné, l'examine dans un viewer et peut le télécharger.
 
 Étapes, une à la fois :
@@ -42,9 +44,19 @@ Objectif : le vendeur envoie une photo, obtient un GLB via un fournisseur gratui
 6. Essais réels sur 5 à 10 photos de petit mobilier opaque ; conserver des modèles de démonstration si les licences l'autorisent.
 7. Fiabilité et qualité : contrôle fournisseur sans divulgation d'URL, comportement hors ligne, conseils photo, comparaison à l'image source, réglages validés par le contrat courant et documentation des limites.
 
-Pour toute nouvelle génération du Sprint 1, l'étudiante choisit obligatoirement une catégorie parmi chaise, tabouret et table d'appoint. Un GLB terminé apparaît dans le filtre correspondant avec sa photo source. Cette liste de nouvelles générations vit en mémoire et revient à zéro au redémarrage du backend ; la persistance durable de l'historique relève du sprint 2.
+Pour toute nouvelle génération, l'étudiante choisit une catégorie parmi chaise, tabouret et table d'appoint. Un GLB terminé apparaît dans le filtre correspondant avec sa photo source. Au Sprint 1, les métadonnées restaient en mémoire ; depuis l'étape 8 du Sprint 2, elles sont conservées dans SQLite et relues par la même route de galerie.
 
 Ne pas faire au Sprint 1 : OpenCV, rembg, comptes, base de données, Next.js, Docker, Celery, Redis ou MinIO.
+
+## Sprint 2 — qualité et fiabilité
+Objectif : conserver l'historique des générations après redémarrage, gérer les catégories partagées et préparer les photos avec des contrôles légers.
+
+Étapes, une à la fois et seulement après l'OK de l'étudiante :
+8. SQLite et historique persistant derrière une interface de dépôt ; tables `categories` et `generations`, catégories initiales chaise/tabouret/table d'appoint, galerie inchangée côté API/viewer ; test de persistance après redémarrage ; écrire `docs/STOCKAGE.md`.
+9. CRUD des catégories partagées : créer, renommer, désactiver et refuser la suppression d'une catégorie utilisée ; routes et interface de gestion.
+10. Préparation de la photo : recadrage carré, agrandissement des petites images, contrôle de taille et de netteté avec les outils légers déjà présents ou ajoutés après validation.
+
+Ne pas changer le fournisseur 3D ni le modèle retenu au Sprint 2. Ne pas ajouter `rembg`, OpenCV ou PyTorch sans confirmation explicite de l'étudiante. Le fichier SQLite local reste dans `backend/data/`, ignoré par Git.
 
 ## Hugging Face
 - Appeler un Space public avec gradio_client uniquement après inspection de son API réelle.
@@ -97,10 +109,16 @@ Ne pas faire au Sprint 1 : OpenCV, rembg, comptes, base de données, Next.js, Do
 ## Mémoire du projet
 Au début de chaque session, lire AGENTS.md, docs/ETAT.md et docs/STRUCTURE.md, puis résumer l'avancement en cinq lignes. Après chaque étape, mettre à jour docs/ETAT.md.
 
-## État mis à jour au 2 novembre 2026
+## État historique au 2 novembre 2026
 - L'étape 6 a prouvé cinq générations TripoSR dans une session passée ; ces cinq résultats sont des fichiers locaux réels, et ne sont pas de nouvelles générations de cette session.
 - L'étape 7 ajoute le contrôle fournisseur hors ligne et des réglages dont les noms/bornes doivent provenir du contrat réel à chaque génération.
 - La reconnexion Colab du 1 novembre 2026 a affiché « Échec : backend non attribué ». Lors d'une session ultérieure, l'étudiante a fourni le lien d'une session déjà active et a accepté le risque pour une démonstration personnelle ; aucun lien n'est conservé dans les documents ou le dépôt.
 - Aucun mécanisme de maintien en vie ni contournement des limites Colab n'est autorisé. Si une limite, demande de connexion, validation ou captcha apparaît, arrêter et demander à l'étudiante.
 - Une génération de démonstration du tabouret a réussi le 2 novembre et apparaît dans la galerie sous `stool`. Après le lancement local suivant, `/health/provider` a renvoyé `OFFLINE` ; ne pas envoyer d'autre photo tant qu'un serveur valide n'est pas joignable.
 - Les étiquettes `Chaise métal 01/02` ne changent qu'après validation de l'étudiante.
+
+## État au 9 novembre 2026
+- Sprint actif : 2 — Qualité et fiabilité. L'étape 8 est implémentée ; consulter `docs/ETAT.md` pour les résultats des vérifications et ne commencer l'étape 9 qu'après un « OK » distinct.
+- Sprint 1 considéré terminé par l'étudiante ; la vérification de la CI GitHub reste à sa charge.
+- Livrable vérifiable de l'étape 8 : une génération terminée reste consultable après redémarrage du backend et apparaît dans la galerie depuis SQLite. Suivi : `docs/ETAT.md`, `docs/STRUCTURE.md` et `docs/etapes/etape-08.md`.
+- Aucun changement au fournisseur ou au choix du modèle n'est autorisé au Sprint 2. Aucun secret n'est requis ni consulté pour le travail prévu.
