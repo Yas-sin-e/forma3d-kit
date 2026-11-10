@@ -2,9 +2,9 @@
  * Rôle : démarre le routeur et partage l'état de disponibilité du serveur 3D.
  * Exécution : chargé une fois depuis index.html ; le contrôle de santé continue entre les pages.
  */
-import { getProviderHealth } from "./api.js";
-import { appState } from "./state.js";
-import { startRouter } from "./router.js";
+import { getProviderHealth } from "./api.js?v=20261110-11b-final";
+import { appState } from "./state.js?v=20261110-11b-final";
+import { startRouter } from "./router.js?v=20261110-11b-final";
 
 const providerBadge = document.querySelector("#provider-badge");
 const providerLabel = document.querySelector("#provider-label");

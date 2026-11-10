@@ -2,12 +2,12 @@
  * Rôle : présente le parcours photo, la progression réelle et le viewer de création.
  * Exécution : router.js monte cette page sur #/creer et la conserve en mémoire de navigation.
  */
-import { createGeneration, getGenerationStatus, listCategories } from "../api.js";
-import { appState, beginGeneration, stopGenerationTimers, updateElapsedSeconds, updateGenerationStatus } from "../state.js";
-import { setupUploader } from "../views/uploader.js";
-import { createProgressView } from "../views/progress.js";
-import { setupViewer } from "../views/viewer.js";
-import { viewerMarkup } from "./viewer-markup.js";
+import { createGeneration, getGenerationStatus, listCategories } from "../api.js?v=20261110-11b-final";
+import { appState, beginGeneration, stopGenerationTimers, updateElapsedSeconds, updateGenerationStatus } from "../state.js?v=20261110-11b-final";
+import { setupUploader } from "../views/uploader.js?v=20261110-11b-final";
+import { createProgressView } from "../views/progress.js?v=20261110-11b-final";
+import { setupViewer } from "../views/viewer.js?v=20261110-11b-final";
+import { viewerMarkup } from "./viewer-markup.js?v=20261110-11b-final";
 
 export const title = "Créer";
 

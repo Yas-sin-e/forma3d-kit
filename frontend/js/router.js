@@ -2,11 +2,11 @@
  * Rôle : résout les URL hash, charge une page à la fois et maintient la navigation accessible.
  * Exécution : main.js lance startRouter() au chargement de la coque HTML.
  */
-import * as createPage from "./pages/create.js";
-import * as modelsPage from "./pages/models.js";
-import * as modelDetailPage from "./pages/model-detail.js";
-import * as categoriesPage from "./pages/categories.js";
-import * as examplesPage from "./pages/examples.js";
+import * as createPage from "./pages/create.js?v=20261110-11b-final";
+import * as modelsPage from "./pages/models.js?v=20261110-11b-final";
+import * as modelDetailPage from "./pages/model-detail.js?v=20261110-11b-final";
+import * as categoriesPage from "./pages/categories.js?v=20261110-11b-final";
+import * as examplesPage from "./pages/examples.js?v=20261110-11b-final";
 
 const app = document.querySelector("#app");
 const nav = document.querySelector("#main-nav");

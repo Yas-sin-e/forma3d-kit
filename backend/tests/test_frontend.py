@@ -2,6 +2,8 @@
 # Exécution : Pytest appelle FastAPI avec TestClient, sans navigateur ni fournisseur distant.
 """Tests statiques de la page modulaire du Sprint 1."""
 
+import re
+
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -147,3 +149,27 @@ def test_local_model_controls_do_not_send_files_to_the_backend() -> None:
     assert "URL.revokeObjectURL(localObjectUrl)" in viewer
     assert "fetch(" not in local_handler
     assert "FormData" not in local_handler
+
+
+def test_create_page_keeps_horizontal_journey_and_progress_layout() -> None:
+    client = TestClient(app)
+    shell = client.get("/").text
+    create_page = client.get("/static/js/pages/create.js").text
+    router = client.get("/static/js/router.js").text
+    components = client.get("/static/css/components.css").text
+
+    journey = create_page.index('<ol class="creation-steps"')
+    workspace = create_page.index('<section class="workspace"')
+    progress = create_page.index('<section class="panel progress-panel"')
+    assert journey < workspace < progress
+    assert 'aria-current="step"' in create_page
+
+    section_depth = 0
+    for tag in re.finditer(r"</?section\b", create_page[workspace:progress]):
+        section_depth += -1 if tag.group().startswith("</") else 1
+    assert section_depth == 0, "Le suivi doit venir après les deux colonnes du workspace"
+
+    assert 'grid-template-columns: repeat(3, minmax(0, 1fr));' in components
+    assert 'grid-template-columns: repeat(5, minmax(0, 1fr));' in components
+    assert "components.css?v=20261110-11b-final" in shell
+    assert '"./pages/create.js?v=20261110-11b-final"' in router
