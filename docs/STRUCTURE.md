@@ -1,6 +1,6 @@
 # Structure expliquée — Forma3D Studio
 
-Mis à jour le 10 novembre 2026. Le Sprint 2 est terminé. L'étape 11 est une refonte UX indépendante du Sprint 3. L'étape 12 ajoute l'import GLB et la provenance unifiée ; le Sprint 5 n'est pas démarré.
+Mis à jour le 10 novembre 2026. Le Sprint 2 est terminé. Les étapes 11 et 11b sont des refontes UX indépendantes du Sprint 3. L'étape 12 ajoute l'import GLB et la provenance unifiée ; le Sprint 5 n'est pas démarré.
 
 ## Racine et documents de cadrage
 
@@ -81,12 +81,12 @@ Mis à jour le 10 novembre 2026. Le Sprint 2 est terminé. L'étape 11 est une r
 | `frontend/index.html` | Définit la coque commune, l'en-tête, le menu responsive, le badge santé et le point de montage `#app` | Sépare la navigation persistante des pages chargées au hash | À chaque visite du Studio |
 | `frontend/css/` | Regroupe le thème et les styles de composants | Sépare les jetons visuels de la mise en page | Au chargement de la page et pour une retouche visuelle |
 | `frontend/css/theme.css` | Définit la palette sombre, les fontes, le focus et la réduction du mouvement | Centralise les règles globales et lisibles | Avant les styles des composants |
-| `frontend/css/components.css` | Met en page le studio, les pages de catalogue, le viewer et le menu repliable | Conserve la palette DESIGN.md, le focus clavier et le fonctionnement de 360 à 1440 px | Lors du rendu et des changements d'état/largeur |
+| `frontend/css/components.css` | Met en page le studio, dont le parcours Créer en grille stretch adaptative et le suivi horizontal mobile | Conserve la palette DESIGN.md, le focus clavier et le repli sous 1024 px | Au rendu et quand la fenêtre change de largeur/hauteur |
 | `frontend/js/` | Regroupe l'état, l'API et les vues ES modules | Permet de suivre une responsabilité par fichier sans framework | Quand le navigateur charge le module principal |
 | `frontend/js/api.js` | Centralise fetch pour génération, import GLB, copie d'exemple, galerie, catégories et santé | Empêche les vues de disperser les appels serveur | À chaque action et toutes les 30 secondes pour la disponibilité |
 | `frontend/js/router.js` | Résout les routes hash, conserve la page Créer pendant une navigation, active le lien courant et focalise le titre | Gère plusieurs pages sans framework et respecte le clavier et l'historique du navigateur | À l'ouverture, au clic dans le menu et lors de Précédent/Suivant |
 | `frontend/js/pages/` | Contient un module par page visible du vendeur | Isole le balisage et le montage de chaque route | Lorsqu'une route hash est ouverte |
-| `frontend/js/pages/create.js` | Présente photo, catégorie, progression réelle, viewer et détails techniques repliés si le service est arrêté | Conserve le parcours de création et son suivi durant une navigation temporaire | Sur `#/creer` |
+| `frontend/js/pages/create.js` | Présente le parcours Photo/Création/Résultat, une carte Photo et catégorie, viewer, suivi et états hors ligne | Rend le chemin utilisateur immédiatement lisible sans modifier le traitement | Sur `#/creer` |
 | `frontend/js/pages/models.js` | Affiche les modèles persistés, le formulaire d'import GLB, catégories et état vide | Réunit créations, imports et exemples copiés avec la même fiche | Sur `#/modeles` |
 | `frontend/js/pages/model-detail.js` | Charge état, origine, modèle, photo source facultative, date et téléchargement | Réutilise les routes d'état existantes et distingue un import d'une génération | Sur `#/modeles/{id}` |
 | `frontend/js/pages/categories.js` | Place la gestion existante dans une page séparée | Évite d'encombrer l'accueil et rend les actions de catalogue plus claires | Sur `#/categories` |
@@ -95,9 +95,9 @@ Mis à jour le 10 novembre 2026. Le Sprint 2 est terminé. L'étape 11 est une r
 | `frontend/js/state.js` | Garde en mémoire photo, statut, durée et minuteries de la session | Évite une base de données pour cet état temporaire | Pendant l'envoi et le suivi d'une demande |
 | `frontend/js/main.js` | Démarre le routeur et diffuse l'état de disponibilité | Garde le contrôle santé unique et indépendant des pages | Au chargement et toutes les 30 secondes |
 | `frontend/js/views/` | Regroupe les vues de l'interface | Isole les responsabilités visibles du studio | Quand une vue est modifiée ou réutilisée |
-| `frontend/js/views/uploader.js` | Gère dépôt, validation photo et choix obligatoire parmi les trois catégories | Évite les générations sans type d'objet clair ou avec fournisseur hors ligne | Avant toute soumission |
+| `frontend/js/views/uploader.js` | Gère dépôt, validation photo, catégorie et explication visible du bouton désactivé | Évite une action bloquée sans raison compréhensible | À chaque changement de photo, catégorie, santé ou activité |
 | `frontend/js/views/categories.js` | Gère le CRUD et demande confirmation avant suppression | Protège les actions destructives et traduit les erreurs en mots simples | Sur `#/categories` |
-| `frontend/js/views/progress.js` | Traduit les états observés et le temps réel en étape accessible | N'invente ni pourcentage ni délai restant | Pendant et après une génération |
+| `frontend/js/views/progress.js` | Traduit les états observés en cinq étapes horizontales, avec état à faire, actif, terminé ou en échec | N'invente ni pourcentage ni délai restant et conserve une annonce aria-live polie | Pendant et après une génération |
 | `frontend/js/views/viewer.js` | Charge le GLB, applique l'éclairage PBR documenté et ouvre la photo source dans une boîte de dialogue accessible | Améliore le rendu et permet de comparer la source sans rétrécir la scène | Après une génération ou une sélection de galerie |
 | `frontend/js/views/gallery.js` | Crée les cartes 3D, filtres, dates et badges d'origine issus de l'API | Rend visibles les différences entre génération, import et exemple | Après le chargement de la galerie |
 
@@ -117,7 +117,7 @@ Mis à jour le 10 novembre 2026. Le Sprint 2 est terminé. L'étape 11 est une r
 | `backend/tests/test_image_preparer.py` | Vérifie carré, agrandissement, avertissements flou/petite image et erreurs de décodage | Utilise des images déterministes générées localement | À chaque suite pytest |
 | `backend/tests/test_local_storage.py` | Contrôle écritures atomiques, noms et garde-fous de chemin | Protège le stockage local contre un chemin client | À chaque suite pytest |
 | `backend/tests/test_models_api.py` | Vérifie les réponses d'upload, de suivi, les erreurs et le refus de téléchargement prématuré | Stabilise le contrat HTTP sans appeler le fournisseur | À chaque suite pytest |
-| `backend/tests/test_frontend.py` | Vérifie les ressources, catégories dynamiques, santé, blocage hors ligne et avertissement photo | Protège les contrats statiques sans navigateur | À chaque suite pytest |
+| `backend/tests/test_frontend.py` | Vérifie les ressources, catégories dynamiques, santé, blocage hors ligne, import et contrat du nouveau layout | Protège les contrats statiques sans navigateur | À chaque suite pytest |
 | `backend/tests/test_demo_gallery.py` | Vérifie les modèles autorisés et les photos source facultatives sans réseau | Protège la galerie et sa comparaison photo/GLB | À chaque suite pytest |
 | `backend/tests/test_model_library.py` | Vérifie l'import GLB, limites, catégories, copie d'exemple et migration de `origin` | Couvre les cas de bibliothèque avec SQLite temporaire et sans fournisseur | À chaque suite pytest |
 | `.github/workflows/ci.yml` | Vérifie les documents puis installe les dépendances et exécute pytest | Donne un contrôle répétable sur GitHub | À chaque push ou pull request |
@@ -143,6 +143,7 @@ Mis à jour le 10 novembre 2026. Le Sprint 2 est terminé. L'étape 11 est une r
 | `docs/etapes/etape-09.md` | Explique le CRUD catégories backend/frontend, les règles de suppression et les tests | Permet de justifier le cycle de vie et la source SQLite | Pour réviser l'étape 9 |
 | `docs/etapes/etape-10.md` | Explique Pillow, le cadrage, les avertissements, la conservation de la source et les limites | Rend la préparation d'image défendable sans boîte noire lourde | Pour réviser l'étape 10 |
 | `docs/etapes/etape-11.md` | Documente les routes, le schéma, le focus, le menu et les vérifications manuelles | Explique la navigation frontend sans confondre l'étape avec le Sprint 3 | Pour présenter ou faire évoluer le Studio à pages |
+| `docs/etapes/etape-11b.md` | Explique le schéma horizontal Créer, le stepper, le suivi et les limites de vérification visuelle | Documente le layout sans toucher au backend ni démarrer Sprint 5 | Pour expliquer ou vérifier la page Créer |
 | `docs/etapes/etape-12.md` | Explique l'import, la validation GLB, la copie d'exemples, l'origine et les tests | Documente l'ajout à la bibliothèque sans démarrer le Sprint 5 | Pour réviser l'étape 12 |
 | `docs/etapes/.gitkeep` | Marqueur ancien du dossier de guides | Conservé sans rôle d'exécution | Au clonage du dépôt |
 | `docs/archive/` et `docs/archive/v1/` | Isolent les documents remplacés | Préservent l'historique tout en gardant les instructions v2 à la racine | Pour consulter l'ancienne vision |
@@ -168,4 +169,4 @@ Mis à jour le 10 novembre 2026. Le Sprint 2 est terminé. L'étape 11 est une r
 | `extension-debug.log` | Journal auxiliaire local de l'environnement de développement | N'est pas une entrée de l'application et est exclu de Git | Seulement si l'outil local le recrée |
 | `__pycache__/`, `.pytest_cache/` | Bytecode et cache de collecte | Ces fichiers se régénèrent automatiquement | Après imports et tests |
 
-Le registre des métadonnées est persisté dans `backend/data/forma3d.sqlite3` ; les photos sources et GLB restent dans `backend/storage/`. Le dépôt d'étape 12 conserve l'origine `generated`, `imported` ou `example` ; les imports/copies ne possèdent pas de photo source et ne reçoivent pas de durée de génération. Le Sprint 2 reste terminé, le Sprint 3 n'est pas démarré et l'étape 12 ne démarre pas le Sprint 5.
+Le registre des métadonnées est persisté dans `backend/data/forma3d.sqlite3` ; les photos sources et GLB restent dans `backend/storage/`. Le dépôt d'étape 12 conserve l'origine `generated`, `imported` ou `example` ; les imports/copies ne possèdent pas de photo source et ne reçoivent pas de durée de génération. L'étape 11b change uniquement le frontend. Le Sprint 2 reste terminé, le Sprint 3 n'est pas démarré et les étapes 11b/12 ne démarrent pas le Sprint 5.

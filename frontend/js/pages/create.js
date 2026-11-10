@@ -19,13 +19,14 @@ export function render() {
         <h1 class="page-title" id="create-page-title" tabindex="-1">Créez votre modèle 3D</h1>
         <p class="page-lead">Ajoutez une photo de votre produit pour obtenir un aperçu 3D interactif.</p>
       </div>
+      <ol class="creation-steps" aria-label="Parcours de création">
+        <li class="creation-step" data-journey-step="0" data-state="active" aria-current="step"><span class="journey-marker" aria-hidden="true">1</span><span class="journey-copy"><strong>Photo</strong><span id="journey-photo-hint">Choisissez une photo</span></span></li>
+        <li class="creation-step" data-journey-step="1" data-state=""><span class="journey-marker" aria-hidden="true">2</span><span class="journey-copy"><strong>Création</strong><span id="journey-create-hint">Choisissez une catégorie</span></span></li>
+        <li class="creation-step" data-journey-step="2" data-state=""><span class="journey-marker" aria-hidden="true">3</span><span class="journey-copy"><strong>Résultat</strong><span id="journey-result-hint">En attente de la création</span></span></li>
+      </ol>
       <section class="workspace" aria-label="Création et aperçu du produit">
-        <aside class="control-column" aria-label="Photo et suivi">
-          <form class="panel upload-panel" id="upload-form">
-            <div class="section-heading">
-              <span class="step-index" aria-hidden="true">01</span>
-              <div><h2>Photo du produit</h2><p>Choisissez une image claire d’un seul objet.</p></div>
-            </div>
+          <form class="panel upload-panel" id="upload-form" aria-labelledby="photo-category-title">
+            <div class="section-heading"><div><h2 id="photo-category-title">Photo et catégorie</h2><p>Choisissez une photo nette de votre produit.</p></div></div>
             <input class="visually-hidden" id="photo-input" name="file" type="file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp">
             <label class="drop-zone" id="drop-zone" for="photo-input" aria-describedby="format-note">
               <span class="drop-icon" aria-hidden="true">↑</span>
@@ -43,52 +44,53 @@ export function render() {
             </div>
             <p class="privacy-note">N’envoyez pas de visages ni de données personnelles. La photo peut être traitée par un service externe.</p>
             <p class="upload-feedback" id="upload-feedback" role="alert" hidden></p>
+            <div class="service-unavailable-note" id="service-unavailable-note" role="status" hidden>
+              <span>Création momentanément indisponible</span><a href="#/exemples">Voir les exemples</a>
+            </div>
+            <p class="submit-reason" id="submit-reason" role="status" aria-live="polite" aria-atomic="true">Choisissez une photo pour activer la création.</p>
             <button class="button button-primary submit-button" id="submit-button" type="submit" disabled>
               <span class="button-label">Créer le modèle 3D</span><span aria-hidden="true">→</span>
             </button>
-          </form>
-
-          <aside class="service-unavailable-note" id="service-unavailable-note" hidden>
-            <p>La création est momentanément indisponible. Vous pouvez parcourir les exemples.</p>
-            <a class="button button-secondary" href="#/exemples">Voir les exemples</a>
-            <details>
+            <details class="photo-guidance" aria-labelledby="photo-guidance-title">
+              <summary id="photo-guidance-title">Conseils photo</summary>
+              <div class="photo-guidance-content"><ul>
+                <li>Photographiez un seul objet sur un fond uni.</li>
+                <li>Choisissez une lumière douce et une vue de trois quarts.</li>
+                <li>Faites occuper environ 70 % de l’image par l’objet.</li>
+                <li>Utilisez une vraie photo, jamais une capture d’écran.</li>
+              </ul></div>
+            </details>
+            <details class="technical-details">
               <summary>Détails techniques</summary>
               <p id="technical-health-message">Le serveur 3D est indisponible.</p>
               <p>Le serveur temporaire Colab peut expirer. Pour le relancer, exécutez le notebook puis mettez à jour HF_SPACE_ID dans backend/.env.</p>
             </details>
-          </aside>
-
-          <details class="photo-guidance" aria-labelledby="photo-guidance-title">
-            <summary id="photo-guidance-title">Conseils photo</summary>
-            <div class="photo-guidance-content"><ul>
-              <li>Photographiez un seul objet sur un fond uni.</li>
-              <li>Choisissez une lumière douce et une vue de trois quarts.</li>
-              <li>Faites occuper environ 70 % de l’image par l’objet.</li>
-              <li>Utilisez une vraie photo, jamais une capture d’écran.</li>
-            </ul></div>
-          </details>
-
-          <section class="panel progress-panel" id="progress-panel" aria-labelledby="progress-title" aria-busy="false">
-            <div class="section-heading compact-heading">
-              <span class="step-index" aria-hidden="true">02</span>
-              <div><h2 id="progress-title">Suivi</h2><p id="progress-summary" role="status" aria-live="polite">Aucune création en cours.</p></div>
+          </form>
+          <div class="create-viewer-column">${viewerMarkup}</div>
+      </section>
+      <section class="panel progress-panel" id="progress-panel" aria-labelledby="progress-title" aria-busy="false">
+        <div class="progress-content">
+          <div class="progress-track-column">
+            <div class="progress-title-row"><h2 id="progress-title">Suivi de création</h2></div>
+            <div class="progress-scroll" tabindex="0" role="region" aria-label="Étapes de création, faites défiler horizontalement si nécessaire">
+              <ol class="progress-steps" id="progress-steps" aria-label="Étapes renvoyées par le serveur">
+                <li class="progress-step" data-step="0"><span class="step-marker" aria-hidden="true">1</span><span>Photo envoyée</span></li>
+                <li class="progress-step" data-step="1"><span class="step-marker" aria-hidden="true">2</span><span>En file</span></li>
+                <li class="progress-step" data-step="2"><span class="step-marker" aria-hidden="true">3</span><span>Création du modèle</span></li>
+                <li class="progress-step" data-step="3"><span class="step-marker" aria-hidden="true">4</span><span>Validation du GLB</span></li>
+                <li class="progress-step" data-step="4"><span class="step-marker" aria-hidden="true">5</span><span>Terminé</span></li>
+              </ol>
             </div>
-            <ol class="progress-steps" id="progress-steps" aria-label="Étapes de création">
-              <li class="progress-step" data-step="0"><span class="step-marker" aria-hidden="true">1</span><span>Photo envoyée</span></li>
-              <li class="progress-step" data-step="1"><span class="step-marker" aria-hidden="true">2</span><span>En file</span></li>
-              <li class="progress-step" data-step="2"><span class="step-marker" aria-hidden="true">3</span><span>Création du modèle</span></li>
-              <li class="progress-step" data-step="3"><span class="step-marker" aria-hidden="true">4</span><span>Vérification du fichier</span></li>
-              <li class="progress-step" data-step="4"><span class="step-marker" aria-hidden="true">5</span><span>Terminé</span></li>
-            </ol>
-            <div class="progress-meta"><span class="activity-indicator" id="activity-indicator" aria-hidden="true"></span><p id="progress-detail">Les états affichés viennent du serveur.</p></div>
-            <p class="image-preparation-warning" id="image-preparation-warning" role="status" aria-live="polite" hidden></p>
-            <p class="timing-note">La création peut prendre quelques minutes. Le délai dépend de la disponibilité du service.</p>
+          </div>
+          <div class="progress-output">
             <p class="elapsed-time" id="elapsed-time" hidden>Temps écoulé : <span id="elapsed-seconds">0</span> s</p>
+            <div class="progress-meta"><span class="activity-indicator" id="activity-indicator" aria-hidden="true"></span><div class="progress-live" role="status" aria-live="polite" aria-atomic="true"><p id="progress-summary">Aucune création en cours.</p><p id="progress-detail">Les états affichés viennent du serveur.</p></div></div>
+            <p class="image-preparation-warning" id="image-preparation-warning" role="status" aria-live="polite" hidden></p>
+            <p class="timing-note">Le délai dépend de la disponibilité du service.</p>
             <button class="button button-secondary retry-button" id="retry-button" type="button" hidden>Réessayer avec cette photo</button>
             <a class="button button-secondary detail-result-link" id="model-detail-link" href="#" hidden>Ouvrir la fiche du modèle</a>
-          </section>
-        </aside>
-        <div class="create-viewer-column">${viewerMarkup}</div>
+          </div>
+        </div>
       </section>
       <aside class="honesty-note"><span class="note-mark" aria-hidden="true">i</span><p>Modèle approximatif créé à partir d’une seule photo. Les dimensions et la géométrie ne sont pas garanties.</p></aside>
     </section>
@@ -102,7 +104,45 @@ function sameOriginPath(value) {
 }
 
 export function mount() {
-  const uploader = setupUploader(startGeneration);
+  const journeySteps = [...document.querySelectorAll("[data-journey-step]")];
+  const journeyHints = [
+    document.querySelector("#journey-photo-hint"),
+    document.querySelector("#journey-create-hint"),
+    document.querySelector("#journey-result-hint"),
+  ];
+
+  function renderJourney(state = {}) {
+    const hasPhoto = state.hasPhoto ?? Boolean(appState.selectedPhoto);
+    const hasCategory = state.hasCategory ?? Boolean(document.querySelector("#product-category")?.value);
+    const providerAvailable = state.providerAvailable ?? appState.providerHealth?.status === "ONLINE";
+    const photoError = state.photoError ?? "";
+    const status = appState.generationStatus;
+    const activeStep = status === "DONE" ? 2 : !hasPhoto || photoError ? 0 : 1;
+
+    journeyHints[0].textContent = photoError || (hasPhoto ? "Photo prête" : "Choisissez une photo");
+    if (status === "SENDING") journeyHints[1].textContent = "Envoi de la photo";
+    else if (status === "PENDING") journeyHints[1].textContent = "En file";
+    else if (status === "RUNNING") journeyHints[1].textContent = "Création en cours";
+    else if (status === "FAILED") journeyHints[1].textContent = "Échec · vous pouvez réessayer";
+    else if (!hasCategory) journeyHints[1].textContent = "Choisissez une catégorie";
+    else if (!providerAvailable) journeyHints[1].textContent = "Serveur indisponible";
+    else journeyHints[1].textContent = "Prête à démarrer";
+    journeyHints[2].textContent = status === "DONE" ? "Modèle prêt" : "En attente de la création";
+
+    journeySteps.forEach((step, index) => {
+      step.removeAttribute("aria-current");
+      let stepState = index < activeStep ? "complete" : index === activeStep ? "active" : "todo";
+      if ((photoError && index === 0) || (status === "FAILED" && index === 1)) stepState = "error";
+      step.dataset.state = stepState;
+      if (index === activeStep || (photoError && index === 0) || (status === "FAILED" && index === 1)) {
+        step.setAttribute("aria-current", "step");
+      }
+      const marker = step.querySelector(".journey-marker");
+      marker.textContent = stepState === "complete" ? "✓" : stepState === "error" ? "!" : String(index + 1);
+    });
+  }
+
+  const uploader = setupUploader(startGeneration, renderJourney);
   const progress = createProgressView();
   const viewer = setupViewer();
   const progressPanel = document.querySelector("#progress-panel");
@@ -114,6 +154,7 @@ export function mount() {
   function updateProgress(status, options = {}) {
     const elapsedSeconds = appState.generationStartedAt === null ? undefined : updateElapsedSeconds();
     progress.render(status, { ...options, elapsedSeconds });
+    renderJourney();
   }
 
   function stopTracking() {
@@ -125,6 +166,7 @@ export function mount() {
     const elapsedSeconds = appState.generationStartedAt === null ? undefined : updateElapsedSeconds();
     stopTracking();
     updateGenerationStatus("FAILED");
+    renderJourney();
     uploader.setBusy(false);
     progress.render("FAILED", { summary: titleText, detail: message, elapsedSeconds });
   }
@@ -151,6 +193,7 @@ export function mount() {
     const modelUrl = sameOriginPath(data.model_url);
     stopTracking();
     updateGenerationStatus("DONE");
+    renderJourney();
     uploader.setBusy(false);
     viewer.showModel({
       url: modelUrl,

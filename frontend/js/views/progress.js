@@ -44,7 +44,7 @@ export function createProgressView() {
     }
 
     steps.forEach((step, index) => {
-      let state = "";
+      let state = "todo";
       if (status === "DONE") state = "complete";
       else if (status === "FAILED" && index === activeStep) state = "error";
       else if (Number.isInteger(activeStep) && index < activeStep) state = "complete";

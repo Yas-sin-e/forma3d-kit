@@ -34,6 +34,18 @@ def test_home_serves_the_studio_shell_and_separate_navigation() -> None:
     assert 'id="model-viewer"' in viewer
     assert 'id="source-photo-image"' in viewer
     assert "Modèle approximatif créé à partir d’une seule photo" in create_page
+    assert "Parcours de création" in create_page
+    assert "Photo et catégorie" in create_page
+    assert "submit-reason" in create_page
+    assert "Détails techniques" in create_page
+    assert "Conseils photo" in create_page
+    assert "Validation du GLB" in create_page
+
+    components = client.get("/static/css/components.css").text
+    assert "grid-template-columns: minmax(340px" in components
+    assert "max-width: 1023px" in components
+    assert "grid-template-columns: repeat(5, 112px)" in components
+    assert "@media (min-width: 1024px) and (max-height: 850px)" in components
 
 
 def test_static_frontend_assets_are_served_and_only_api_module_calls_fetch() -> None:

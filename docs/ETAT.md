@@ -51,6 +51,15 @@ Dernière mise à jour : 10 novembre 2026.
 - Vérification automatisée : `backend/tests/test_frontend.py` (5 tests ciblés), suite complète (75 tests), puis analyse syntaxique Node.js des 15 modules JavaScript. Aucun parcours interactif navigateur ni génération réelle n'a été fait.
 - À vérifier manuellement : routes et historique Précédent/Suivant ; menu actif et burger ; filtres de Mes modèles et Exemples ; création/confirmation de suppression des catégories ; fiche inconnue ; photo source et téléchargement ; affichage à 360 px et 1440 px.
 
+## Étape 11b — Refonte du layout de Créer (frontend uniquement)
+
+- Objectif : rendre le parcours Photo → Création → Résultat visible d'un coup d'œil, puis afficher la carte d'entrée, le viewer et le suivi en lignes compactes.
+- `frontend/js/pages/create.js` présente le stepper informatif, la carte unique Photo et catégorie, la ligne hors service et les détails repliables. `frontend/js/views/uploader.js` actualise l'explication visible du bouton désactivé selon la photo, la catégorie, le serveur ou l'état occupé. `frontend/js/views/progress.js` garde les cinq états et rend explicites les étapes à faire, actives, terminées ou en échec. `frontend/css/components.css` règle la grille stretch, les hauteurs adaptatives, les seuils 1024/640 px et le défilement horizontal contenu du suivi mobile.
+- Aucun code d'application backend, fournisseur 3D, route API ou fichier local `.env` n'a été modifié. Le Sprint 5 n'est pas démarré.
+- Vérification : 5 tests ciblés de `backend/tests/test_frontend.py`, suite complète de 83 tests réussie en 2,65 s, `node --check` sur les modules JavaScript et `git diff --check`. Les tests ne contactent aucun fournisseur.
+- Non vérifié : rendu visuel et défilement réel à 1366×768, 1920×1080, 360 px, tabulation et lecteur d'écran. Aucun navigateur n'a été piloté conformément à la consigne.
+- Guide pédagogique : `docs/etapes/etape-11b.md`. Le Sprint 5 demeure non commencé.
+
 ## Étape 12 — Import GLB et liste unifiée (incrément distinct, hors Sprint 5)
 
 - Objectif : permettre au vendeur d'ajouter un GLB local ou de copier un exemple dans la bibliothèque, avec une origine visible et honnête. Le Sprint 2 reste terminé ; l'étape 12 ne démarre pas le Sprint 5.
