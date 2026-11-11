@@ -52,12 +52,15 @@ export function radiusForAspect(aspect) {
 export function refitCamera(viewer) {
   if (!viewer || typeof viewer.updateFraming !== "function") return;
   // Deux images d'attente : la nouvelle mise en page CSS doit être appliquée avant de mesurer.
-  window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+  window.requestAnimationFrame(() => window.requestAnimationFrame(async () => {
+    // model-viewer ne redimensionne sa zone de rendu qu'à un événement « resize » (constaté dans le navigateur).
+    window.dispatchEvent(new Event("resize"));
     const { width, height } = viewer.getBoundingClientRect();
     const theta = viewer.getCameraOrbit?.().theta ?? 0;
     viewer.cameraTarget = "auto auto auto";
     viewer.cameraOrbit = `${theta}rad 75deg ${radiusForAspect(width / height)}%`;
-    void viewer.updateFraming();
+    await viewer.updateFraming();
+    viewer.jumpCameraToGoal?.();
   }));
 }
 

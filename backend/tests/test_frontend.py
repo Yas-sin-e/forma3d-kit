@@ -201,8 +201,8 @@ def test_create_page_keeps_workspace_then_progress_layout() -> None:
 
     assert 'grid-template-columns: repeat(3, minmax(0, 1fr));' in components
     assert 'grid-template-columns: repeat(5, minmax(0, 1fr));' in components
-    assert "components.css?v=20261112-c5" in shell
-    assert '"./pages/create.js?v=20261112-c5"' in router
+    assert "components.css?v=20261112-c7" in shell
+    assert '"./pages/create.js?v=20261112-c7"' in router
 
 
 def test_widget_script_defines_the_integrator_tag_and_uses_embed_iframe() -> None:
@@ -319,7 +319,7 @@ def test_viewers_fix_default_gltf_material_and_refit_in_compare_mode() -> None:
     assert "updateFraming()" in appearance
     for module in (viewer, detail, gallery, dashboard):
         assert "watchProductAppearance(" in module
-        assert "model-appearance.js?v=20261112-c5" in module
+        assert "model-appearance.js?v=20261112-c7" in module
     assert "refitCamera(viewer)" in viewer and "refitCamera(modelViewer)" in detail
     assert 'removeAttribute("auto-rotate")' in detail
 
@@ -340,3 +340,16 @@ def test_compare_mode_keeps_photo_and_model_whole() -> None:
     assert "export function radiusForAspect(aspect)" in appearance
     assert "Math.max(1, 1 / aspect)" in appearance
     assert "radiusForAspect(width / height)" in appearance
+    assert 'window.dispatchEvent(new Event("resize"))' in appearance
+    stage_rule = css.split(".detail-stage model-viewer {", 1)[1].split("}", 1)[0]
+    assert "width: auto" in stage_rule and "height: auto" in stage_rule
+
+
+def test_gallery_model_urls_change_when_the_file_changes() -> None:
+    """Un exemple remplacé (TripoSR → TRELLIS) ne doit pas être resservi depuis le cache du navigateur."""
+    client = TestClient(app)
+    api = client.get("/static/js/api.js").text
+    assert "export function withFileVersion(url, sizeBytes)" in api
+    assert "withFileVersion(item.model_url, item.size_bytes)" in api
+    # La route du GLB accepte et ignore le paramètre de version.
+    assert client.get("/models/gallery/inconnu?v=123").status_code == 404

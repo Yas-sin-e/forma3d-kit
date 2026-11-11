@@ -62,4 +62,13 @@ Sur la fiche d'un exemple, l'étudiante a constaté que le mode « Photo source 
 
 - `components.css` : la photo prend la taille de la scène avec `object-fit: contain`.
 - `model-appearance.js` : `radiusForAspect()` recule la caméra selon le rapport largeur/hauteur (105 % en scène large, 167 % pour une demi-scène de rapport 0,63) ; mesure après deux images d'attente.
-- Clé de cache passée à `20261112-c4`. Vérification visuelle à refaire par l'étudiante (Ctrl+F5).
+- Clé de cache passée à `20261112-c4`.
+
+### Deuxième correctif, vérifié dans le navigateur intégré
+
+Le premier correctif ne suffisait pas (retour de l'étudiante). Diagnostic dans le navigateur intégré, sur une copie locale du Studio : le viewer mesurait encore 689 px en mode Comparer, car la règle générale `model-viewer { width: 100% }` l'emportait sur `right: 50%` ; le modèle était donc centré sur la séparation et à moitié caché sous la photo. De plus, model-viewer ne recalculait sa zone de rendu qu'à un événement `resize`.
+
+- `components.css` : `width: auto; height: auto` sur le viewer de la scène, pour que la position fixe sa taille.
+- `model-appearance.js` : `refitCamera()` émet un événement `resize`, applique le recul calculé, puis `jumpCameraToGoal()`.
+- `api.js` : `withFileVersion()` ajoute la taille du fichier à l'adresse des GLB de la galerie, pour que le navigateur ne resserve pas l'ancien fichier en cache (exemples remplacés par TRELLIS).
+- Vérifié à 1366 × 800 : viewer de 345 px, chaise TRELLIS entière à côté de la photo ; photo source contenue dans la scène (641 × 390 px dans 691 × 440 px). Vérifié à 375 px : modèle entier en haut, photo en bas, aucun débordement horizontal.

@@ -1607,6 +1607,10 @@ model-viewer {
 .detail-stage model-viewer {
   position: absolute;
   inset: 0;
+  /* width/height auto : la position (inset, right: 50 % en mode Comparer) fixe la taille ;
+     la règle générale « width: 100 % » empêchait sinon le viewer de rétrécir. */
+  width: auto;
+  height: auto;
   z-index: 1;
   background: transparent;
   filter: contrast(1.05) saturate(1.1);

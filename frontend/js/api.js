@@ -45,12 +45,25 @@ export async function getGenerationStatus(statusUrl) {
   return readResponse(response, "Impossible de lire l'état de la génération.");
 }
 
+/*
+ * Ajoute la taille du fichier à l'adresse du GLB : si le fichier est remplacé (ex. exemple passé
+ * de TripoSR à TRELLIS), l'adresse change et le navigateur ne réutilise pas l'ancienne copie en cache.
+ */
+export function withFileVersion(url, sizeBytes) {
+  if (typeof url !== "string" || !Number.isFinite(sizeBytes)) return url;
+  return `${url}${url.includes("?") ? "&" : "?"}v=${sizeBytes}`;
+}
+
 export async function listGalleryModels() {
   const response = await fetch("/models/gallery", {
     cache: "no-store",
     headers: { Accept: "application/json" },
   });
-  return readResponse(response, "Impossible de charger les modèles de démonstration.");
+  const data = await readResponse(response, "Impossible de charger les modèles de démonstration.");
+  if (Array.isArray(data.items)) {
+    data.items = data.items.map((item) => ({ ...item, model_url: withFileVersion(item.model_url, item.size_bytes) }));
+  }
+  return data;
 }
 
 export async function importGlbModel(file, title, category) {
