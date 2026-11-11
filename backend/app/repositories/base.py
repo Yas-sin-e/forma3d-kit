@@ -91,6 +91,10 @@ class GenerationRepository(Protocol):
         """Révoque une clé existante et retourne ses métadonnées."""
         ...
 
+    def delete_revoked_api_key(self, key_id: str) -> str:
+        """Supprime une clé déjà révoquée et ses compteurs ; renvoie « deleted », « active » ou « not_found »."""
+        ...
+
 
     def consume_api_rate_limit(self, key_id: str, rate_limit_per_minute: int, now: datetime) -> str | None:
         """Consomme une requête dans la fenêtre de débit ou retourne son motif de refus."""

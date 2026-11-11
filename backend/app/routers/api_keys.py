@@ -1,5 +1,6 @@
 # Rôle : expose la gestion locale des clés et la dépendance X-API-Key réutilisable.
 # Exécution : le Studio administre les clés ; les futures routes publiques protègent leurs appels avec require_api_key.
+# Révoquer (DELETE /{id}) coupe l'accès en gardant une trace ; supprimer (DELETE /{id}/permanent) efface une clé déjà révoquée.
 """Routes de gestion et vérification des clés API d’intégration."""
 
 from typing import Annotated
@@ -63,6 +64,20 @@ def revoke_api_key(
     if record is None:
         raise HTTPException(status_code=404, detail="Clé API introuvable.")
     return _response(record)
+
+
+@router.delete("/{key_id}/permanent", status_code=status.HTTP_204_NO_CONTENT)
+def delete_revoked_api_key(
+    key_id: str,
+    service: Annotated[APIKeyService, Depends(get_api_key_service)],
+) -> Response:
+    """Supprime définitivement une clé déjà révoquée (la révocation reste l'étape obligatoire)."""
+    outcome = service.delete_revoked(key_id)
+    if outcome == "not_found":
+        raise HTTPException(status_code=404, detail="Clé API introuvable.")
+    if outcome == "active":
+        raise HTTPException(status_code=409, detail="Révoquez la clé avant de la supprimer définitivement.")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 def require_api_key(

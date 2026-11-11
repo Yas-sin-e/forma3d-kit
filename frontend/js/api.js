@@ -159,6 +159,16 @@ export async function createApiKey(name) {
   return readResponse(response, "Impossible de créer cette clé API.");
 }
 
+/* Supprime définitivement une clé déjà révoquée (204 sans contenu). */
+export async function deleteRevokedApiKey(keyId) {
+  const response = await fetch(`/api-keys/${encodeURIComponent(keyId)}/permanent`, {
+    method: "DELETE",
+    headers: { Accept: "application/json" },
+  });
+  if (response.status === 204) return null;
+  return readResponse(response, "Impossible de supprimer cette clé API.");
+}
+
 export async function revokeApiKey(keyId) {
   const response = await fetch(`/api-keys/${encodeURIComponent(keyId)}`, {
     method: "DELETE",

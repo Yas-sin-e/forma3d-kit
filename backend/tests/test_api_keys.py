@@ -118,3 +118,31 @@ def test_api_key_quota_and_rate_limit_are_persisted_by_key_and_utc_day(tmp_path:
     service.revoke(key.id)
     assert service.consume_rate_limit(key, 1, start + timedelta(days=2)) == "revoked"
     assert service.consume_daily_quota(key, 1, start + timedelta(days=2)) == "revoked"
+
+
+def test_only_revoked_keys_can_be_deleted_permanently_with_their_counters(tmp_path: Path) -> None:
+    repository = SQLiteGenerationRepository(tmp_path / "api.sqlite3")
+    repository.initialize()
+    service = APIKeyService(repository)
+    app.dependency_overrides[get_api_key_service] = lambda: service
+    try:
+        with TestClient(app) as client:
+            key_id = client.post("/api-keys", json={"name": "À supprimer"}).json()["id"]
+            # Des compteurs existent pour cette clé (débit et quota du jour).
+            assert repository.consume_api_rate_limit(key_id, 10, datetime.now(UTC)) is None
+
+            active = client.delete(f"/api-keys/{key_id}/permanent")
+            assert active.status_code == 409
+            assert "Révoquez la clé" in active.json()["detail"]
+
+            assert client.delete(f"/api-keys/{key_id}").status_code == 200
+            deleted = client.delete(f"/api-keys/{key_id}/permanent")
+            assert deleted.status_code == 204
+            assert client.get("/api-keys").json()["items"] == []
+            assert client.delete(f"/api-keys/{key_id}/permanent").status_code == 404
+    finally:
+        app.dependency_overrides.pop(get_api_key_service, None)
+
+    with sqlite3.connect(tmp_path / "api.sqlite3") as connection:
+        assert connection.execute("SELECT COUNT(*) FROM api_rate_events").fetchone()[0] == 0
+        assert connection.execute("SELECT COUNT(*) FROM api_usage_daily").fetchone()[0] == 0

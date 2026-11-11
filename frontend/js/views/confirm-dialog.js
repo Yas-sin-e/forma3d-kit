@@ -2,6 +2,10 @@
  * Rôle : remplace window.confirm() par une fenêtre modale accessible aux couleurs du Studio.
  * Exécution : les pages appellent confirmDialog({...}) avant une action sensible (révoquer, supprimer).
  * La promesse renvoie true si la propriétaire confirme, false si elle annule ou ferme.
+ *
+ * Les boutons concluent directement (finish) : on ne dépend pas seulement de l'événement « close »,
+ * qui peut ne pas être déclenché par certains navigateurs. Cet événement reste écouté pour la touche
+ * Échap ; finish() garantit qu'une seule réponse est donnée et que la fenêtre est retirée.
  */
 export function confirmDialog({ title, message, confirmLabel = "Confirmer", cancelLabel = "Annuler", danger = false }) {
   return new Promise((resolve) => {
@@ -31,16 +35,23 @@ export function confirmDialog({ title, message, confirmLabel = "Confirmer", canc
     dialog.append(heading, text, actions);
     document.body.append(dialog);
 
-    let answer = false;
-    cancel.addEventListener("click", () => dialog.close());
-    confirm.addEventListener("click", () => { answer = true; dialog.close(); });
-    dialog.addEventListener("click", (event) => {
-      if (event.target === dialog) dialog.close();
-    });
-    dialog.addEventListener("close", () => {
+    let settled = false;
+    function finish(answer) {
+      if (settled) return;
+      settled = true;
+      if (dialog.open) dialog.close();
       dialog.remove();
       resolve(answer);
-    }, { once: true });
+    }
+
+    cancel.addEventListener("click", () => finish(false));
+    confirm.addEventListener("click", () => finish(true));
+    dialog.addEventListener("click", (event) => {
+      if (event.target === dialog) finish(false);
+    });
+    // Touche Échap : le navigateur ferme la fenêtre lui-même, ce qui vaut une annulation.
+    dialog.addEventListener("cancel", () => finish(false));
+    dialog.addEventListener("close", () => finish(false));
 
     dialog.showModal();
     cancel.focus();

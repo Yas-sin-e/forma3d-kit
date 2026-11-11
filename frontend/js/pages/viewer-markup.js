@@ -4,7 +4,7 @@
  * Refonte : scène soignée (dégradé, grille en perspective, halo), squelette de chargement,
  * bascule Vue 3D / Photo source / Comparer, éclairage plus flatteur et note discrète.
  */
-import { emptyCubeIllustration } from "../views/illustrations.js?v=20261112-c7";
+import { emptyCubeIllustration } from "../views/illustrations.js?v=20261112-d1";
 
 export const viewerMarkup = `
   <section class="panel viewer-panel" aria-labelledby="viewer-title">

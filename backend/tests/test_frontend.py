@@ -201,8 +201,8 @@ def test_create_page_keeps_workspace_then_progress_layout() -> None:
 
     assert 'grid-template-columns: repeat(3, minmax(0, 1fr));' in components
     assert 'grid-template-columns: repeat(5, minmax(0, 1fr));' in components
-    assert "components.css?v=20261112-c7" in shell
-    assert '"./pages/create.js?v=20261112-c7"' in router
+    assert "components.css?v=20261112-d1" in shell
+    assert '"./pages/create.js?v=20261112-d1"' in router
 
 
 def test_widget_script_defines_the_integrator_tag_and_uses_embed_iframe() -> None:
@@ -319,7 +319,7 @@ def test_viewers_fix_default_gltf_material_and_refit_in_compare_mode() -> None:
     assert "updateFraming()" in appearance
     for module in (viewer, detail, gallery, dashboard):
         assert "watchProductAppearance(" in module
-        assert "model-appearance.js?v=20261112-c7" in module
+        assert "model-appearance.js?v=20261112-d1" in module
     assert "refitCamera(viewer)" in viewer and "refitCamera(modelViewer)" in detail
     assert 'removeAttribute("auto-rotate")' in detail
 
@@ -353,3 +353,22 @@ def test_gallery_model_urls_change_when_the_file_changes() -> None:
     assert "withFileVersion(item.model_url, item.size_bytes)" in api
     # La route du GLB accepte et ignore le paramètre de version.
     assert client.get("/models/gallery/inconnu?v=123").status_code == 404
+
+
+def test_revoked_api_keys_offer_a_confirmed_permanent_delete() -> None:
+    client = TestClient(app)
+    page = client.get("/static/js/pages/api-keys.js").text
+    api = client.get("/static/js/api.js").text
+    assert "Supprimer définitivement" in page and "deleteRevokedApiKey(key.id)" in page
+    assert "Cette action est irréversible" in page
+    assert "/permanent`" in api
+    # Le secret affiché disparaît dès que sa clé est révoquée ou supprimée.
+    assert page.count("hideRevealFor(key.id)") == 2
+
+
+def test_confirm_dialog_settles_without_relying_on_the_close_event() -> None:
+    """Certains navigateurs n'envoient pas « close » : les boutons concluent eux-mêmes."""
+    dialog = TestClient(app).get("/static/js/views/confirm-dialog.js").text
+    assert 'confirm.addEventListener("click", () => finish(true))' in dialog
+    assert 'cancel.addEventListener("click", () => finish(false))' in dialog
+    assert "if (settled) return;" in dialog and "dialog.remove();" in dialog

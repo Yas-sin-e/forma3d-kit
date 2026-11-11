@@ -3,10 +3,11 @@
  * Exécution : router.js monte cette page sur #/cles-api ; le secret reste en mémoire le temps de l’affichage.
  * Refonte : guide en 4 étapes, exemple curl réel (routes /api/v1 existantes), cartes avec badge
  * de statut et confirmation de révocation par fenêtre modale.
+ * Une clé révoquée peut ensuite être supprimée définitivement (avec ses compteurs de quota).
  */
-import { createApiKey, listApiKeys, revokeApiKey } from "../api.js?v=20261112-c7";
-import { confirmDialog } from "../views/confirm-dialog.js?v=20261112-c7";
-import { formatLongDate, pluralize } from "../format.js?v=20261112-c7";
+import { createApiKey, deleteRevokedApiKey, listApiKeys, revokeApiKey } from "../api.js?v=20261112-d1";
+import { confirmDialog } from "../views/confirm-dialog.js?v=20261112-d1";
+import { formatLongDate, pluralize } from "../format.js?v=20261112-d1";
 
 export const title = "Clés API";
 
@@ -82,6 +83,16 @@ export function mount() {
   const count = document.querySelector("#api-key-count");
   const curl = document.querySelector("#curl-example");
   let revealedSecret = "";
+  let revealedKeyId = null;
+
+  /* Efface le secret affiché : une clé révoquée ou supprimée ne doit plus être visible. */
+  function hideRevealFor(keyId) {
+    if (keyId !== revealedKeyId) return;
+    reveal.hidden = true;
+    secretElement.textContent = "";
+    revealedSecret = "";
+    revealedKeyId = null;
+  }
 
   curl.textContent = curlExample(window.location.origin);
   document.querySelector("#copy-curl").addEventListener("click", async (event) => {
@@ -127,6 +138,7 @@ export function mount() {
         if (!confirmed) return;
         try {
           await revokeApiKey(key.id);
+          hideRevealFor(key.id);
           showFeedback("Clé révoquée. Les appels avec cette clé seront refusés.");
           await reload();
         } catch (error) {
@@ -134,6 +146,29 @@ export function mount() {
         }
       });
       card.append(revoke);
+    } else {
+      const remove = document.createElement("button");
+      remove.className = "button button-danger";
+      remove.type = "button";
+      remove.textContent = "Supprimer définitivement";
+      remove.addEventListener("click", async () => {
+        const confirmed = await confirmDialog({
+          title: "Supprimer définitivement cette clé ?",
+          message: `La clé révoquée « ${key.name} » et ses compteurs de quota seront effacés. Cette action est irréversible.`,
+          confirmLabel: "Supprimer définitivement",
+          danger: true,
+        });
+        if (!confirmed) return;
+        try {
+          await deleteRevokedApiKey(key.id);
+          hideRevealFor(key.id);
+          showFeedback("Clé supprimée définitivement.");
+          await reload();
+        } catch (error) {
+          showFeedback(error.message);
+        }
+      });
+      card.append(remove);
     }
     return card;
   }
@@ -171,6 +206,7 @@ export function mount() {
     try {
       const created = await createApiKey(name.value);
       revealedSecret = created.key;
+      revealedKeyId = created.id;
       secretElement.textContent = revealedSecret;
       reveal.hidden = false;
       showFeedback("Clé créée. Copiez-la maintenant : le serveur ne pourra pas la réafficher.");

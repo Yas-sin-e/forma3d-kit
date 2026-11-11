@@ -54,6 +54,10 @@ class APIKeyService:
         """Désactive une clé existante ; la révocation est persistante et idempotente."""
         return self._repository.revoke_api_key(key_id)
 
+    def delete_revoked(self, key_id: str) -> str:
+        """Supprime définitivement une clé, uniquement si elle a déjà été révoquée."""
+        return self._repository.delete_revoked_api_key(key_id)
+
     def consume_rate_limit(
         self, key: APIKeyRecord, limit_per_minute: int, now: datetime | None = None
     ) -> str | None:

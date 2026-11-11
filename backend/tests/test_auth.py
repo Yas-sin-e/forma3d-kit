@@ -32,6 +32,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     ("post", "/models"),
     ("post", "/models/import"),
     ("patch", "/models/00000000-0000-4000-8000-000000000000/integration"),
+    ("delete", "/api-keys/00000000-0000-4000-8000-000000000000/permanent"),
 ])
 def test_studio_routes_return_401_without_session_cookie(client: TestClient, method: str, path: str) -> None:
     response = getattr(client, method)(path)

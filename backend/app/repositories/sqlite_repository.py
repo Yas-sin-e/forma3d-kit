@@ -352,6 +352,20 @@ class SQLiteGenerationRepository:
             row = connection.execute("SELECT * FROM api_keys WHERE id = ?", (key_id,)).fetchone()
         return self._api_key_from_row(row) if row is not None else None
 
+    def delete_revoked_api_key(self, key_id: str) -> str:
+        """Efface définitivement une clé révoquée et ses compteurs, dans une seule transaction."""
+        with self._connection() as connection:
+            row = connection.execute("SELECT revoked FROM api_keys WHERE id = ?", (key_id,)).fetchone()
+            if row is None:
+                return "not_found"
+            if not row["revoked"]:
+                return "active"
+            # Les compteurs référencent la clé (clé étrangère) : ils sont supprimés avant elle.
+            connection.execute("DELETE FROM api_rate_events WHERE api_key_id = ?", (key_id,))
+            connection.execute("DELETE FROM api_usage_daily WHERE api_key_id = ?", (key_id,))
+            connection.execute("DELETE FROM api_keys WHERE id = ?", (key_id,))
+        return "deleted"
+
     @staticmethod
     def _api_key_from_row(row: sqlite3.Row) -> APIKeyRecord:
         """Reconstruit les métadonnées privées d'une clé depuis SQLite."""

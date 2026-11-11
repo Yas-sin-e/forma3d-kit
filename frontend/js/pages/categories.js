@@ -3,9 +3,9 @@
  * Exécution : router.js monte les actions CRUD sur #/categories.
  * Refonte : compteur de modèles enregistrés par catégorie, confirmations par fenêtre modale.
  */
-import { listGalleryModels } from "../api.js?v=20261112-c7";
-import { isSavedModel } from "../format.js?v=20261112-c7";
-import { setupCategoryManager } from "../views/categories.js?v=20261112-c7";
+import { listGalleryModels } from "../api.js?v=20261112-d1";
+import { isSavedModel } from "../format.js?v=20261112-d1";
+import { setupCategoryManager } from "../views/categories.js?v=20261112-d1";
 
 export const title = "Catégories";
 

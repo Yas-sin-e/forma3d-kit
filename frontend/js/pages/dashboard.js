@@ -3,12 +3,12 @@
  * Exécution : router.js monte cette page sur #/accueil (page par défaut après connexion).
  * Les chiffres viennent des routes existantes (galerie, clés API, catégories) ; rien n'est inventé.
  */
-import { listApiKeys, listCategories, listGalleryModels } from "../api.js?v=20261112-c7";
-import { appState } from "../state.js?v=20261112-c7";
-import { exampleDescription, isSavedModel } from "../format.js?v=20261112-c7";
-import { createModelCard } from "../views/gallery.js?v=20261112-c7";
-import { emptyCubeIllustration } from "../views/illustrations.js?v=20261112-c7";
-import { watchProductAppearance } from "../views/model-appearance.js?v=20261112-c7";
+import { listApiKeys, listCategories, listGalleryModels } from "../api.js?v=20261112-d1";
+import { appState } from "../state.js?v=20261112-d1";
+import { exampleDescription, isSavedModel } from "../format.js?v=20261112-d1";
+import { createModelCard } from "../views/gallery.js?v=20261112-d1";
+import { emptyCubeIllustration } from "../views/illustrations.js?v=20261112-d1";
+import { watchProductAppearance } from "../views/model-appearance.js?v=20261112-d1";
 
 export const title = "Accueil";
 
