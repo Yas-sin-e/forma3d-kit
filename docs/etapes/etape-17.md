@@ -45,3 +45,20 @@ Boutique --<forma3d-viewer>--> /embed/{UUID public} --> viewer 3D
 - Suite pytest complète lancée une fois en fin d'étape (résultat dans le compte rendu de commit).
 - `node --check` sur les modules JavaScript.
 - Non vérifié : rendu de la page `#/guide` dans un navigateur (pas de pilotage demandé), intégration depuis un vrai site tiers, génération réelle avec le service 3D et CI GitHub.
+
+## Preuve d'intégration sur un autre site (12 novembre 2026)
+
+Test réalisé sur une copie de test du Studio (port 8018, base de test supprimée ensuite), lancée avec `EMBED_ALLOWED_ORIGINS=http://127.0.0.1:8081`. Deux « sites boutique » servaient `examples/integration.html` : `http://127.0.0.1:8081` (autorisé) et `http://127.0.0.1:8082` (non autorisé).
+
+| Vérification | Résultat observé |
+|---|---|
+| Copie de l'exemple TRELLIS puis activation de l'intégration | `public_id` créé, `embed_enabled = true` |
+| `GET /api/v1/models/{id}` avec `X-API-Key` | 200 |
+| `GET /api/v1/models/{id}/integration-code` | Extraits iframe et widget renvoyés |
+| Même appel sans clé | 401 « Clé API absente, invalide ou révoquée. » |
+| Même appel après révocation de la clé | 401 |
+| En-tête de `/embed/{public_id}` | `frame-ancestors 'self' http://127.0.0.1:8081` |
+| Page partenaire sur 8081 (navigateur intégré) | **Chaise TRELLIS affichée** dans le widget `<forma3d-viewer>` |
+| Même page sur 8082 (contre-preuve) | Rien affiché ; console : « Framing … violates … frame-ancestors 'self' http://127.0.0.1:8081. The request has been blocked. » |
+
+Limites observées : la page d'exemple affiche « Widget chargé » même quand le navigateur bloque l'iframe (le blocage n'est pas détectable depuis la page) ; l'extrait renvoyé par `/integration-code` cite encore `widget.js?v=20261111-5d` (clé de cache ancienne, sans effet sur le fonctionnement).

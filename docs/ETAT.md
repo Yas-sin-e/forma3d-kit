@@ -123,6 +123,10 @@ Les Sprints 3 (comptes publics) et 4 (vitrine/catalogue public) sont retirés du
 - Vérification : 15 tests ciblés puis 99 tests pytest complets réussis en 9,04 s avec `PYTHON_DOTENV_DISABLED=true` et `HF_SPACE_ID` vide. Le test HTTP utilise un GLB synthétique dans un stockage temporaire, sans réseau fournisseur. La syntaxe JS et le rendu navigateur restent à vérifier dans cette session.
 - Guide : `docs/etapes/etape-16.md` ; stockage et politique d'intégration : `docs/STOCKAGE.md`.
 
+## Preuve d'intégration sur un autre site (12 novembre 2026)
+
+- Copie de test du Studio + deux sites partenaires locaux : sur le site autorisé (8081), la chaise TRELLIS s'affiche dans le widget ; sur le site non autorisé (8082), le navigateur bloque l'iframe (`frame-ancestors`). API : 200 avec clé, 401 sans clé et après révocation. Détails dans `docs/etapes/etape-17.md`.
+
 ## Étape 22 — Sous-étape C3 : TRELLIS branché (vérification réelle en attente)
 
 - `backend/app/providers/trellis.py` ajoute TRELLIS derrière `Image3DProvider` (détourage puis GLB texturé), choisi par `IMAGE3D_PROVIDER=trellis` ; TripoSR reste le défaut.
