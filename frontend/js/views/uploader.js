@@ -2,7 +2,7 @@
  * Rôle : gère le choix, le dépôt et la validation côté interface d'une photo.
  * Exécution : main.js initialise cette vue et reçoit le fichier quand le formulaire est soumis.
  */
-import { appState } from "../state.js?v=20261111-5a";
+import { appState } from "../state.js?v=20261111-5b";
 
 const acceptedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const acceptedExtensions = new Set(["jpg", "jpeg", "png", "webp"]);

@@ -63,3 +63,15 @@ class GenerationRecord:
     origin: ModelOrigin = ModelOrigin.GENERATED
     public_id: str | None = None
     embed_enabled: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class APIKeyRecord:
+    """Métadonnées persistées d'une clé API sans sa valeur secrète."""
+
+    id: str
+    name: str
+    prefix: str
+    fingerprint: str
+    created_at: datetime
+    revoked: bool = False

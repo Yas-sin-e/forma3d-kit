@@ -1,6 +1,6 @@
 # État du projet — Forma3D Studio
 
-Dernière mise à jour : 10 novembre 2026.
+Dernière mise à jour : 11 novembre 2026.
 
 ## Avenant au cahier des charges v1.0
 
@@ -10,7 +10,7 @@ Les Sprints 3 (comptes publics) et 4 (vitrine/catalogue public) sont retirés du
 
 - Objectif : exposer de façon contrôlée les modèles terminés par une API avec clé et un widget intégrable.
 - Livrable vérifiable : modèle activable individuellement, clé révocable non stockée en clair, routes versionnées authentifiées, iframe/widget intégrable et guide d'intégration.
-- Étapes 0 et 5a (étape 13) terminées le 11 novembre 2026. Prochaine sous-étape : 5b / étape 14.
+- Étapes 0, 5a (étape 13) et 5b (étape 14) terminées le 11 novembre 2026. Prochaine sous-étape : 5c / étape 15.
 - Le Sprint 6 reste non démarré et nécessite un OK explicite.
 
 ## Sprint 2 — Qualité et fiabilité (terminé)
@@ -93,6 +93,16 @@ Les Sprints 3 (comptes publics) et 4 (vitrine/catalogue public) sont retirés du
 - Non vérifié : parcours visuel dans un navigateur et génération 3D réelle. Le Studio n'a pas d'authentification ; il reste réservé au local ou à une démonstration et ne doit pas être exposé publiquement tel quel.
 - Guide pédagogique : docs/etapes/etape-13.md. Aucun fournisseur, modèle, dépendance ou variable d'environnement n'a changé.
 
+## Étape 14 — Sprint 5b : gestion des clés API
+
+- SQLite crée `api_keys` avec `id`, `name`, `prefix`, `fingerprint` SHA-256, `created_at` et `revoked`. La valeur secrète générée aléatoirement n'est jamais persistée ni journalisée.
+- `POST /api-keys` renvoie la clé complète dans la seule réponse de création ; `GET /api-keys` ne retourne que nom, préfixe lisible, date et état ; `DELETE /api-keys/{id}` la révoque sans effacer l'historique.
+- `APIKeyService.authenticate()` extrait le préfixe, recalcule l'empreinte et utilise `hmac.compare_digest`. La dépendance FastAPI `require_api_key` valide `X-API-Key` et renvoie 401 si la clé manque, est fausse ou révoquée. Elle est prête pour `/api/v1` (étape 15).
+- La page Studio `#/cles-api` crée, liste et révoque les clés ; la clé est affichée uniquement dans la page après création, avec un bouton de copie. Le Studio reste non authentifié : cette console est réservée au local ou à une démonstration et ne doit pas être exposée publiquement.
+- Vérification : 3 tests ciblés de clés API et 90 tests pytest complets réussis en 7,57 s, avec dotenv désactivé et `HF_SPACE_ID` vide ; `node --check` sur les modules frontend et `git diff --check` réussis. Aucun appel externe ni fournisseur 3D.
+- Non vérifié : rendu de la page dans un navigateur, parcours manuel de copie/révocation, fonctionnement des routes `/api/v1` non encore créées et CI GitHub.
+- Guide : `docs/etapes/etape-14.md`. Aucune variable d'environnement n'a été ajoutée ; `.env.example` reste inchangé.
+
 ## Sprint 1 — terminé (état documenté au 3 novembre)
 
 L'étudiante considère le Sprint 1 terminé. Elle prend en charge elle-même la vérification de la CI GitHub ; celle-ci n'est pas déclarée verte ici.
@@ -171,4 +181,4 @@ Les tailles ont été mesurées sur les photos et GLB présents localement. Les 
 
 ## Prochaine action recommandée
 
-Continuer avec l'étape 14 (Sprint 5b) : clés API affichées une seule fois, empreinte SHA-256 persistée et révocation ; ne jamais stocker ni journaliser une clé en clair. La CI GitHub reste à vérifier par l'étudiante.
+Continuer avec l’étape 15 (Sprint 5c) : API externe versionnée `/api/v1` protégée par la dépendance `X-API-Key`, quotas et contrôle de débit. Ne pas commencer le Sprint 6 sans OK explicite. La CI GitHub reste à vérifier par l’étudiante.

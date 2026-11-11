@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Iterator
 from uuid import uuid4
 
-from app.models import CategoryRecord, GenerationRecord, GenerationStatus, ModelOrigin, ProductCategory
+from app.models import APIKeyRecord, CategoryRecord, GenerationRecord, GenerationStatus, ModelOrigin, ProductCategory
 from app.repositories.base import CategoryConflictError, CategoryInUseError, CategoryNotFoundError
 
 _INITIAL_CATEGORIES = (
@@ -98,6 +98,21 @@ class SQLiteGenerationRepository:
                 connection.execute(
                     "ALTER TABLE generations ADD COLUMN embed_enabled INTEGER NOT NULL DEFAULT 0"
                 )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS api_keys (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    prefix TEXT NOT NULL,
+                    fingerprint TEXT NOT NULL UNIQUE,
+                    created_at TEXT NOT NULL,
+                    revoked INTEGER NOT NULL DEFAULT 0 CHECK (revoked IN (0, 1))
+                )
+                """
+            )
+            connection.execute(
+                "CREATE INDEX IF NOT EXISTS idx_api_keys_prefix_active ON api_keys(prefix, revoked)"
+            )
             completed_without_public_id = connection.execute(
                 "SELECT id FROM generations WHERE status = 'DONE' AND public_id IS NULL"
             ).fetchall()
@@ -228,6 +243,48 @@ class SQLiteGenerationRepository:
                 (generation_id,),
             ).fetchone()
         return self._record_from_row(row) if row is not None else None
+
+    def create_api_key(self, record: APIKeyRecord) -> APIKeyRecord:
+        """Persiste les métadonnées d'une clé et son empreinte seulement."""
+        with self._connection() as connection:
+            connection.execute(
+                "INSERT INTO api_keys (id, name, prefix, fingerprint, created_at, revoked) VALUES (?, ?, ?, ?, ?, ?)",
+                (record.id, record.name, record.prefix, record.fingerprint, record.created_at.isoformat(), int(record.revoked)),
+            )
+        return record
+
+    def list_api_keys(self) -> list[APIKeyRecord]:
+        """Liste les clés avec leur statut, sans exposer de secret."""
+        with self._connection() as connection:
+            rows = connection.execute("SELECT * FROM api_keys ORDER BY created_at DESC, id").fetchall()
+        return [self._api_key_from_row(row) for row in rows]
+
+    def find_api_keys_by_prefix(self, prefix: str) -> list[APIKeyRecord]:
+        """Retourne toutes les clés candidates partageant le préfixe aléatoire."""
+        with self._connection() as connection:
+            rows = connection.execute(
+                "SELECT * FROM api_keys WHERE prefix = ? AND revoked = 0 ORDER BY id", (prefix,)
+            ).fetchall()
+        return [self._api_key_from_row(row) for row in rows]
+
+    def revoke_api_key(self, key_id: str) -> APIKeyRecord | None:
+        """Révoque une clé sans supprimer son historique d'administration."""
+        with self._connection() as connection:
+            connection.execute("UPDATE api_keys SET revoked = 1 WHERE id = ?", (key_id,))
+            row = connection.execute("SELECT * FROM api_keys WHERE id = ?", (key_id,)).fetchone()
+        return self._api_key_from_row(row) if row is not None else None
+
+    @staticmethod
+    def _api_key_from_row(row: sqlite3.Row) -> APIKeyRecord:
+        """Reconstruit les métadonnées privées d'une clé depuis SQLite."""
+        return APIKeyRecord(
+            id=row["id"],
+            name=row["name"],
+            prefix=row["prefix"],
+            fingerprint=row["fingerprint"],
+            created_at=datetime.fromisoformat(row["created_at"]),
+            revoked=bool(row["revoked"]),
+        )
 
     def list_completed_generations(self) -> list[GenerationRecord]:
         """Liste les lignes DONE dans l'ordre chronologique inverse."""

@@ -126,3 +126,26 @@ export async function deleteCategory(slug) {
   if (response.status === 204) return null;
   return readResponse(response, "Impossible de supprimer la catégorie.");
 }
+
+
+export async function listApiKeys() {
+  const response = await fetch("/api-keys", { cache: "no-store", headers: { Accept: "application/json" } });
+  return readResponse(response, "Impossible de charger les clés API.");
+}
+
+export async function createApiKey(name) {
+  const response = await fetch("/api-keys", {
+    method: "POST",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  return readResponse(response, "Impossible de créer cette clé API.");
+}
+
+export async function revokeApiKey(keyId) {
+  const response = await fetch(`/api-keys/${encodeURIComponent(keyId)}`, {
+    method: "DELETE",
+    headers: { Accept: "application/json" },
+  });
+  return readResponse(response, "Impossible de révoquer cette clé API.");
+}

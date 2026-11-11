@@ -2,7 +2,7 @@
  * Rôle : expose la gestion des catégories sur sa propre page de navigation.
  * Exécution : router.js monte les actions CRUD sur #/categories.
  */
-import { setupCategoryManager } from "../views/categories.js?v=20261111-5a";
+import { setupCategoryManager } from "../views/categories.js?v=20261111-5b";
 
 export const title = "Catégories";
 

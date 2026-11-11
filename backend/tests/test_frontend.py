@@ -25,6 +25,7 @@ def test_home_serves_the_studio_shell_and_separate_navigation() -> None:
     assert 'href="#/creer"' in html
     assert 'href="#/modeles"' in html
     assert 'href="#/categories"' in html
+    assert 'href="#/cles-api"' in html
     assert 'href="#/exemples"' in html
     assert 'id="provider-badge"' in html
 
@@ -63,6 +64,7 @@ def test_static_frontend_assets_are_served_and_only_api_module_calls_fetch() -> 
         "/static/js/pages/model-detail.js",
         "/static/js/pages/categories.js",
         "/static/js/pages/examples.js",
+        "/static/js/pages/api-keys.js",
         "/static/js/pages/viewer-markup.js",
         "/static/js/views/uploader.js",
         "/static/js/views/progress.js",
@@ -128,6 +130,12 @@ def test_hash_router_and_pages_cover_accessible_seller_routes() -> None:
     assert "originLabels" in client.get("/static/js/views/gallery.js").text
     assert "Ajouter à mes modèles" in examples
     assert "copyExampleModel" in examples
+    api_keys_page = client.get("/static/js/pages/api-keys.js").text
+    assert "Clés API" in api_keys_page
+    assert "ne sera affichée qu’une seule fois" in api_keys_page
+    assert "createApiKey" in api_keys_page and "revokeApiKey" in api_keys_page
+    assert "fetch(" not in api_keys_page
+    assert 'parts[0] === "cles-api"' in router
     assert "detail-origin" in detail
 
 
@@ -182,5 +190,5 @@ def test_create_page_keeps_horizontal_journey_and_progress_layout() -> None:
 
     assert 'grid-template-columns: repeat(3, minmax(0, 1fr));' in components
     assert 'grid-template-columns: repeat(5, minmax(0, 1fr));' in components
-    assert "components.css?v=20261111-5a" in shell
-    assert '"./pages/create.js?v=20261111-5a"' in router
+    assert "components.css?v=20261111-5b" in shell
+    assert '"./pages/create.js?v=20261111-5b"' in router

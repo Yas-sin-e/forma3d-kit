@@ -2210,3 +2210,75 @@ main#app:has(.create-page) {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+
+/* Gestion des clés d’intégration, réservée à la console locale de la propriétaire. */
+.api-key-panel {
+  margin-top: 20px;
+  padding: clamp(16px, 3vw, 28px);
+}
+.api-key-panel h2 { margin: 0; font-size: 23px; }
+.api-key-create-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px 14px;
+  max-width: 760px;
+  margin-top: 18px;
+}
+.api-key-create-form label { grid-column: 1 / -1; font-weight: 650; }
+.api-key-create-form input {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  color: var(--ink);
+  background: var(--surface-raised);
+}
+.api-key-feedback { margin: 12px 0 0; color: var(--success); font-weight: 650; }
+.api-key-feedback[hidden] { display: none; }
+.api-key-reveal {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-card);
+  background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+}
+.api-key-reveal[hidden] { display: none; }
+.api-key-reveal h3, .api-key-row h3 { margin: 0; font-size: 18px; }
+.api-key-reveal p, .api-key-row p { margin: 0; color: var(--muted); }
+.api-key-secret {
+  display: block;
+  overflow-wrap: anywhere;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: var(--surface-raised);
+  font-size: 16px;
+  user-select: all;
+}
+.api-key-list { display: grid; gap: 10px; }
+.api-key-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+}
+.api-key-row > div { display: grid; gap: 5px; min-width: 0; }
+.api-key-row code { width: fit-content; max-width: 100%; overflow-wrap: anywhere; color: var(--accent); }
+.api-key-status { color: var(--success); font-weight: 700; }
+.api-key-status.is-revoked, .api-key-empty { color: var(--muted); }
+.api-key-empty { margin: 0; }
+@media (max-width: 640px) {
+  .api-key-create-form, .api-key-row { grid-template-columns: minmax(0, 1fr); }
+}

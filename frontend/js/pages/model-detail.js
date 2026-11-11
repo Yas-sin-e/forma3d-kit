@@ -2,7 +2,7 @@
  * Rôle : charge une fiche produit par identifiant et présente son état, sa photo et son GLB.
  * Exécution : router.js monte cette page sur #/modeles/{id}, y compris pour signaler un identifiant inconnu.
  */
-import { getGenerationStatus, listCategories, listGalleryModels, setModelIntegrationEnabled } from "../api.js?v=20261111-5a";
+import { getGenerationStatus, listCategories, listGalleryModels, setModelIntegrationEnabled } from "../api.js?v=20261111-5b";
 
 export const title = "Fiche du modèle";
 

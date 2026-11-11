@@ -2,8 +2,8 @@
  * Rôle : affiche uniquement les modèles que le vendeur a créés avec le Studio.
  * Exécution : router.js monte la grille sur #/modeles et la remplit depuis l'API existante.
  */
-import { importGlbModel, listCategories } from "../api.js?v=20261111-5a";
-import { setupGallery } from "../views/gallery.js?v=20261111-5a";
+import { importGlbModel, listCategories } from "../api.js?v=20261111-5b";
+import { setupGallery } from "../views/gallery.js?v=20261111-5b";
 
 export const title = "Mes modèles";
 const generationIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

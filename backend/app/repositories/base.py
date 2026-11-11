@@ -4,7 +4,7 @@
 
 from typing import Protocol
 
-from app.models import CategoryRecord, GenerationRecord
+from app.models import APIKeyRecord, CategoryRecord, GenerationRecord
 
 
 class CategoryConflictError(Exception):
@@ -71,4 +71,21 @@ class GenerationRepository(Protocol):
 
     def delete_category(self, slug: str) -> None:
         """Supprime une catégorie inutilisée et refuse si une génération la référence."""
+        ...
+
+
+    def create_api_key(self, record: APIKeyRecord) -> APIKeyRecord:
+        """Enregistre les métadonnées et l'empreinte d'une clé, jamais sa valeur."""
+        ...
+
+    def list_api_keys(self) -> list[APIKeyRecord]:
+        """Liste les métadonnées de toutes les clés, y compris révoquées."""
+        ...
+
+    def find_api_keys_by_prefix(self, prefix: str) -> list[APIKeyRecord]:
+        """Trouve les empreintes candidates à comparer en temps constant."""
+        ...
+
+    def revoke_api_key(self, key_id: str) -> APIKeyRecord | None:
+        """Révoque une clé existante et retourne ses métadonnées."""
         ...

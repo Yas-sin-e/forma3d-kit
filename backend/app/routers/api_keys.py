@@ -1,0 +1,77 @@
+# Rôle : expose la gestion locale des clés et la dépendance X-API-Key réutilisable.
+# Exécution : le Studio administre les clés ; les futures routes publiques protègent leurs appels avec require_api_key.
+"""Routes de gestion et vérification des clés API d’intégration."""
+
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+
+from app.models import APIKeyRecord
+from app.schemas import APIKeyCreateRequest, APIKeyCreatedResponse, APIKeyListResponse, APIKeyResponse
+from app.services.api_key_service import APIKeyService, APIKeyValidationError
+
+router = APIRouter(prefix="/api-keys", tags=["api-keys"])
+
+
+def get_api_key_service(request: Request) -> APIKeyService:
+    """Retourne le service de clés configuré au démarrage."""
+    return request.app.state.api_key_service
+
+
+def _response(record: APIKeyRecord) -> APIKeyResponse:
+    """Construit une réponse sans empreinte cryptographique ni secret."""
+    return APIKeyResponse(
+        id=record.id,
+        name=record.name,
+        prefix=record.prefix,
+        created_at=record.created_at,
+        revoked=record.revoked,
+    )
+
+
+@router.get("", response_model=APIKeyListResponse)
+def list_api_keys(
+    service: Annotated[APIKeyService, Depends(get_api_key_service)],
+) -> APIKeyListResponse:
+    """Liste les noms, préfixes et statuts des clés existantes."""
+    return APIKeyListResponse(items=[_response(record) for record in service.list()])
+
+
+@router.post("", response_model=APIKeyCreatedResponse, status_code=status.HTTP_201_CREATED)
+def create_api_key(
+    payload: APIKeyCreateRequest,
+    service: Annotated[APIKeyService, Depends(get_api_key_service)],
+) -> APIKeyCreatedResponse:
+    """Crée une clé et révèle sa valeur uniquement dans cette réponse."""
+    try:
+        record, secret = service.create(payload.name)
+    except APIKeyValidationError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    return APIKeyCreatedResponse(**_response(record).model_dump(), key=secret)
+
+
+@router.delete("/{key_id}", response_model=APIKeyResponse)
+def revoke_api_key(
+    key_id: str,
+    service: Annotated[APIKeyService, Depends(get_api_key_service)],
+) -> APIKeyResponse:
+    """Révoque une clé sans supprimer sa trace dans l’écran de gestion."""
+    record = service.revoke(key_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Clé API introuvable.")
+    return _response(record)
+
+
+def require_api_key(
+    service: Annotated[APIKeyService, Depends(get_api_key_service)],
+    x_api_key: Annotated[str | None, Header(alias="X-API-Key")] = None,
+) -> APIKeyRecord:
+    """Dépendance des routes d’intégration ; refuse les clés absentes, fausses ou révoquées."""
+    record = service.authenticate(x_api_key)
+    if record is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Clé API absente, invalide ou révoquée.",
+            headers={"WWW-Authenticate": "ApiKey"},
+        )
+    return record

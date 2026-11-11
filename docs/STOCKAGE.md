@@ -10,9 +10,11 @@ La base garde son chemin fixe `backend/data/forma3d.sqlite3`, ignoré par Git. L
 
 `categories` contient le slug, le libellé, l'état actif et la date de création. Les générations et modèles de bibliothèque référencent une catégorie par sa clé étrangère.
 
-`generations` contient l'identifiant UUID, la catégorie, le statut, le nom d'affichage, le type de contenu, les chemins source/GLB, la durée, l'erreur, l'avertissement photo, les dates et l'origine. `origin` vaut `generated`, `imported` ou `example`.
+`generations` contient l'identifiant UUID interne, l'UUID public, l'activation d'intégration, la catégorie, le statut, le nom d'affichage, le type de contenu, les chemins source/GLB, la durée, l'erreur, l'avertissement photo, les dates et l'origine. `origin` vaut `generated`, `imported` ou `example` ; `embed_enabled` est faux par défaut.
 
 La migration ajoute `origin` avec la valeur historique `generated` par défaut. Elle conserve les anciennes lignes et leurs chemins. `source_photo_path` reste non nul pour éviter de reconstruire la table SQLite : pour un modèle importé ou copié sans photo, le dépôt stocke une chaîne vide puis la convertit en `image_path=None` lors de la lecture. Cette convention évite une migration destructive.
+
+`api_keys` conserve l'identifiant, le nom choisi, le préfixe lisible, l'empreinte SHA-256, la date de création et l'état de révocation. La clé complète n'est jamais stockée : elle est retournée uniquement par la réponse de création et doit être copiée à ce moment-là. La révocation garde la trace administrative, mais empêche immédiatement l'authentification.
 
 Les cinq exemples restent un catalogue de fichiers autorisés, pas des lignes SQLite au premier démarrage. Le clic « Ajouter à mes modèles » copie l'exemple dans `backend/storage/models/`, crée une ligne terminée avec `origin=example` et la catégorie choisie.
 
@@ -34,4 +36,4 @@ Les badges visibles sont dérivés d'`origin` : « Généré par l'application �
 
 `backend/tests/test_model_library.py` contrôle l'import valide, l'extension et le contenu incorrects, la taille maximale, les catégories absentes/inactives, la copie d'un exemple et la migration sans perte. `backend/tests/test_generation_repository.py` contrôle la persistance SQLite générale. Tous les cas utilisent des fichiers temporaires, des conteneurs GLB minimaux de test et des appels HTTP locaux ; aucun fichier test n'est un modèle réel généré par le fournisseur.
 
-La liste locale n'est pas un compte multi-utilisateur : les modèles sont partagés dans le stockage local de cette instance. Aucune génération réelle, import depuis le navigateur, inspection visuelle ou vérification CI GitHub n'est déduite des tests automatiques.
+La liste locale n'est pas un compte multi-utilisateur : les modèles sont partagés dans le stockage local de cette instance. Les clés ne protègent que les routes qui déclarent `require_api_key` ; les routes versionnées seront raccordées à cette dépendance à l'étape 15. La console de gestion du Studio n'a pas d'authentification et reste réservée à un usage local ou de démonstration. Aucune génération réelle, import depuis le navigateur, inspection visuelle ou vérification CI GitHub n'est déduite des tests automatiques.

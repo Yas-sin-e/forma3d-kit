@@ -2,16 +2,17 @@
  * Rôle : résout les URL hash, charge une page à la fois et maintient la navigation accessible.
  * Exécution : main.js lance startRouter() au chargement de la coque HTML.
  */
-import * as createPage from "./pages/create.js?v=20261111-5a";
-import * as modelsPage from "./pages/models.js?v=20261111-5a";
-import * as modelDetailPage from "./pages/model-detail.js?v=20261111-5a";
-import * as categoriesPage from "./pages/categories.js?v=20261111-5a";
-import * as examplesPage from "./pages/examples.js?v=20261111-5a";
+import * as createPage from "./pages/create.js?v=20261111-5b";
+import * as modelsPage from "./pages/models.js?v=20261111-5b";
+import * as modelDetailPage from "./pages/model-detail.js?v=20261111-5b";
+import * as categoriesPage from "./pages/categories.js?v=20261111-5b";
+import * as examplesPage from "./pages/examples.js?v=20261111-5b";
+import * as apiKeysPage from "./pages/api-keys.js?v=20261111-5b";
 
 const app = document.querySelector("#app");
 const nav = document.querySelector("#main-nav");
 const menuToggle = document.querySelector("#menu-toggle");
-const pageModules = { create: createPage, models: modelsPage, detail: modelDetailPage, categories: categoriesPage, examples: examplesPage };
+const pageModules = { create: createPage, models: modelsPage, detail: modelDetailPage, categories: categoriesPage, examples: examplesPage, apiKeys: apiKeysPage };
 const generationIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 let createContainer = null;
 let activeContainer = null;
@@ -35,6 +36,7 @@ function parseRoute(hash) {
   }
   if (parts.length === 1 && parts[0] === "categories") return { key: "categories", navKey: "categories", path: "/categories" };
   if (parts.length === 1 && parts[0] === "exemples") return { key: "examples", navKey: "examples", path: "/exemples" };
+  if (parts.length === 1 && parts[0] === "cles-api") return { key: "apiKeys", navKey: "api-keys", path: "/cles-api" };
   return { key: "notFound", navKey: null, path: raw };
 }
 

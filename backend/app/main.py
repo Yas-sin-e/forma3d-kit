@@ -17,9 +17,11 @@ from fastapi.staticfiles import StaticFiles
 
 from app.providers.huggingface import HuggingFaceSpaceProvider
 from app.repositories.sqlite_repository import SQLiteGenerationRepository
+from app.routers.api_keys import router as api_keys_router
 from app.routers.categories import router as categories_router
 from app.routers.models import public_router as public_models_router
 from app.routers.models import router as models_router
+from app.services.api_key_service import APIKeyService
 from app.services.category_service import CategoryService
 from app.services.demo_gallery import DemoGallery
 from app.services.generation_service import GenerationService
@@ -59,6 +61,7 @@ app.state.generation_service = GenerationService(
 )
 app.state.generation_repository = generation_repository
 app.state.category_service = CategoryService(generation_repository)
+app.state.api_key_service = APIKeyService(generation_repository)
 app.state.generation_provider = provider
 app.state.max_glb_upload_bytes = provider.settings.max_glb_upload_mb * 1024 * 1024
 app.state.demo_gallery = DemoGallery()
@@ -66,6 +69,7 @@ app.state.demo_gallery = DemoGallery()
 app.include_router(models_router)
 app.include_router(public_models_router)
 app.include_router(categories_router)
+app.include_router(api_keys_router)
 app.mount(
     "/static",
     StaticFiles(directory=_PROJECT_ROOT / "frontend"),

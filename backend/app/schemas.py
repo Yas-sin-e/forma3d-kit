@@ -105,3 +105,31 @@ class CategoryUpdateRequest(BaseModel):
     slug: str | None = None
     label: str | None = None
     is_active: bool | None = None
+
+
+class APIKeyCreateRequest(BaseModel):
+    """Nom donné par la propriétaire à une nouvelle clé API."""
+
+    name: str = Field(min_length=1, max_length=80)
+
+
+class APIKeyResponse(BaseModel):
+    """Métadonnées d’une clé sans sa valeur secrète ni son empreinte."""
+
+    id: str
+    name: str
+    prefix: str
+    created_at: datetime
+    revoked: bool
+
+
+class APIKeyCreatedResponse(APIKeyResponse):
+    """Réponse de création contenant le secret, qui n’est renvoyé qu’ici."""
+
+    key: str
+
+
+class APIKeyListResponse(BaseModel):
+    """Collection des clés connues pour la page de gestion du Studio."""
+
+    items: list[APIKeyResponse]
