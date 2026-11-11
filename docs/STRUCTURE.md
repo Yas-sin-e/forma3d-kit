@@ -30,6 +30,8 @@ Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 s
 |---|---|---|---|
 | `tools/` | Regroupe les outils de développement hors de l'application | Le notebook serveur ne fait pas partie du backend livré | Pour lancer le fournisseur dans un environnement GPU distant |
 | `tools/colab/` | Range le notebook d'apprentissage et de contrôle du runtime distant | Isole les dépendances TripoSR des sources backend | Pour vérifier le GPU et comprendre l'historique des essais |
+| `tools/trials/` | Outils d'essai de fournisseurs 3D, hors application | Sépare les expériences du code livré | Pendant la sous-étape C |
+| `tools/trials/trial_trellis.py` | Lit le contrat d'un Space TRELLIS, envoie une photo et mesure le GLB selon la grille | Rend l'essai reproductible et s'arrête au premier message de quota | Pour comparer un fournisseur à TripoSR |
 | tools/colab/triposr_server.ipynb | Contrôle le GPU et explique l'installation distante, mais arrête le lancement d'un serveur web public sur Colab géré gratuit | Respecte la FAQ Colab, qui restreint les services web de génération sur ses runtimes gérés | Pour comprendre l'ancien essai, ses dépendances et la limite d'hébergement actuelle |
 
 ## Backend Python
@@ -141,6 +143,7 @@ Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 s
 | `backend/tests/test_demo_gallery.py` | Vérifie les modèles autorisés et les photos source facultatives sans réseau | Protège la galerie et sa comparaison photo/GLB | À chaque suite pytest |
 | `backend/tests/test_model_library.py` | Vérifie l'import GLB, limites, catégories, copie d'exemple et migration de modèle | Couvre les cas de bibliothèque avec SQLite temporaire et sans fournisseur | À chaque suite pytest |
 | `backend/tests/test_glb_finisher.py` | Vérifie la finition d'un GLB brut, les cas laissés intacts et le branchement dans GenerationService | Prouve que la géométrie n'est pas modifiée | À chaque suite pytest |
+| `backend/tests/test_trial_tools.py` | Teste les mesures automatiques de l'outil d'essai | Les chiffres de la grille doivent être fiables | À chaque suite pytest |
 | `backend/tests/conftest.py` | Ouvre la session propriétaire par surcharge de `require_owner`, sauf pour les tests marqués `real_auth` | Garde les tests métier existants centrés sur leur logique | À chaque suite pytest |
 | `backend/tests/test_auth.py` | Vérifie 401 sans cookie, connexion réussie/refusée, mot de passe absent, limite de tentatives, jeton falsifié ou expiré et routes publiques ouvertes | Prouve la protection sans navigateur ni réseau externe | À chaque suite pytest |
 | `backend/tests/test_api_keys.py` | Vérifie empreinte seule, révélation unique, révocation, comparaison et compteurs par clé | Couvre le contrôle d’accès et les quotas sans réseau externe | À chaque suite pytest |
@@ -209,6 +212,8 @@ Le registre des métadonnées, les empreintes de clés, les quotas journaliers e
 |---|---|---|---|
 | `docs/INTEGRATION.md` | Guide la création d'une clé et les requêtes d'intégration, les erreurs, quotas, CORS et CSP | Donne à une personne externe un parcours basé sur les routes réellement existantes | Lors du branchement d'une boutique |
 | `examples/integration.html` | Page de démonstration pour saisir une origine serveur et un UUID public puis charger le widget | Montre le composant avec un modèle réel activé, sans intégrer de faux GLB ni clé | Pour un test local d'intégration |
+| `docs/QUALITE-3D.md` | Grille de qualité 3D, contrats observés, résultats d'essais et licences | Juge les fournisseurs sur des critères écrits avant les essais | Avant tout changement de fournisseur |
+| `docs/etapes/etape-21.md` | Sous-étape C : grille, essais TRELLIS, échecs et blocage par quota | Trace honnêtement ce qui a été tenté | Pour reprendre les essais |
 | `docs/etapes/etape-20.md` | Sous-étape B : finition serveur des GLB, mesures sur 5 fichiers réels et limites | Explique pourquoi corriger le fichier en plus de l'affichage | Pour présenter la qualité des fichiers livrés |
 | `docs/etapes/etape-19.md` | Sous-étape A : diagnostic mesuré des GLB, correction du matériau par défaut et du cadrage, preuve et limites | Sépare clairement rendu et géométrie pour la soutenance | Pour expliquer la qualité visuelle |
 | `docs/etapes/etape-18.md` | Explique la connexion serveur (5f) : routes, cookie, jeton, limite, routes publiques et limites de sécurité | Justifie le remplacement du verrou navigateur pour la soutenance | Pour configurer ou présenter la connexion |

@@ -29,6 +29,8 @@ Recherche effectuée le 11 novembre 2026. Les offres gratuites changent souvent 
 - **TRELLIS est le meilleur compromis gratuit** : qualité nettement supérieure à TripoSR, licence MIT, sortie GLB, et une interface Gradio identique à celle que le projet sait déjà inspecter avec `view_api()`.
 - Sa limite est la même famille de risque qu'aujourd'hui : file d'attente et quota ZeroGPU sur le Space public, ou besoin d'un GPU puissant en auto-hébergement. Ce risque doit être annoncé honnêtement pendant la démonstration.
 
+Essais réels et grille de mesure : voir `docs/QUALITE-3D.md` (au 11 novembre 2026, aucun essai TRELLIS n'a abouti : quota ZeroGPU anonyme atteint).
+
 ## Recommandation
 
 **TRELLIS (Space Hugging Face public de Microsoft), derrière l'interface `Image3DProvider` existante**, en gardant TripoSR comme fournisseur de repli et les exemples pré-générés pour une démonstration sans réseau.
