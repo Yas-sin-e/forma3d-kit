@@ -10,7 +10,7 @@ Les Sprints 3 (comptes publics) et 4 (vitrine/catalogue public) sont retirés du
 
 - Objectif : exposer de façon contrôlée les modèles terminés par une API avec clé et un widget intégrable.
 - Livrable vérifiable : modèle activable individuellement, clé révocable non stockée en clair, routes versionnées authentifiées, iframe/widget intégrable et guide d'intégration.
-- Étapes 0, 5a (étape 13) et 5b (étape 14) terminées le 11 novembre 2026. Prochaine sous-étape : 5c / étape 15.
+- Étapes 0, 5a (étape 13), 5b (étape 14) et 5c (étape 15) terminées le 11 novembre 2026. Prochaine sous-étape : 5d / étape 16.
 - Le Sprint 6 reste non démarré et nécessite un OK explicite.
 
 ## Sprint 2 — Qualité et fiabilité (terminé)
@@ -103,6 +103,17 @@ Les Sprints 3 (comptes publics) et 4 (vitrine/catalogue public) sont retirés du
 - Non vérifié : rendu de la page dans un navigateur, parcours manuel de copie/révocation, fonctionnement des routes `/api/v1` non encore créées et CI GitHub.
 - Guide : `docs/etapes/etape-14.md`. Aucune variable d'environnement n'a été ajoutée ; `.env.example` reste inchangé.
 
+## Étape 15 — Sprint 5c : API d’intégration versionnée
+
+- `POST /api/v1/models` exige une clé `X-API-Key`, valide une photo et une catégorie active puis réutilise `GenerationService` et sa tâche de fond. `GET /api/v1/models/{id}` retourne l’état avec des liens versionnés ; le téléchargement GLB n’est proposé que lorsque le statut est `DONE`.
+- `GET /api/v1/models/{id}/integration-code` retourne le code iframe si le modèle est terminé et si son intégration a été activée dans le Studio. Le chemin `/embed/{public_id}` sera servi à l’étape 16.
+- Chaque clé est limitée à 20 créations par jour UTC et 10 requêtes sur une fenêtre glissante de 60 secondes par défaut. Les seuils sont configurables via `API_DAILY_GENERATION_LIMIT` et `API_RATE_LIMIT_PER_MINUTE`. Les compteurs SQLite sont atomiques et persistants.
+- `API_CORS_ORIGINS` accepte une liste d’origines HTTP(S) exactes, séparées par des virgules. Vide par défaut, le CORS n’autorise aucun site tiers ; le joker `*` est refusé. Aucune dépendance ou aucun service payant n’est ajouté.
+- Les erreurs HTTP de `/api/v1` utilisent un JSON `{error: {code, message}}` ; les routes externes renvoient notamment 401, 403, 404 et 429 avec `Retry-After` pour les limites.
+- Vérification : 10 tests ciblés et 97 tests pytest complets réussis en 9,43 s ; `node --check` sur les modules JavaScript et `git diff --check` réussis. Le fournisseur est simulé dans le test d’intégration et aucun appel externe n’a eu lieu.
+- Non vérifié : API avec un fournisseur 3D réel, rendu navigateur, vrai CORS depuis un site configuré et CI GitHub. L’iframe reste indisponible jusqu’à l’étape 16.
+- Guides : `docs/etapes/etape-15.md` et `docs/STOCKAGE.md`.
+
 ## Sprint 1 — terminé (état documenté au 3 novembre)
 
 L'étudiante considère le Sprint 1 terminé. Elle prend en charge elle-même la vérification de la CI GitHub ; celle-ci n'est pas déclarée verte ici.
@@ -181,4 +192,4 @@ Les tailles ont été mesurées sur les photos et GLB présents localement. Les 
 
 ## Prochaine action recommandée
 
-Continuer avec l’étape 15 (Sprint 5c) : API externe versionnée `/api/v1` protégée par la dépendance `X-API-Key`, quotas et contrôle de débit. Ne pas commencer le Sprint 6 sans OK explicite. La CI GitHub reste à vérifier par l’étudiante.
+Continuer avec l’étape 16 (Sprint 5d) : page `/embed/{public_id}`, widget `<forma3d-viewer>`, code à copier et CSP frame-ancestors paramétrable. Ne pas commencer le Sprint 6 sans OK explicite. La CI GitHub reste à vérifier par l’étudiante.

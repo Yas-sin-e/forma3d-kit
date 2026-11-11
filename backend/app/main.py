@@ -12,12 +12,15 @@ from pathlib import Path
 from typing import AsyncIterator
 
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.providers.huggingface import HuggingFaceSpaceProvider
 from app.repositories.sqlite_repository import SQLiteGenerationRepository
 from app.routers.api_keys import router as api_keys_router
+from app.routers.api_v1 import router as api_v1_router
 from app.routers.categories import router as categories_router
 from app.routers.models import public_router as public_models_router
 from app.routers.models import router as models_router
@@ -62,6 +65,9 @@ app.state.generation_service = GenerationService(
 app.state.generation_repository = generation_repository
 app.state.category_service = CategoryService(generation_repository)
 app.state.api_key_service = APIKeyService(generation_repository)
+app.state.api_daily_generation_limit = provider.settings.api_daily_generation_limit
+app.state.api_rate_limit_per_minute = provider.settings.api_rate_limit_per_minute
+app.state.api_cors_origins = provider.settings.api_cors_origins
 app.state.generation_provider = provider
 app.state.max_glb_upload_bytes = provider.settings.max_glb_upload_mb * 1024 * 1024
 app.state.demo_gallery = DemoGallery()
@@ -70,6 +76,43 @@ app.include_router(models_router)
 app.include_router(public_models_router)
 app.include_router(categories_router)
 app.include_router(api_keys_router)
+app.include_router(api_v1_router)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=list(provider.settings.api_cors_origins),
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Accept", "Content-Type", "X-API-Key"],
+    expose_headers=["Retry-After"],
+    allow_credentials=False,
+    max_age=600,
+)
+
+
+@app.exception_handler(StarletteHTTPException)
+async def handle_http_error(request: Request, error: StarletteHTTPException) -> JSONResponse:
+    """Garde les erreurs internes existantes et normalise les réponses versionnées."""
+    if request.url.path == "/api/v1" or request.url.path.startswith("/api/v1/"):
+        codes = {
+            400: "bad_request",
+            401: "unauthorized",
+            403: "forbidden",
+            404: "not_found",
+            409: "conflict",
+            413: "payload_too_large",
+            415: "unsupported_media_type",
+            422: "invalid_request",
+            429: "rate_limited",
+        }
+        return JSONResponse(
+            {"error": {"code": codes.get(error.status_code, "http_error"), "message": str(error.detail)}},
+            status_code=error.status_code,
+            headers=error.headers,
+        )
+    return JSONResponse(
+        {"detail": error.detail}, status_code=error.status_code, headers=error.headers
+    )
+
+
 app.mount(
     "/static",
     StaticFiles(directory=_PROJECT_ROOT / "frontend"),

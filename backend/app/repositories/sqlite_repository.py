@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import sqlite3
 from contextlib import contextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Iterator
 from uuid import uuid4
@@ -112,6 +112,28 @@ class SQLiteGenerationRepository:
             )
             connection.execute(
                 "CREATE INDEX IF NOT EXISTS idx_api_keys_prefix_active ON api_keys(prefix, revoked)"
+            )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS api_usage_daily (
+                    api_key_id TEXT NOT NULL REFERENCES api_keys(id),
+                    usage_date TEXT NOT NULL,
+                    generation_count INTEGER NOT NULL DEFAULT 0,
+                    PRIMARY KEY (api_key_id, usage_date)
+                )
+                """
+            )
+            connection.execute(
+                """
+                CREATE TABLE IF NOT EXISTS api_rate_events (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    api_key_id TEXT NOT NULL REFERENCES api_keys(id),
+                    occurred_at TEXT NOT NULL
+                )
+                """
+            )
+            connection.execute(
+                "CREATE INDEX IF NOT EXISTS idx_api_rate_events_key_time ON api_rate_events(api_key_id, occurred_at)"
             )
             completed_without_public_id = connection.execute(
                 "SELECT id FROM generations WHERE status = 'DONE' AND public_id IS NULL"
@@ -266,6 +288,62 @@ class SQLiteGenerationRepository:
                 "SELECT * FROM api_keys WHERE prefix = ? AND revoked = 0 ORDER BY id", (prefix,)
             ).fetchall()
         return [self._api_key_from_row(row) for row in rows]
+
+    def consume_api_rate_limit(
+        self, key_id: str, rate_limit_per_minute: int, now: datetime
+    ) -> str | None:
+        """Réserve atomiquement une requête par clé dans une fenêtre glissante de 60 secondes."""
+        current = now.astimezone(UTC)
+        cutoff = (current - timedelta(seconds=60)).isoformat()
+        with self._connection() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            active_key = connection.execute(
+                "SELECT id FROM api_keys WHERE id = ? AND revoked = 0", (key_id,)
+            ).fetchone()
+            if active_key is None:
+                return "revoked"
+            rate_count = connection.execute(
+                "SELECT COUNT(*) FROM api_rate_events WHERE api_key_id = ? AND occurred_at > ?",
+                (key_id, cutoff),
+            ).fetchone()[0]
+            if rate_count >= rate_limit_per_minute:
+                return "rate_limit"
+            connection.execute("DELETE FROM api_rate_events WHERE occurred_at <= ?", (cutoff,))
+            connection.execute(
+                "INSERT INTO api_rate_events (api_key_id, occurred_at) VALUES (?, ?)",
+                (key_id, current.isoformat()),
+            )
+        return None
+
+    def consume_api_daily_quota(
+        self, key_id: str, daily_limit: int, now: datetime
+    ) -> str | None:
+        """Consomme atomiquement une création disponible dans la journée UTC."""
+        current = now.astimezone(UTC)
+        usage_date = current.date().isoformat()
+        with self._connection() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            active_key = connection.execute(
+                "SELECT id FROM api_keys WHERE id = ? AND revoked = 0", (key_id,)
+            ).fetchone()
+            if active_key is None:
+                return "revoked"
+            usage = connection.execute(
+                "SELECT generation_count FROM api_usage_daily WHERE api_key_id = ? AND usage_date = ?",
+                (key_id, usage_date),
+            ).fetchone()
+            if usage is not None and usage["generation_count"] >= daily_limit:
+                return "daily_quota"
+            connection.execute(
+                """
+                INSERT INTO api_usage_daily (api_key_id, usage_date, generation_count)
+                VALUES (?, ?, 1)
+                ON CONFLICT(api_key_id, usage_date) DO UPDATE
+                SET generation_count = generation_count + 1
+                """,
+                (key_id, usage_date),
+            )
+        return None
 
     def revoke_api_key(self, key_id: str) -> APIKeyRecord | None:
         """Révoque une clé sans supprimer son historique d'administration."""

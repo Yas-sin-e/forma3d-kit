@@ -25,6 +25,9 @@ class Settings:
     foreground_ratio: float | None = None
     mc_resolution: int | None = None
     max_glb_upload_mb: int = 30
+    api_daily_generation_limit: int = 20
+    api_rate_limit_per_minute: int = 10
+    api_cors_origins: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         """Refuse une cible distante invalide ou des délais non positifs."""
@@ -55,6 +58,33 @@ class Settings:
             raise ValueError("MC_RESOLUTION doit être un entier positif.")
         if self.max_glb_upload_mb < 1 or self.max_glb_upload_mb > 512:
             raise ValueError("MAX_GLB_UPLOAD_MB doit être compris entre 1 et 512.")
+        if self.api_daily_generation_limit < 1:
+            raise ValueError("API_DAILY_GENERATION_LIMIT doit être au moins égal à 1.")
+        if self.api_rate_limit_per_minute < 1:
+            raise ValueError("API_RATE_LIMIT_PER_MINUTE doit être au moins égal à 1.")
+        for origin in self.api_cors_origins:
+            parsed_origin = urlsplit(origin)
+            try:
+                parsed_origin.port
+            except ValueError as error:
+                raise ValueError("API_CORS_ORIGINS contient un port invalide.") from error
+            if (
+                not origin
+                or origin == "*"
+                or parsed_origin.scheme.casefold() not in {"http", "https"}
+                or not parsed_origin.hostname
+                or parsed_origin.username
+                or parsed_origin.password
+                or parsed_origin.path not in {"", "/"}
+                or parsed_origin.query
+                or parsed_origin.fragment
+            ):
+                raise ValueError("API_CORS_ORIGINS doit contenir des origines HTTP(S) précises, jamais *.")
+
+
+def parse_api_cors_origins(value: str) -> tuple[str, ...]:
+    """Convertit une liste séparée par des virgules en origines explicites."""
+    return tuple(dict.fromkeys(item.strip().rstrip("/") for item in value.split(",") if item.strip()))
 
 
 def get_settings() -> Settings:
@@ -73,4 +103,7 @@ def get_settings() -> Settings:
         foreground_ratio=float(foreground_ratio) if foreground_ratio else None,
         mc_resolution=int(mc_resolution) if mc_resolution else None,
         max_glb_upload_mb=int(os.getenv("MAX_GLB_UPLOAD_MB", "30")),
+        api_daily_generation_limit=int(os.getenv("API_DAILY_GENERATION_LIMIT", "20")),
+        api_rate_limit_per_minute=int(os.getenv("API_RATE_LIMIT_PER_MINUTE", "10")),
+        api_cors_origins=parse_api_cors_origins(os.getenv("API_CORS_ORIGINS", "")),
     )

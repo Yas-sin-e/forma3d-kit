@@ -54,6 +54,22 @@ class APIKeyService:
         """Désactive une clé existante ; la révocation est persistante et idempotente."""
         return self._repository.revoke_api_key(key_id)
 
+    def consume_rate_limit(
+        self, key: APIKeyRecord, limit_per_minute: int, now: datetime | None = None
+    ) -> str | None:
+        """Réserve une requête API pour cette clé dans la fenêtre d’une minute."""
+        return self._repository.consume_api_rate_limit(
+            key.id, limit_per_minute, now or datetime.now(UTC)
+        )
+
+    def consume_daily_quota(
+        self, key: APIKeyRecord, daily_limit: int, now: datetime | None = None
+    ) -> str | None:
+        """Réserve une création pour cette clé dans la journée UTC courante."""
+        return self._repository.consume_api_daily_quota(
+            key.id, daily_limit, now or datetime.now(UTC)
+        )
+
     def authenticate(self, candidate: str | None) -> APIKeyRecord | None:
         """Vérifie une clé active avec comparaison d’empreintes à temps constant."""
         supplied = candidate or ""

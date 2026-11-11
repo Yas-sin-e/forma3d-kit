@@ -133,3 +133,27 @@ class APIKeyListResponse(BaseModel):
     """Collection des clés connues pour la page de gestion du Studio."""
 
     items: list[APIKeyResponse]
+
+
+class APIModelResponse(BaseModel):
+    """État d'un modèle visible par une clé API, avec des URL versionnées."""
+
+    id: str
+    status: Literal["PENDING", "RUNNING", "DONE", "FAILED"]
+    filename: str
+    category: str
+    created_at: datetime
+    updated_at: datetime
+    status_url: str
+    model_url: str | None = None
+    error_message: str | None = None
+    duration_seconds: float | None = None
+    public_id: str | None = None
+    embed_enabled: bool = False
+
+
+class APIIntegrationCodeResponse(BaseModel):
+    """Code iframe prêt à copier pour un modèle déjà activé."""
+
+    public_id: str
+    iframe_html: str

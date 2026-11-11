@@ -4,7 +4,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
 
 from app.models import APIKeyRecord
 from app.schemas import APIKeyCreateRequest, APIKeyCreatedResponse, APIKeyListResponse, APIKeyResponse
@@ -41,12 +41,15 @@ def list_api_keys(
 def create_api_key(
     payload: APIKeyCreateRequest,
     service: Annotated[APIKeyService, Depends(get_api_key_service)],
+    response: Response,
 ) -> APIKeyCreatedResponse:
     """Crée une clé et révèle sa valeur uniquement dans cette réponse."""
     try:
         record, secret = service.create(payload.name)
     except APIKeyValidationError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Pragma"] = "no-cache"
     return APIKeyCreatedResponse(**_response(record).model_dump(), key=secret)
 
 

@@ -4,6 +4,7 @@
 
 import hashlib
 import sqlite3
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Annotated
 
@@ -55,6 +56,7 @@ def test_key_management_routes_reveal_secret_once_and_revoke(tmp_path: Path) -> 
         with TestClient(app) as client:
             created = client.post("/api-keys", json={"name": "Intégration test"})
             assert created.status_code == 201
+            assert created.headers["cache-control"] == "no-store"
             secret = created.json()["key"]
             assert secret.startswith("f3d_live_")
             assert "fingerprint" not in created.text
@@ -97,3 +99,22 @@ def test_fastapi_key_dependency_accepts_only_active_key(tmp_path: Path) -> None:
         assert accepted.status_code == 200 and accepted.json() == {"name": "Test local"}
         service.revoke(record.id)
         assert client.get("/protected", headers={"X-API-Key": secret}).status_code == 401
+
+
+def test_api_key_quota_and_rate_limit_are_persisted_by_key_and_utc_day(tmp_path: Path) -> None:
+    repository = SQLiteGenerationRepository(tmp_path / "limits.sqlite3")
+    repository.initialize()
+    service = APIKeyService(repository)
+    key, _secret = service.create("Limites")
+    start = datetime(2026, 11, 11, 12, 0, tzinfo=UTC)
+
+    assert service.consume_rate_limit(key, 1, start) is None
+    assert service.consume_rate_limit(key, 1, start + timedelta(seconds=10)) == "rate_limit"
+    assert service.consume_rate_limit(key, 1, start + timedelta(seconds=61)) is None
+    assert service.consume_daily_quota(key, 1, start) is None
+    assert service.consume_daily_quota(key, 1, start + timedelta(minutes=1)) == "daily_quota"
+    assert service.consume_daily_quota(key, 1, start + timedelta(days=1)) is None
+
+    service.revoke(key.id)
+    assert service.consume_rate_limit(key, 1, start + timedelta(days=2)) == "revoked"
+    assert service.consume_daily_quota(key, 1, start + timedelta(days=2)) == "revoked"

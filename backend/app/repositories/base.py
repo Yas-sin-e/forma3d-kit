@@ -2,6 +2,7 @@
 # Exécution : les services dépendent de cette interface pour lire et modifier l'historique.
 """Interface de dépôt utilisée par le service de génération."""
 
+from datetime import datetime
 from typing import Protocol
 
 from app.models import APIKeyRecord, CategoryRecord, GenerationRecord
@@ -88,4 +89,13 @@ class GenerationRepository(Protocol):
 
     def revoke_api_key(self, key_id: str) -> APIKeyRecord | None:
         """Révoque une clé existante et retourne ses métadonnées."""
+        ...
+
+
+    def consume_api_rate_limit(self, key_id: str, rate_limit_per_minute: int, now: datetime) -> str | None:
+        """Consomme une requête dans la fenêtre de débit ou retourne son motif de refus."""
+        ...
+
+    def consume_api_daily_quota(self, key_id: str, daily_limit: int, now: datetime) -> str | None:
+        """Consomme un quota de création UTC ou retourne son motif de refus."""
         ...

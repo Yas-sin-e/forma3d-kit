@@ -1,6 +1,6 @@
 # Structure expliquée — Forma3D Studio
 
-Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 sont retirés. Les étapes 11, 11b et 12 ont amélioré le Studio avant le Sprint 5, maintenant actif (étapes 0, 13 / 5a et 14 / 5b terminées ; prochaine : étape 15 / 5c). Le Sprint 6 n'est pas démarré.
+Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 sont retirés. Les étapes 11, 11b et 12 ont amélioré le Studio avant le Sprint 5, maintenant actif (étapes 0, 13 / 5a, 14 / 5b et 15 / 5c terminées ; prochaine : étape 16 / 5d). Le Sprint 6 n'est pas démarré.
 
 ## Racine et documents de cadrage
 
@@ -12,7 +12,7 @@ Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 s
 | `README.md` | Démarrage du dépôt, état et commandes Windows | Point d'entrée pour l'étudiante et le jury | Au clonage et au lancement |
 | `PROMPT-1.md` | Prompt local de démarrage de session v2 | Rappelle les règles au travail quotidien | Au début d'une session Codex ; ignoré par Git |
 | `.gitignore` | Exclut secrets, environnements, caches, uploads et sorties générées | Évite de versionner les données locales ou sensibles | Avant chaque commit |
-| `.env.example` | Variables fournisseur, réglages TripoSR facultatifs et plafond GLB `MAX_GLB_UPLOAD_MB` (30 par défaut) | Rend la configuration explicite sans cible ni secret | Avant le lancement ou l'import d'un modèle |
+| `.env.example` | Variables fournisseur, plafond GLB, quotas et débit API et origines CORS précises (aucune par défaut) | Rend la configuration explicite sans cible ni secret ni CORS ouvert | Avant le lancement du service intégrable |
 | `sprint-1-v2-saas-3d-ecommerce.docx` | Cahier des charges remis pour le sprint | Conserve la référence de départ et ses exigences | Au cadrage et à la soutenance |
 | `.github/` | Configuration destinée au dépôt GitHub | Sépare l'automatisation distante des sources | Sur GitHub |
 | `.github/workflows/` | Répertoire des workflows CI | Range les vérifications reproductibles | À chaque push ou pull request |
@@ -45,23 +45,24 @@ Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 s
 | `backend/README.md` | Explique l'API, ses limites et ses commandes | Permet de lancer le serveur sans deviner les étapes | À l'installation et au développement |
 | `backend/requirements.txt` | Déclare FastAPI, Uvicorn, HTTPX2, pytest, multipart, Gradio Client, python-dotenv et Pillow | Recrée les dépendances du service et de la préparation légère dans le venv | À l'installation et en CI |
 | `backend/app/__init__.py` | Marque `app` comme paquet Python | Rend les imports déterministes | Au démarrage et pendant les tests |
-| `backend/app/main.py` | Construit FastAPI, initialise SQLite et câble les services de catégories, génération et clés API | Configure les adaptateurs au même endroit sans modifier le fournisseur | À l'import et au démarrage d'Uvicorn |
+| `backend/app/main.py` | Construit FastAPI, initialise SQLite, câble l’API v1 et applique CORS exact ainsi que les erreurs JSON | Configure les services sans modifier le fournisseur ; aucun CORS tiers n’est admis par défaut | À l'import et au démarrage d'Uvicorn |
 | backend/.env | Configuration locale, dont la cible d'un serveur Gradio autorisé | Fichier ignoré par Git ; ne jamais copier son contenu dans un document, un journal ou un commit | Pour configurer un fournisseur disponible |
 | `backend/app/models.py` | Définit les catégories, générations et métadonnées des clés API sans secret en clair | Sépare les données métier du format de stockage et distingue les valeurs sensibles | Pendant la gestion, le suivi et l'authentification |
 | `backend/app/repositories/` | Regroupe le contrat de dépôt et les adaptateurs de persistance | Isole SQL des règles métier | Quand le service lit ou écrit l'historique |
 | `backend/app/repositories/__init__.py` | Marque le paquet Python des dépôts | Rend leur rôle d'accès aux données explicite | À l'import du service ou de l'adaptateur |
 | `backend/app/repositories/base.py` | Définit le contrat de dépôt pour générations, catégories et clés API | Permet de tester ou remplacer l'adaptateur indépendamment | Dans les services et leurs tests |
-| `backend/app/repositories/sqlite_repository.py` | Crée les tables, migre les champs de modèle, stocke les empreintes `api_keys` et gère connexions courtes | Utilise `sqlite3` standard et une connexion par opération | Au démarrage, à chaque transition et à la lecture de la galerie |
-| `backend/app/config.py` | Charge la cible, délais, réglages TripoSR et taille maximale d'import GLB | Centralise les valeurs configurables, sans valeur de fournisseur inventée | À la création des services et au démarrage |
+| `backend/app/repositories/sqlite_repository.py` | Crée les tables, conserve les empreintes, compte les quotas par jour et limite le débit par clé | Utilise `sqlite3` standard, transactions atomiques et une connexion par opération | Au démarrage et à chaque appel du dépôt |
+| `backend/app/config.py` | Charge les paramètres fournisseur, taille GLB, quotas API, débit et origines CORS autorisées | Centralise les valeurs configurables ; refuse le joker CORS | À la création des services et au démarrage |
 | `backend/app/providers/huggingface.py` | Sonde la cible sous 5 secondes, découvre les appels et bornes de TripoSR et valide le GLB 2.0 | Évite les noms/plages inventés et n'affiche pas d'adresse dans l'état de santé | Au badge de santé et à chaque génération |
 | `backend/app/schemas.py` | Fixe les réponses JSON avec l'origine, l'état, la date et les liens de galerie | Stabilise les contrats HTTP sans exposer les chemins locaux | Sur `/categories`, `/models`, `/api-keys` et les contrats publics |
 | `backend/app/routers/__init__.py` | Marque le paquet des routes | Clarifie l'organisation Python | À l'import des routes |
 | `backend/app/routers/categories.py` | Expose lister, créer, renommer, activer/désactiver et supprimer les catégories | Garde la validation HTTP distincte des règles métier | Aux actions de gestion et au chargement des choix |
-| `backend/app/routers/api_keys.py` | Crée, liste et révoque les clés ; fournit `require_api_key` pour authentifier `X-API-Key` | Ne renvoie le secret qu’à la création et compare des empreintes à temps constant | Sur `#/cles-api` et les routes externes des prochaines étapes |
+| `backend/app/routers/api_keys.py` | Crée, liste et révoque les clés ; fournit `require_api_key` pour authentifier `X-API-Key` | Ne renvoie le secret qu’à la création et compare des empreintes à temps constant | Sur `#/cles-api` et `/api/v1` |
+| `backend/app/routers/api_v1.py` | Crée les modèles avec le service existant, sert l’état et le GLB et retourne le code iframe | Versionne les URL, impose une clé, un quota quotidien et un débit par clé | Aux appels externes `/api/v1` |
 | `backend/app/routers/models.py` | Reçoit les photos, importe les GLB, copie les exemples autorisés, expose les états et les routes d’activation/intégration publique | Sépare HTTP du métier et valide les catégories avant l'enregistrement | À l'envoi, au suivi, à l'import, à l'activation et à la consultation des modèles |
 | `backend/app/services/__init__.py` | Marque le paquet métier | Clarifie les imports de services | À l'import du validateur et du service |
 | `backend/app/services/category_service.py` | Vérifie les catégories, les slugs et les libellés puis traduit les erreurs de persistance | Centralise les règles réutilisables par les routes et les tests | Lors du CRUD et avant chaque upload |
-| `backend/app/services/api_key_service.py` | Génère un secret aléatoire, persiste son empreinte SHA-256, révoque et vérifie à temps constant | La clé complète n’est jamais stockée ni journalisée | À la création, à la révocation et sur les routes protégées |
+| `backend/app/services/api_key_service.py` | Génère un secret aléatoire, persiste son empreinte SHA-256, vérifie les clés et applique leurs limites | La clé complète n’est jamais stockée ni journalisée | À la création, à la révocation et sur `/api/v1` |
 | `backend/app/services/upload_validator.py` | Contrôle extension, MIME, signature et plafond de 10 Mo | Le nom ou le type annoncé seul ne suffit pas | Avant d'enregistrer une photo |
 | `backend/app/services/image_preparer.py` | Redresse, compose une image carrée avec marges et mesure petite taille/netteté via Pillow | Prépare une copie temporaire sans modifier l'original ni ajouter de modèle | Juste avant l'appel du fournisseur |
 | `backend/app/services/demo_gallery.py` | Liste les cinq GLB autorisés, valide le GLB 2.0 en fichier ou en mémoire et résout les exemples copiables | Partage un validateur strict sans exposer de chemin arbitraire | À l'ouverture de la galerie, à l'import et à la copie d'exemple |
@@ -123,7 +124,9 @@ Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 s
 | `backend/tests/test_frontend.py` | Vérifie les ressources, catégories dynamiques, santé, blocage hors ligne, import et contrat du nouveau layout | Protège les contrats statiques sans navigateur | À chaque suite pytest |
 | `backend/tests/test_demo_gallery.py` | Vérifie les modèles autorisés et les photos source facultatives sans réseau | Protège la galerie et sa comparaison photo/GLB | À chaque suite pytest |
 | `backend/tests/test_model_library.py` | Vérifie l'import GLB, limites, catégories, copie d'exemple et migration de modèle | Couvre les cas de bibliothèque avec SQLite temporaire et sans fournisseur | À chaque suite pytest |
-| `backend/tests/test_api_keys.py` | Vérifie stockage d’empreinte seule, révélation unique, révocation et dépendance `X-API-Key` | Couvre le contrôle d’accès sans réseau externe | À chaque suite pytest |
+| `backend/tests/test_api_keys.py` | Vérifie empreinte seule, révélation unique, révocation, comparaison et compteurs par clé | Couvre le contrôle d’accès et les quotas sans réseau externe | À chaque suite pytest |
+| `backend/tests/test_api_settings.py` | Vérifie les valeurs par défaut, la lecture des variables et le refus du joker CORS | Évite un CORS ou des limites ouverts par erreur | À chaque suite pytest |
+| `backend/tests/test_api_v1.py` | Vérifie l’API versionnée, création simulée, suivi, GLB, iframe, erreurs, quota, débit et CORS | Appelle TestClient en local et n’utilise pas le vrai fournisseur | À chaque suite pytest |
 | `.github/workflows/ci.yml` | Vérifie les documents puis installe les dépendances et exécute pytest | Donne un contrôle répétable sur GitHub | À chaque push ou pull request |
 
 ## Documentation et historique
@@ -151,6 +154,7 @@ Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 s
 | `docs/etapes/etape-12.md` | Explique l'import, la validation GLB, la copie d'exemples, l'origine et les tests | Documente l'ajout à la bibliothèque avant le démarrage du Sprint 5 | Pour réviser l'étape 12 |
 | `docs/etapes/etape-13.md` | Explique l'UUID public, l'activation explicite d'un modèle et les routes publiques | Documente les limites de visibilité et la migration SQLite du Sprint 5a | Pour comprendre ou vérifier l'intégration d'un modèle |
 | `docs/etapes/etape-14.md` | Explique les clés API, leur empreinte, leur révocation, l’écran Studio et le contrôle `X-API-Key` | Distingue le secret affiché une fois des métadonnées conservées | Pour administrer ou expliquer la sécurité du Sprint 5b |
+| `docs/etapes/etape-15.md` | Explique les routes `/api/v1`, erreurs, quota, débit et CORS fermé par défaut | Documente le premier contrat intégrateur et ses limites prouvées | Pour intégrer ou déboguer l’API externe |
 | `docs/etapes/.gitkeep` | Marqueur ancien du dossier de guides | Conservé sans rôle d'exécution | Au clonage du dépôt |
 | `docs/archive/` et `docs/archive/v1/` | Isolent les documents remplacés | Préservent l'historique tout en gardant les instructions v2 à la racine | Pour consulter l'ancienne vision |
 | `docs/archive/v1/etapes/` | Contient les guides des étapes v1 archivés | Évite de les confondre avec le Sprint 1 v2 | Consultation historique |
@@ -166,7 +170,7 @@ Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 s
 | `backend/.venv/` | Environnement Python local et ses paquets | Évite les dépendances globales ; ne se partage pas dans Git | Au lancement et aux tests locaux |
 | backend/.env | Configuration locale, dont la cible d'un serveur Gradio autorisé | Fichier ignoré par Git ; ne jamais copier son contenu dans un document, un journal ou un commit | Pour configurer un fournisseur disponible |
 | `backend/data/` | Stocke les données locales de faisabilité et l'historique SQLite | Garde les médias et la base hors de Git | Pendant les essais et l'exécution locale |
-| `backend/data/forma3d.sqlite3` | Contient catégories, modèles et empreintes des clés API | Chemin fixe ; ignoré par `backend/data/` et les motifs d'extensions SQLite | À chaque opération de persistance |
+| `backend/data/forma3d.sqlite3` | Contient catégories, modèles, empreintes API, quotas journaliers et événements de débit | Chemin fixe ; ignoré par `backend/data/` et les motifs d'extensions SQLite | À chaque opération de persistance |
 | `backend/data/feasibility-inputs/` | Photos libres choisies pour les essais ; trois autres photos écartées ne doivent pas être envoyées car elles montrent des personnes | Garde une provenance et protège les personnes visibles | Pendant les essais réels |
 | backend/data/feasibility-results/ | Contient les cinq GLB réellement téléchargés par l'application et validés GLB 2.0 | Les sorties de faisabilité ne sont pas versionnées ; aucune n'est simulée | Pour examiner les résultats ou les ouvrir dans un viewer |
 | `backend/storage/` | Dossier de runtime pour les photos et modèles des demandes | Conserve les uploads en dehors des sources | Créé automatiquement au premier upload |
@@ -175,4 +179,4 @@ Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 s
 | `extension-debug.log` | Journal auxiliaire local de l'environnement de développement | N'est pas une entrée de l'application et est exclu de Git | Seulement si l'outil local le recrée |
 | `__pycache__/`, `.pytest_cache/` | Bytecode et cache de collecte | Ces fichiers se régénèrent automatiquement | Après imports et tests |
 
-Le registre des métadonnées et les empreintes des clés API sont persistés dans `backend/data/forma3d.sqlite3` ; les photos sources et GLB restent dans `backend/storage/`. Le dépôt d'étape 12 conserve l'origine `generated`, `imported` ou `example` ; les imports/copies ne possèdent pas de photo source et ne reçoivent pas de durée de génération. L'étape 11b change uniquement le frontend. Le Sprint 2 reste terminé ; les Sprints 3 et 4 sont retirés ; le Sprint 5 est actif depuis le 10 novembre 2026 et le Sprint 6 attend un OK explicite.
+Le registre des métadonnées, les empreintes de clés, les quotas journaliers et les événements de débit API sont persistés dans `backend/data/forma3d.sqlite3` ; les photos sources et GLB restent dans `backend/storage/`. Le dépôt d'étape 12 conserve l'origine `generated`, `imported` ou `example` ; les imports/copies ne possèdent pas de photo source et ne reçoivent pas de durée de génération. L'étape 11b change uniquement le frontend. Le Sprint 2 reste terminé ; les Sprints 3 et 4 sont retirés ; le Sprint 5 est actif depuis le 10 novembre 2026, avec 5a à 5c terminés ; le Sprint 6 attend un OK explicite.
