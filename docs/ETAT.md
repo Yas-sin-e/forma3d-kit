@@ -10,7 +10,7 @@ Les Sprints 3 (comptes publics) et 4 (vitrine/catalogue public) sont retirés du
 
 - Objectif : exposer de façon contrôlée les modèles terminés par une API avec clé et un widget intégrable.
 - Livrable vérifiable : modèle activable individuellement, clé révocable non stockée en clair, routes versionnées authentifiées, iframe/widget intégrable et guide d'intégration.
-- Étapes 0, 5a (étape 13), 5b (étape 14) et 5c (étape 15) terminées le 11 novembre 2026. Prochaine sous-étape : 5d / étape 16.
+- Étapes 0 et 5a à 5d (étapes 13 à 16) terminées et poussées sur `main`. Prochaine sous-étape : 5e / étape 17, dont le guide et l'exemple sont préparés mais dont la vérification complète reste bloquée.
 - Le Sprint 6 reste non démarré et nécessite un OK explicite.
 
 ## Sprint 2 — Qualité et fiabilité (terminé)
@@ -123,6 +123,15 @@ Les Sprints 3 (comptes publics) et 4 (vitrine/catalogue public) sont retirés du
 - Vérification : 15 tests ciblés puis 99 tests pytest complets réussis en 9,04 s avec `PYTHON_DOTENV_DISABLED=true` et `HF_SPACE_ID` vide. Le test HTTP utilise un GLB synthétique dans un stockage temporaire, sans réseau fournisseur. La syntaxe JS et le rendu navigateur restent à vérifier dans cette session.
 - Guide : `docs/etapes/etape-16.md` ; stockage et politique d'intégration : `docs/STOCKAGE.md`.
 
+## Étape 17 — Sprint 5e : guide intégrateur et exemple (vérification bloquée)
+
+- `docs/INTEGRATION.md` décrit la création d'une clé, l'envoi photo, la consultation d'état, le téléchargement, l'activation et l'intégration iframe/widget, avec erreurs, quotas, CORS et CSP.
+- `examples/integration.html` est une page de démonstration qui demande l'origine du service et l'UUID public d'un modèle activé. Elle n'inclut aucun GLB inventé et n'envoie aucune clé.
+- Deux tests pytest statiques ciblés passent. La suite complète n'a pas abouti : en mode sandbox sans accès réseau local, le premier test `TestClient` reste bloqué à l'appel HTTP local. La tentative autorisée avec permissions élevées a été refusée automatiquement par la limite d'usage ; aucune autre tentative ne l'a contournée. Avant 5e, la suite complète comptait 99 tests verts.
+- Les modules JavaScript et le JavaScript intégré à la page exemple passent `node --check` / analyse de syntaxe ; `git diff --check` passe. Aucun serveur local n'a pu rester à l'écoute et Edge n'a pas pu être activé (`failed to activate captured window` après une nouvelle sélection). Aucune apparence ni intégration navigateur n'est donc déclarée vérifiée.
+- Le travail de l'étape 17 est présent localement mais non commit/push tant que la suite complète n'est pas verte. Relancer la vérification hors sandbox puis sauvegarder le commit. Le Sprint 6 n'est pas commencé.
+- Guide pédagogique : `docs/etapes/etape-17.md`.
+
 ## Sprint 1 — terminé (état documenté au 3 novembre)
 
 L'étudiante considère le Sprint 1 terminé. Elle prend en charge elle-même la vérification de la CI GitHub ; celle-ci n'est pas déclarée verte ici.
@@ -201,4 +210,4 @@ Les tailles ont été mesurées sur les photos et GLB présents localement. Les 
 
 ## Prochaine action recommandée
 
-Continuer avec l’étape 17 (Sprint 5e) : documentation, exemples et parcours d’intégration du service sur un site tiers. Ne pas commencer le Sprint 6 sans OK explicite. La CI GitHub reste à vérifier par l’étudiante.
+Finaliser la vérification et le commit de l’étape 17 (Sprint 5e) depuis un terminal local autorisé. Ne pas commencer le Sprint 6 sans OK explicite. La CI GitHub reste à vérifier par l’étudiante.

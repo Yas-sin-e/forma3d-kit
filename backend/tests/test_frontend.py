@@ -3,6 +3,7 @@
 """Tests statiques de la page modulaire du Sprint 1."""
 
 import re
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
@@ -206,3 +207,30 @@ def test_widget_script_defines_the_integrator_tag_and_uses_embed_iframe() -> Non
     assert "auto-rotate" in response.text
     assert "/embed/" in response.text
     assert "fetch(" not in response.text
+
+
+def test_integration_example_loads_widget_for_a_real_public_model_id() -> None:
+    """Empêche de distribuer une démonstration qui inventerait un modèle ou une URL."""
+    repository_root = Path(__file__).resolve().parents[2]
+    example = (repository_root / "examples" / "integration.html").read_text(encoding="utf-8")
+
+    assert 'id="service-origin"' in example
+    assert 'id="public-id"' in example
+    assert 'new URL("/static/widget.js", service).href' in example
+    assert "publicIdPattern.test(publicId)" in example
+    assert 'viewer.setAttribute("model", publicId)' in example
+    assert 'viewer.setAttribute("auto-rotate", "")' in example
+    assert "innerHTML" not in example
+
+
+def test_integrator_guide_documents_the_real_contract_and_security_limits() -> None:
+    """Maintient les chemins réellement fournis et les restrictions lisibles par intégrateur."""
+    repository_root = Path(__file__).resolve().parents[2]
+    guide = (repository_root / "docs" / "INTEGRATION.md").read_text(encoding="utf-8")
+
+    assert "/api/v1/models" in guide
+    assert "/integration-code" in guide
+    assert "X-API-Key" in guide
+    assert "EMBED_ALLOWED_ORIGINS" in guide
+    assert "API_DAILY_GENERATION_LIMIT" in guide
+    assert "pas un service de production" in guide

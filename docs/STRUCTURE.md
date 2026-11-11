@@ -1,6 +1,6 @@
 # Structure expliquée — Forma3D Studio
 
-Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 sont retirés. Les étapes 11, 11b et 12 ont amélioré le Studio avant le Sprint 5, maintenant actif (étapes 0, 13 / 5a, 14 / 5b, 15 / 5c et 16 / 5d terminées ; prochaine : étape 17 / 5e). Le Sprint 6 n'est pas démarré.
+Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 sont retirés. Les étapes 11, 11b et 12 ont amélioré le Studio avant le Sprint 5, maintenant actif (étapes 0, 13 / 5a, 14 / 5b, 15 / 5c et 16 / 5d terminées ; étape 17 / 5e en cours de vérification). Le Sprint 6 n'est pas démarré.
 
 ## Racine et documents de cadrage
 
@@ -97,6 +97,7 @@ Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 s
 | `frontend/js/pages/api-keys.js` | Crée, liste et révoque les clés ; affiche la valeur secrète une seule fois pour la copier | Rend l’administration compréhensible sans envoyer la clé dans le navigateur après création | Sur `#/cles-api` |
 | `frontend/js/pages/examples.js` | Présente les exemples autorisés et propose de les copier dans Mes modèles avec une catégorie | Conserve les originaux dans la galerie d'exemples et crée une entrée locale séparée | Sur `#/exemples` |
 | `frontend/widget.js` | Définit `<forma3d-viewer>` et crée une iframe vers le modèle public activé | Isole le viewer du site client et vérifie l'identifiant public avant de construire l'URL | Lorsqu'une boutique colle le code du widget |
+| `examples/integration.html` | Page HTML autonome qui demande l'origine du service et un UUID public puis charge le widget | Permet de tester avec un modèle réel déjà activé sans inventer de GLB | Pour valider le snippet d'intégration en développement |
 | `frontend/js/pages/viewer-markup.js` | Fournit le balisage du viewer utilisé par la page Créer | Évite de dupliquer les commandes accessibles | Au montage du parcours de création |
 | `frontend/js/state.js` | Garde en mémoire photo, statut, durée et minuteries de la session | Évite une base de données pour cet état temporaire | Pendant l'envoi et le suivi d'une demande |
 | `frontend/js/main.js` | Démarre le routeur et diffuse l'état de disponibilité | Garde le contrôle santé unique et indépendant des pages | Au chargement et toutes les 30 secondes |
@@ -184,3 +185,11 @@ Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 s
 | `__pycache__/`, `.pytest_cache/` | Bytecode et cache de collecte | Ces fichiers se régénèrent automatiquement | Après imports et tests |
 
 Le registre des métadonnées, les empreintes de clés, les quotas journaliers et les événements de débit API sont persistés dans `backend/data/forma3d.sqlite3` ; les photos sources et GLB restent dans `backend/storage/`. Le dépôt d'étape 12 conserve l'origine `generated`, `imported` ou `example` ; les imports/copies ne possèdent pas de photo source et ne reçoivent pas de durée de génération. L'étape 11b change uniquement le frontend. Le Sprint 2 reste terminé ; les Sprints 3 et 4 sont retirés ; le Sprint 5 est actif depuis le 10 novembre 2026, avec 5a à 5c terminés ; le Sprint 6 attend un OK explicite.
+
+## Ajouts de la dernière étape du Sprint 5 (travail local non encore validé)
+
+| Chemin | À quoi ça sert | Pourquoi ce choix | Quand on l'utilise |
+|---|---|---|---|
+| `docs/INTEGRATION.md` | Guide la création d'une clé et les requêtes d'intégration, les erreurs, quotas, CORS et CSP | Donne à une personne externe un parcours basé sur les routes réellement existantes | Lors du branchement d'une boutique |
+| `examples/integration.html` | Page de démonstration pour saisir une origine serveur et un UUID public puis charger le widget | Montre le composant avec un modèle réel activé, sans intégrer de faux GLB ni clé | Pour un test local d'intégration |
+| `docs/etapes/etape-17.md` | Explique le guide et l'exemple, et consigne que les tests complets/navigateur restent bloqués | Sépare le travail écrit de la validation qui n'a pas été possible | Pour reprendre et clôturer le Sprint 5e |

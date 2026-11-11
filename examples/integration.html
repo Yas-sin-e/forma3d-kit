@@ -1,0 +1,91 @@
+<!doctype html>
+<!-- Rôle : page autonome pour tester le composant intégrable Forma3D avec un modèle public choisi.
+     Exécution : servir ce fichier en HTTP, saisir l'adresse du service et l'UUID public d'un modèle activé. -->
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Exemple d'intégration Forma3D</title>
+    <style>
+      :root { color-scheme: dark; font: 16px/1.55 system-ui, sans-serif; background: #0E1218; color: #F1F5F9; }
+      * { box-sizing: border-box; }
+      body { margin: 0; padding: 32px 16px; }
+      main { width: min(100%, 760px); margin-inline: auto; }
+      h1 { line-height: 1.2; }
+      p, label { color: #A9B4C4; }
+      form { display: grid; gap: 12px; padding: 20px; border: 1px solid #344052; border-radius: 12px; background: #161C26; }
+      label { display: grid; gap: 6px; color: #F1F5F9; font-weight: 650; }
+      input { width: 100%; min-height: 46px; padding: 10px 12px; border: 1px solid #536174; border-radius: 8px; background: #0E1218; color: #F1F5F9; font: inherit; }
+      button { justify-self: start; min-height: 46px; padding: 10px 16px; border: 0; border-radius: 8px; background: #2DD4BF; color: #0E1218; font: inherit; font-weight: 750; cursor: pointer; }
+      :focus-visible { outline: 3px solid #2DD4BF; outline-offset: 3px; }
+      #widget-status { min-height: 1.5em; }
+      #viewer-slot { min-height: 0; }
+      @media (max-width: 420px) { body { padding: 20px 12px; } form { padding: 16px; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Exemple d'intégration Forma3D</h1>
+      <p>Utilisez l'adresse de votre service et l'identifiant public d'un modèle terminé, activé et autorisé pour ce domaine.</p>
+      <form id="widget-form">
+        <label for="service-origin">Adresse du service Forma3D
+          <input id="service-origin" name="service-origin" type="url" value="http://127.0.0.1:8000" required autocomplete="url">
+        </label>
+        <label for="public-id">Identifiant public du modèle
+          <input id="public-id" name="public-id" type="text" required autocomplete="off" spellcheck="false" placeholder="UUID public copié depuis Forma3D">
+        </label>
+        <button type="submit">Afficher le modèle</button>
+      </form>
+      <p id="widget-status" role="status" aria-live="polite"></p>
+      <div id="viewer-slot"></div>
+    </main>
+    <script>
+      // Rôle : charger le widget seulement après validation de l'adresse et de l'identifiant saisis.
+      // Exécution : au clic sur « Afficher le modèle », dans ce fichier de démonstration.
+      const form = document.querySelector("#widget-form");
+      const status = document.querySelector("#widget-status");
+      const viewerSlot = document.querySelector("#viewer-slot");
+      const publicIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        viewerSlot.replaceChildren();
+        status.textContent = "";
+
+        let service;
+        try {
+          service = new URL(form.elements["service-origin"].value.trim());
+        } catch {
+          status.textContent = "Saisissez une adresse de service HTTP ou HTTPS valide.";
+          return;
+        }
+        if (!["http:", "https:"].includes(service.protocol) || !service.hostname || service.username || service.password || service.pathname !== "/" || service.search || service.hash) {
+          status.textContent = "L'adresse du service doit être une origine HTTP(S) sans chemin, identifiant ni paramètre.";
+          return;
+        }
+
+        const publicId = form.elements["public-id"].value.trim();
+        if (!publicIdPattern.test(publicId)) {
+          status.textContent = "Saisissez l'identifiant public UUID affiché par Forma3D.";
+          return;
+        }
+
+        const widgetScript = document.createElement("script");
+        widgetScript.src = new URL("/static/widget.js", service).href;
+        widgetScript.onload = () => {
+          const viewer = document.createElement("forma3d-viewer");
+          viewer.setAttribute("model", publicId);
+          viewer.setAttribute("height", "480");
+          viewer.setAttribute("auto-rotate", "");
+          viewer.setAttribute("title", "Aperçu 3D du produit");
+          viewerSlot.replaceChildren(viewer);
+          status.textContent = "Widget chargé. Le serveur vérifie l'activation du modèle et l'autorisation de ce domaine.";
+        };
+        widgetScript.onerror = () => {
+          status.textContent = "Le widget n'a pas pu être chargé. Vérifiez l'adresse du service et son état.";
+        };
+        document.head.append(widgetScript);
+      });
+    </script>
+  </body>
+</html>
