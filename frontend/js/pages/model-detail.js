@@ -3,9 +3,11 @@
  * Exécution : router.js monte cette page sur #/modeles/{id}, y compris pour signaler un identifiant inconnu.
  * Refonte : bascule Vue 3D / Photo source / Comparer, squelette de chargement, et intégration
  * guidée en 4 étapes (interrupteur, choix iframe/widget, code à copier, aperçu réel via /embed).
+ * Sous-étape A : matériau mat pour les GLB sans matériau, recadrage et rotation en pause en mode Comparer.
  */
 import { getGenerationStatus, listCategories, listGalleryModels, setModelIntegrationEnabled } from "../api.js?v=20261111-ui";
 import { exampleGenerationSeconds, formatDuration, formatLongDate } from "../format.js?v=20261111-ui";
+import { refitCamera, watchProductAppearance } from "../views/model-appearance.js?v=20261111-ui";
 
 export const title = "Fiche du modèle";
 
@@ -143,11 +145,16 @@ export function mount(route) {
   let currentModelUrl = null;
 
   function setView(mode) {
+    const previous = stage.dataset.view;
     stage.dataset.view = mode;
     stagePhoto.hidden = mode === "model";
     viewToggle.querySelectorAll("button[data-view]").forEach((button) => {
       button.setAttribute("aria-pressed", button.dataset.view === mode ? "true" : "false");
     });
+    // Comparaison : modèle immobile face à la photo ; la rotation reprend en vue 3D seule.
+    if (mode === "compare") modelViewer.removeAttribute("auto-rotate");
+    else if (mode === "model") modelViewer.setAttribute("auto-rotate", "");
+    if (previous !== mode && !modelViewer.hidden) refitCamera(modelViewer);
   }
 
   function showError(message) {
@@ -258,6 +265,7 @@ export function mount(route) {
     }
   }
 
+  watchProductAppearance(modelViewer);
   modelViewer.addEventListener("load", () => { skeleton.hidden = true; });
   modelViewer.addEventListener("error", () => {
     skeleton.hidden = true;

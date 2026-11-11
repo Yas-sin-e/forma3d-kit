@@ -65,6 +65,7 @@ def test_static_frontend_assets_are_served_and_only_api_module_calls_fetch() -> 
         "/static/js/pages/dashboard.js",
         "/static/js/views/confirm-dialog.js",
         "/static/js/views/illustrations.js",
+        "/static/js/views/model-appearance.js",
         "/static/js/state.js",
         "/static/js/pages/create.js",
         "/static/js/pages/models.js",
@@ -299,3 +300,24 @@ def test_integration_guide_page_is_reachable_from_the_studio() -> None:
     assert 'href="#/guide"' in shell and 'href="#/guide"' in dashboard
     for fragment in ("/api/v1/models", "X-API-Key", "/embed/", "<forma3d-viewer", "EMBED_ALLOWED_ORIGINS", "API_DAILY_GENERATION_LIMIT"):
         assert fragment in guide.text
+
+
+def test_viewers_fix_default_gltf_material_and_refit_in_compare_mode() -> None:
+    """Sous-étape A : correction d'affichage seulement, le GLB n'est jamais modifié côté serveur."""
+    client = TestClient(app)
+    appearance = client.get("/static/js/views/model-appearance.js").text
+    viewer = client.get("/static/js/views/viewer.js").text
+    detail = client.get("/static/js/pages/model-detail.js").text
+    gallery = client.get("/static/js/views/gallery.js").text
+    dashboard = client.get("/static/js/pages/dashboard.js").text
+
+    # Le défaut glTF (metallic = roughness = 1, sans texture) est seul remplacé par un matériau mat.
+    assert "pbr.metallicFactor === 1 && pbr.roughnessFactor === 1" in appearance
+    assert "setMetallicFactor(PRODUCT_METALLIC)" in appearance
+    assert "PRODUCT_ROUGHNESS = 0.8" in appearance
+    assert "updateFraming()" in appearance
+    for module in (viewer, detail, gallery, dashboard):
+        assert "watchProductAppearance(" in module
+        assert "model-appearance.js?v=20261111-ui" in module
+    assert "refitCamera(viewer)" in viewer and "refitCamera(modelViewer)" in detail
+    assert 'removeAttribute("auto-rotate")' in detail

@@ -123,6 +123,13 @@ Les Sprints 3 (comptes publics) et 4 (vitrine/catalogue public) sont retirés du
 - Vérification : 15 tests ciblés puis 99 tests pytest complets réussis en 9,04 s avec `PYTHON_DOTENV_DISABLED=true` et `HF_SPACE_ID` vide. Le test HTTP utilise un GLB synthétique dans un stockage temporaire, sans réseau fournisseur. La syntaxe JS et le rendu navigateur restent à vérifier dans cette session.
 - Guide : `docs/etapes/etape-16.md` ; stockage et politique d'intégration : `docs/STOCKAGE.md`.
 
+## Étape 19 — Sous-étape A : rendu fidèle des GLB (terminée)
+
+- Diagnostic : les 5 GLB TripoSR n'ont ni matériau, ni normales, ni texture (couleurs par sommet). Le matériau glTF par défaut (metallic = 1, roughness = 1) les assombrissait.
+- `frontend/js/views/model-appearance.js` applique un matériau mat (metallic 0, roughness 0,8) au seul matériau par défaut, dans Créer, la fiche, les cartes et l'accueil ; le mode Comparer met la rotation en pause et recalcule le cadrage.
+- Preuve : capture headless du vrai `chair-bentwood.glb`, journal metallic 1 → 0 (voir `docs/etapes/etape-19.md`). Aucun GLB modifié ; aucune amélioration de géométrie revendiquée.
+- Non vérifié : cadrage du mode Comparer dans le vrai Studio. Prochaine sous-étape proposée : B (matériau et normales écrits dans le GLB côté serveur), sur accord.
+
 ## Étape 18 — Sprint 5f : connexion côté serveur (terminée)
 
 - La constante JavaScript `forma3d-demo` est supprimée. Le mot de passe unique vient de `FORMA3D_OWNER_PASSWORD` (documenté dans `.env.example`, jamais dans Git) ; s'il est absent, `POST /auth/login` répond 503 avec un message clair.

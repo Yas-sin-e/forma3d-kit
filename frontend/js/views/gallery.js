@@ -6,6 +6,7 @@
 import { listGalleryModels } from "../api.js?v=20261111-ui";
 import { appState } from "../state.js?v=20261111-ui";
 import { formatMegabytes, formatRelativeDate } from "../format.js?v=20261111-ui";
+import { watchProductAppearance } from "./model-appearance.js?v=20261111-ui";
 
 const originLabels = {
   generated: "Généré",
@@ -27,6 +28,7 @@ export function createModelCard(model, options = {}) {
   const preview = document.createElement("div");
   preview.className = "model-card-preview";
   const miniViewer = document.createElement("model-viewer");
+  watchProductAppearance(miniViewer);
   miniViewer.setAttribute("src", model.model_url);
   miniViewer.setAttribute("alt", "Aperçu 3D : " + model.name);
   miniViewer.setAttribute("loading", "lazy");

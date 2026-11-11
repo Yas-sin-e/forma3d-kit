@@ -3,7 +3,10 @@
  * Exécution : create.js lui transmet un modèle DONE ou un fichier local choisi par la propriétaire.
  * Refonte : squelette pendant le chargement, rotation automatique douce à l'ouverture,
  * bascule Vue 3D / Photo source / Comparer quand une photo source est disponible.
+ * Sous-étape A : matériau mat pour les GLB sans matériau, recadrage et rotation en pause en mode Comparer.
  */
+import { refitCamera, watchProductAppearance } from "./model-appearance.js?v=20261111-ui";
+
 export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
   const viewer = document.querySelector("#model-viewer");
   const emptyState = document.querySelector("#empty-state");
@@ -60,12 +63,19 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
 
   /* Modes d'affichage : « model » (3D seule), « photo » (photo seule) ou « compare » (côte à côte). */
   function setView(mode) {
+    const previous = stage.dataset.view;
     stage.dataset.view = mode;
     stagePhoto.hidden = mode === "model";
     sourcePhotoFigure.hidden = mode !== "model" || !sourcePhotoImage.getAttribute("src");
     viewToggle.querySelectorAll("button[data-view]").forEach((button) => {
       button.setAttribute("aria-pressed", button.dataset.view === mode ? "true" : "false");
     });
+    // En comparaison, le modèle reste fixe face à la photo ; la rotation reprend avec le bouton dédié.
+    if (mode === "compare" && viewer.hasAttribute("auto-rotate")) {
+      viewer.removeAttribute("auto-rotate");
+      autoRotateButton.setAttribute("aria-pressed", "false");
+    }
+    if (activeModel && previous !== mode) refitCamera(viewer);
   }
 
   function clear() {
@@ -230,6 +240,7 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
     if (button) setView(button.dataset.view);
   });
 
+  watchProductAppearance(viewer);
   viewer.addEventListener("load", () => {
     if (!activeModel) return;
     skeleton.hidden = true;

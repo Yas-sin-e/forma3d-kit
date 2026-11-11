@@ -8,6 +8,7 @@ import { appState } from "../state.js?v=20261111-ui";
 import { exampleDescription, isSavedModel } from "../format.js?v=20261111-ui";
 import { createModelCard } from "../views/gallery.js?v=20261111-ui";
 import { emptyCubeIllustration } from "../views/illustrations.js?v=20261111-ui";
+import { watchProductAppearance } from "../views/model-appearance.js?v=20261111-ui";
 
 export const title = "Accueil";
 
@@ -143,6 +144,7 @@ export function mount() {
 
     // Le visuel du héros montre un vrai modèle du catalogue (le premier exemple disponible).
     const heroModel = examples[0] ?? saved[0];
+    watchProductAppearance(heroViewer);
     if (heroModel) heroViewer.src = heroModel.model_url;
   }
 
