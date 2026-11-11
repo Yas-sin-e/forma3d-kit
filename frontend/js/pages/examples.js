@@ -4,9 +4,9 @@
  * Refonte : une description courte sous chaque carte, avec la durée réellement mesurée
  * lors des essais de faisabilité (aucune durée n'est inventée).
  */
-import { copyExampleModel, listCategories } from "../api.js?v=20261111-ui";
-import { setupGallery } from "../views/gallery.js?v=20261111-ui";
-import { exampleDescription } from "../format.js?v=20261111-ui";
+import { copyExampleModel, listCategories } from "../api.js?v=20261112-c3";
+import { setupGallery } from "../views/gallery.js?v=20261112-c3";
+import { exampleDescription } from "../format.js?v=20261112-c3";
 
 export const title = "Exemples de modèles";
 const generationIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

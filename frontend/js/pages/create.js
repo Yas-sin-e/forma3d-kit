@@ -5,12 +5,12 @@
  * le stepper en 3 étapes (redondant avec le suivi) et la note encadrée sont supprimés,
  * les conseils et détails techniques sont repliés en bas du formulaire.
  */
-import { createGeneration, getGenerationStatus, listCategories } from "../api.js?v=20261111-ui";
-import { appState, beginGeneration, stopGenerationTimers, updateElapsedSeconds, updateGenerationStatus } from "../state.js?v=20261111-ui";
-import { setupUploader } from "../views/uploader.js?v=20261111-ui";
-import { createProgressView } from "../views/progress.js?v=20261111-ui";
-import { setupViewer } from "../views/viewer.js?v=20261111-ui";
-import { viewerMarkup } from "./viewer-markup.js?v=20261111-ui";
+import { createGeneration, getGenerationStatus, listCategories } from "../api.js?v=20261112-c3";
+import { appState, beginGeneration, stopGenerationTimers, updateElapsedSeconds, updateGenerationStatus } from "../state.js?v=20261112-c3";
+import { setupUploader } from "../views/uploader.js?v=20261112-c3";
+import { createProgressView } from "../views/progress.js?v=20261112-c3";
+import { setupViewer } from "../views/viewer.js?v=20261112-c3";
+import { viewerMarkup } from "./viewer-markup.js?v=20261112-c3";
 
 export const title = "Créer";
 
@@ -142,7 +142,8 @@ export function mount() {
       return false;
     }
     if (data.status === "FAILED") {
-      showFailure("Nous n’avons pas pu créer ce modèle. Vérifiez la photo et réessayez.");
+      // Le serveur fournit la vraie cause (quota, Space indisponible…), déjà nettoyée de tout secret.
+      showFailure(data.error_message || "Nous n’avons pas pu créer ce modèle. Vérifiez la photo et réessayez.");
       return true;
     }
     if (data.status !== "DONE" || !data.model_url) {

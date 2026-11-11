@@ -4,10 +4,10 @@
  * Exécution : chargé une fois depuis index.html ; le contrôle de santé continue entre les pages.
  * Étape 5f : la session est demandée au serveur (GET /auth/me) avant le premier affichage.
  */
-import { getProviderHealth } from "./api.js?v=20261111-ui";
-import { logout, refreshSession } from "./auth.js?v=20261111-ui";
-import { appState } from "./state.js?v=20261111-ui";
-import { startRouter } from "./router.js?v=20261111-ui";
+import { getProviderHealth } from "./api.js?v=20261112-c3";
+import { logout, refreshSession } from "./auth.js?v=20261112-c3";
+import { appState } from "./state.js?v=20261112-c3";
+import { startRouter } from "./router.js?v=20261112-c3";
 
 const providerBadge = document.querySelector("#provider-badge");
 const providerLabel = document.querySelector("#provider-label");

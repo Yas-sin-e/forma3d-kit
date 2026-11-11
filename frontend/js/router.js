@@ -5,16 +5,16 @@
  * Refonte : routes #/login et #/accueil, redirection vers #/login sans session,
  * menu « Administration » (Catégories, Clés API, Guide), paramètres ?query et ancres #section.
  */
-import { isAuthenticated, rememberNextRoute } from "./auth.js?v=20261111-ui";
-import * as loginPage from "./pages/login.js?v=20261111-ui";
-import * as dashboardPage from "./pages/dashboard.js?v=20261111-ui";
-import * as createPage from "./pages/create.js?v=20261111-ui";
-import * as modelsPage from "./pages/models.js?v=20261111-ui";
-import * as modelDetailPage from "./pages/model-detail.js?v=20261111-ui";
-import * as categoriesPage from "./pages/categories.js?v=20261111-ui";
-import * as examplesPage from "./pages/examples.js?v=20261111-ui";
-import * as apiKeysPage from "./pages/api-keys.js?v=20261111-ui";
-import * as guidePage from "./pages/guide.js?v=20261111-ui";
+import { isAuthenticated, rememberNextRoute } from "./auth.js?v=20261112-c3";
+import * as loginPage from "./pages/login.js?v=20261112-c3";
+import * as dashboardPage from "./pages/dashboard.js?v=20261112-c3";
+import * as createPage from "./pages/create.js?v=20261112-c3";
+import * as modelsPage from "./pages/models.js?v=20261112-c3";
+import * as modelDetailPage from "./pages/model-detail.js?v=20261112-c3";
+import * as categoriesPage from "./pages/categories.js?v=20261112-c3";
+import * as examplesPage from "./pages/examples.js?v=20261112-c3";
+import * as apiKeysPage from "./pages/api-keys.js?v=20261112-c3";
+import * as guidePage from "./pages/guide.js?v=20261112-c3";
 
 const app = document.querySelector("#app");
 const nav = document.querySelector("#main-nav");

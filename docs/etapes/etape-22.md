@@ -43,4 +43,6 @@ cd backend
 
 ## Vérification réelle
 
-À consigner après la génération réelle par l'étudiante dans le Studio (voir `docs/ETAT.md`). Tant qu'elle n'a pas eu lieu, TRELLIS n'est **pas** déclaré démontré dans Forma3D.
+Première tentative (11/11, soir) : le Studio a appelé TRELLIS, refus du Space pour quota GPU gratuit épuisé (« 120s requested vs. 0s left »). La chaîne Forma3D → Space fonctionne jusqu'au quota ; le résultat GLB n'est pas encore obtenu. La page Créer affichait un message générique accusant la photo : elle montre maintenant la vraie cause renvoyée par le serveur.
+
+Tant qu'une génération n'a pas abouti, TRELLIS n'est **pas** déclaré démontré dans Forma3D.

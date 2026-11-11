@@ -3,7 +3,7 @@
  * Exécution : create.js initialise cette vue et reçoit le fichier quand le formulaire est soumis.
  * Refonte : la photo choisie s'affiche en vignette dans la zone de dépôt (URL locale, rien n'est envoyé).
  */
-import { appState } from "../state.js?v=20261111-ui";
+import { appState } from "../state.js?v=20261112-c3";
 
 const acceptedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const acceptedExtensions = new Set(["jpg", "jpeg", "png", "webp"]);
