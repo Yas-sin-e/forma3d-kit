@@ -1,0 +1,46 @@
+# Étape 22 — Sous-étape C3 : TRELLIS branché dans Forma3D
+
+Date : 11 novembre 2026. Validée par l'étudiante (« Oui, branche TRELLIS ») après la comparaison visuelle C2.
+
+## But et livrable vérifiable
+
+- But : qu'une génération lancée depuis Forma3D puisse utiliser TRELLIS (couleurs texturées, sol détouré), TripoSR restant le défaut.
+- Livrable vérifiable : avec `IMAGE3D_PROVIDER=trellis`, une photo envoyée dans le Studio donne un GLB réel, validé, affiché et téléchargeable. C'est la seule preuve de réussite selon `docs/QUALITE-3D.md`.
+
+## Fichiers
+
+| Fichier | Rôle |
+|---|---|
+| `backend/app/providers/trellis.py` (nouveau) | `TrellisSpaceProvider` : `view_api()`, `/start_session`, `/preprocess_image` (détourage), `/generate_and_extract_glb`, contrôle GLB 2.0, délai global, erreurs claires (quota), jeton masqué |
+| `backend/app/config.py` | `IMAGE3D_PROVIDER` (`triposr` par défaut ou `trellis`) et `TRELLIS_SPACE_ID` (identifiant « propriétaire/nom » obligatoire, jamais une URL) |
+| `backend/app/main.py` | Choisit le fournisseur au démarrage ; message de santé propre à TRELLIS |
+| `backend/app/services/glb_finisher.py` | Met `metallicFactor = 0` quand un matériau texturé l'omet (cas TRELLIS, sinon métal par défaut) |
+| `.env.example` | Documente les deux nouvelles variables |
+| `backend/tests/test_trellis_provider.py` (nouveau) | 9 tests avec un faux client Gradio |
+
+## Sécurité et limites
+
+- Le jeton `HF_TOKEN` n'est envoyé qu'à un identifiant de Space Hugging Face ; il est masqué dans les messages d'erreur.
+- Quota GPU gratuit limité par jour (épuisé deux fois pendant les essais) : la création peut échouer avec un message explicite ; aucun abonnement, aucun contournement.
+- Licence : TRELLIS est sous MIT ; l'usage commercial des modèles générés reste à confirmer. Photos de produits uniquement, sans personne.
+- La table en demi-lune risque encore d'être trop profonde (face cachée devinée) ; le parcours multi-vues n'est pas branché.
+
+## Activation (par l'étudiante, dans `backend/.env`, jamais commité)
+
+```text
+IMAGE3D_PROVIDER=trellis
+HF_TOKEN=votre_jeton_gratuit
+```
+
+Puis redémarrer le serveur. Revenir à TripoSR : `IMAGE3D_PROVIDER=triposr`.
+
+## Tests
+
+```bash
+cd backend
+.venv/Scripts/python.exe -m pytest -q tests/test_trellis_provider.py tests/test_glb_finisher.py
+```
+
+## Vérification réelle
+
+À consigner après la génération réelle par l'étudiante dans le Studio (voir `docs/ETAT.md`). Tant qu'elle n'a pas eu lieu, TRELLIS n'est **pas** déclaré démontré dans Forma3D.

@@ -123,6 +123,12 @@ Les Sprints 3 (comptes publics) et 4 (vitrine/catalogue public) sont retirés du
 - Vérification : 15 tests ciblés puis 99 tests pytest complets réussis en 9,04 s avec `PYTHON_DOTENV_DISABLED=true` et `HF_SPACE_ID` vide. Le test HTTP utilise un GLB synthétique dans un stockage temporaire, sans réseau fournisseur. La syntaxe JS et le rendu navigateur restent à vérifier dans cette session.
 - Guide : `docs/etapes/etape-16.md` ; stockage et politique d'intégration : `docs/STOCKAGE.md`.
 
+## Étape 22 — Sous-étape C3 : TRELLIS branché (vérification réelle en attente)
+
+- `backend/app/providers/trellis.py` ajoute TRELLIS derrière `Image3DProvider` (détourage puis GLB texturé), choisi par `IMAGE3D_PROVIDER=trellis` ; TripoSR reste le défaut.
+- La finition des GLB met `metallicFactor = 0` quand un matériau texturé l'omet (cas TRELLIS).
+- 9 tests sans réseau. **Pas encore démontré dans Forma3D** : la génération réelle depuis le Studio doit être faite par l'étudiante (variables dans `backend/.env`), puis consignée ici.
+
 ## Étape 21 — Sous-étape C : grille et essais de fournisseurs
 
 - `docs/QUALITE-3D.md` : grille de 10 critères écrite avant les essais ; contrats `view_api()` de `trellis-community/TRELLIS` et `microsoft/TRELLIS.2` relevés.

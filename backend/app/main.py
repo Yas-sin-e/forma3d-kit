@@ -18,6 +18,7 @@ from starlette.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.providers.huggingface import HuggingFaceSpaceProvider
+from app.providers.trellis import TrellisSpaceProvider
 from app.repositories.sqlite_repository import SQLiteGenerationRepository
 from app.routers.api_keys import router as api_keys_router
 from app.routers.auth import require_owner
@@ -37,6 +38,12 @@ from app.storage.local_storage import LocalStorage
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 logger = logging.getLogger(__name__)
 provider = HuggingFaceSpaceProvider()
+# IMAGE3D_PROVIDER choisit le fournisseur de génération ; TripoSR reste le défaut (sous-étape C3).
+generation_provider = (
+    TrellisSpaceProvider(provider.settings)
+    if provider.settings.image3d_provider == "trellis"
+    else provider
+)
 generation_repository = SQLiteGenerationRepository(
     _PROJECT_ROOT / "backend" / "data" / "forma3d.sqlite3"
 )
@@ -53,7 +60,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         logger.warning("backend/.env est absent ; vérifiez le fichier local avant une génération distante.")
     if not app.state.owner_auth.is_configured():
         logger.warning("FORMA3D_OWNER_PASSWORD est vide ; la connexion au Studio est refusée.")
-    if not provider.settings.hf_space_id.strip():
+    if provider.settings.image3d_provider == "triposr" and not provider.settings.hf_space_id.strip():
         logger.warning("HF_SPACE_ID est vide ; les générations distantes sont désactivées.")
     yield
 
@@ -64,7 +71,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.state.generation_service = GenerationService(
-    provider=provider,
+    provider=generation_provider,
     storage=LocalStorage(),
     repository=generation_repository,
 )
@@ -75,7 +82,7 @@ app.state.api_daily_generation_limit = provider.settings.api_daily_generation_li
 app.state.api_rate_limit_per_minute = provider.settings.api_rate_limit_per_minute
 app.state.api_cors_origins = provider.settings.api_cors_origins
 app.state.embed_allowed_origins = provider.settings.embed_allowed_origins
-app.state.generation_provider = provider
+app.state.generation_provider = generation_provider
 app.state.max_glb_upload_bytes = provider.settings.max_glb_upload_mb * 1024 * 1024
 app.state.demo_gallery = DemoGallery()
 app.state.owner_auth = OwnerAuthService()
@@ -148,8 +155,14 @@ def health_check() -> dict[str, str]:
 @app.get("/health/provider", tags=["health"])
 def provider_health_check(request: Request) -> dict[str, str]:
     """Retourne la disponibilité sans révéler l'URL ou les détails réseau."""
-    status = request.app.state.generation_provider.health_status()
-    if status == "OFFLINE":
+    generation_provider = request.app.state.generation_provider
+    status = generation_provider.health_status()
+    if status == "OFFLINE" and isinstance(generation_provider, TrellisSpaceProvider):
+        message = (
+            "Le Space TRELLIS est en veille, en panne ou indisponible. "
+            "Réessayez plus tard ; le quota GPU gratuit est limité par jour."
+        )
+    elif status == "OFFLINE":
         message = (
             "Le serveur 3D (Colab) est arrêté ou son lien a expiré (72 h). "
             "Relance le notebook, copie la nouvelle ligne dans backend/.env, redémarre le serveur."

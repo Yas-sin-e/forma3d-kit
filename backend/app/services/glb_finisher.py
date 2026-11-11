@@ -6,7 +6,8 @@ Pourquoi : les GLB de TripoSR ne contiennent que des positions et une couleur pa
 Sans matériau, la norme glTF impose un matériau 100 % métallique qui assombrit le modèle ;
 sans normales, chaque viewer calcule des faces plates (aspect facetté). On ajoute donc :
 - un matériau `forma3d-product` (metallic 0, roughness 0,8) aux primitives qui n'en ont pas ;
-- un attribut NORMAL calculé à partir des triangles (moyenne pondérée par l'aire).
+- un attribut NORMAL calculé à partir des triangles (moyenne pondérée par l'aire) ;
+- metallicFactor = 0 quand un matériau texturé l'omet (cas TRELLIS : la norme vaudrait 1).
 
 Les positions, les indices et les couleurs ne sont jamais modifiés. En cas de structure
 inattendue, la fonction renvoie le fichier d'origine inchangé : la finition ne doit jamais
@@ -42,6 +43,7 @@ class FinishReport:
     changed: bool
     normals_added: int = 0
     materials_added: int = 0
+    metallic_fixed: int = 0
     reason: str = ""
 
 
@@ -158,7 +160,13 @@ def finish_glb(content: bytes) -> tuple[bytes, FinishReport]:
         primitives = [p for mesh in document.get("meshes", []) for p in mesh.get("primitives", [])]
         needs_normals = [p for p in primitives if "NORMAL" not in p.get("attributes", {})]
         needs_material = [p for p in primitives if "material" not in p]
-        if not needs_normals and not needs_material:
+        implicit_metal = [
+            m for m in document.get("materials", [])
+            if isinstance(m.get("pbrMetallicRoughness"), dict)
+            and "metallicFactor" not in m["pbrMetallicRoughness"]
+            and "metallicRoughnessTexture" not in m["pbrMetallicRoughness"]
+        ]
+        if not needs_normals and not needs_material and not implicit_metal:
             return content, FinishReport(changed=False, reason="déjà complet")
         if any(p.get("mode", _TRIANGLES) != _TRIANGLES for p in needs_normals):
             raise _Unsupported("primitive autre que triangles")
@@ -178,6 +186,10 @@ def finish_glb(content: bytes) -> tuple[bytes, FinishReport]:
             )
             primitive["attributes"]["NORMAL"] = len(document["accessors"]) - 1
 
+        # TRELLIS omet metallicFactor : la norme vaut alors 1 (métal), ce qui assombrit la texture.
+        for material in implicit_metal:
+            material["pbrMetallicRoughness"]["metallicFactor"] = 0.0
+
         materials_added = 0
         if needs_material:
             document.setdefault("materials", []).append(dict(PRODUCT_MATERIAL))
@@ -190,7 +202,8 @@ def finish_glb(content: bytes) -> tuple[bytes, FinishReport]:
             document["buffers"] = [{}]
         document["buffers"][0]["byteLength"] = len(binary)
         return _write_glb(document, binary), FinishReport(
-            changed=True, normals_added=len(needs_normals), materials_added=materials_added
+            changed=True, normals_added=len(needs_normals), materials_added=materials_added,
+            metallic_fixed=len(implicit_metal),
         )
     except (_Unsupported, ValueError, KeyError, IndexError, TypeError, struct.error) as error:
         logger.info("Finition GLB ignorée : %s", error)

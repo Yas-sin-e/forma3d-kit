@@ -4,6 +4,7 @@
 
 import math
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -11,6 +12,7 @@ from urllib.parse import urlsplit
 from dotenv import load_dotenv
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
+_SPACE_ID_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*")
 
 
 @dataclass(frozen=True)
@@ -29,6 +31,9 @@ class Settings:
     api_rate_limit_per_minute: int = 10
     api_cors_origins: tuple[str, ...] = ()
     embed_allowed_origins: tuple[str, ...] = ()
+    # Fournisseur 3D actif : « triposr » (par défaut, HF_SPACE_ID) ou « trellis » (Space public TRELLIS).
+    image3d_provider: str = "triposr"
+    trellis_space_id: str = "trellis-community/TRELLIS"
 
     def __post_init__(self) -> None:
         """Refuse une cible distante invalide ou des délais non positifs."""
@@ -57,6 +62,11 @@ class Settings:
             raise ValueError("FOREGROUND_RATIO doit être un nombre fini.")
         if self.mc_resolution is not None and self.mc_resolution <= 0:
             raise ValueError("MC_RESOLUTION doit être un entier positif.")
+        if self.image3d_provider not in {"triposr", "trellis"}:
+            raise ValueError("IMAGE3D_PROVIDER doit valoir « triposr » ou « trellis ».")
+        if not _SPACE_ID_PATTERN.fullmatch(self.trellis_space_id):
+            # Un identifiant « propriétaire/nom » garantit que HF_TOKEN n'est envoyé qu'à Hugging Face.
+            raise ValueError("TRELLIS_SPACE_ID doit être un identifiant de Space « propriétaire/nom », pas une URL.")
         if self.max_glb_upload_mb < 1 or self.max_glb_upload_mb > 512:
             raise ValueError("MAX_GLB_UPLOAD_MB doit être compris entre 1 et 512.")
         if self.api_daily_generation_limit < 1:
@@ -117,4 +127,6 @@ def get_settings() -> Settings:
         api_rate_limit_per_minute=int(os.getenv("API_RATE_LIMIT_PER_MINUTE", "10")),
         api_cors_origins=parse_api_cors_origins(os.getenv("API_CORS_ORIGINS", "")),
         embed_allowed_origins=parse_embed_allowed_origins(os.getenv("EMBED_ALLOWED_ORIGINS", "")),
+        image3d_provider=os.getenv("IMAGE3D_PROVIDER", "triposr").strip().casefold() or "triposr",
+        trellis_space_id=os.getenv("TRELLIS_SPACE_ID", "trellis-community/TRELLIS").strip() or "trellis-community/TRELLIS",
     )
