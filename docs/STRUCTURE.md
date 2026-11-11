@@ -1,6 +1,6 @@
 # Structure expliquée — Forma3D Studio
 
-Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 sont retirés. Les étapes 11, 11b et 12 ont amélioré le Studio avant le Sprint 5, maintenant actif (étapes 0, 13 / 5a, 14 / 5b, 15 / 5c et 16 / 5d terminées ; étape 17 / 5e en cours de vérification). Le Sprint 6 n'est pas démarré.
+Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 sont retirés. Les étapes 11, 11b et 12 ont amélioré le Studio avant le Sprint 5, maintenant actif (étapes 0, 13 / 5a, 14 / 5b, 15 / 5c et 16 / 5d terminées, plus la refonte visuelle 16b ; étape 17 / 5e en cours). Le Sprint 6 n'est pas démarré.
 
 ## Racine et documents de cadrage
 
@@ -82,31 +82,38 @@ Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 s
 |---|---|---|---|
 | `frontend/` | Contient la page, les styles et les modules JavaScript du Sprint 1 | Offre une interface modulaire sans deuxième serveur ni build | Quand une personne visite / |
 | `frontend/README.md` | Explique les modules, le parcours et les limites du navigateur | Rend les responsabilités et dépendances compréhensibles | Avant de lancer ou modifier le frontend |
-| `frontend/index.html` | Définit la coque commune, le menu responsive (dont Clés API), le badge santé et le point de montage `#app` | Sépare la navigation persistante des pages chargées au hash | À chaque visite du Studio |
+| `frontend/index.html` | Coque commune : favicon, navigation à icônes, menu Administration (Catégories, Clés API), badge santé, déconnexion, pied de page utile et point de montage `#app` | Sépare la navigation persistante des pages chargées au hash ; masque la navigation sur l'écran de connexion | À chaque visite du Studio |
 | `frontend/css/` | Regroupe le thème et les styles de composants | Sépare les jetons visuels de la mise en page | Au chargement de la page et pour une retouche visuelle |
-| `frontend/css/theme.css` | Définit la palette sombre, les fontes, le focus et la réduction du mouvement | Centralise les règles globales et lisibles | Avant les styles des composants |
-| `frontend/css/components.css` | Met en page le studio, dont le parcours Créer en grille stretch adaptative et le suivi horizontal mobile | Conserve la palette DESIGN.md, le focus clavier et le repli sous 1024 px | Au rendu et quand la fenêtre change de largeur/hauteur |
+| `frontend/css/theme.css` | Définit la palette sombre, l'échelle d'espacement, les ombres, le focus, les animations partagées (entrée de page, rotation, squelette) et la réduction du mouvement | Centralise les jetons visuels réutilisés par tous les composants | Avant les styles des composants |
+| `frontend/css/components.css` | Styles de tous les composants, en 14 sections numérotées : coque, connexion, accueil, cartes, Créer, viewer, suivi, fiche, clés API, catégories, modales et adaptations écran | Un sommaire en tête rend le fichier parcourable ; panneaux et sections aérés (24-32 px) | Au rendu et quand la fenêtre change de largeur/hauteur |
 | `frontend/js/` | Regroupe l'état, l'API et les vues ES modules | Permet de suivre une responsabilité par fichier sans framework | Quand le navigateur charge le module principal |
 | `frontend/js/api.js` | Centralise fetch pour génération, bibliothèque, catégories, disponibilité et clés API | Empêche les vues de disperser les appels serveur | À chaque action Studio et aux vérifications périodiques |
-| `frontend/js/router.js` | Résout les routes hash, dont `#/cles-api`, conserve la page Créer, active le lien courant et focalise le titre | Gère plusieurs pages sans framework et respecte le clavier et l'historique du navigateur | À l'ouverture, au clic dans le menu et lors de Précédent/Suivant |
+| `frontend/js/router.js` | Résout les routes hash (dont `#/login` et `#/accueil`), redirige vers la connexion sans session, gère `?query` et `#ancre`, conserve la page Créer, active le lien courant et focalise le titre | Gère plusieurs pages protégées sans framework et respecte le clavier et l'historique du navigateur | À l'ouverture, au clic dans le menu et lors de Précédent/Suivant |
 | `frontend/js/pages/` | Contient un module par page visible dans le Studio | Isole le balisage et le montage de chaque route | Lorsqu'une route hash est ouverte |
-| `frontend/js/pages/create.js` | Présente le parcours Photo/Création/Résultat, une carte Photo et catégorie, viewer, suivi et états hors ligne | Rend le chemin utilisateur immédiatement lisible sans modifier le traitement | Sur `#/creer` |
-| `frontend/js/pages/models.js` | Affiche les modèles persistés, le formulaire d'import GLB, catégories et état vide | Réunit créations, imports et exemples copiés avec la même fiche | Sur `#/modeles` |
-| `frontend/js/pages/model-detail.js` | Charge état, origine, modèle, photo source facultative, date, téléchargement, activation et codes iframe/widget copiables | Réutilise les routes d'état existantes et distingue un import d'une génération | Sur `#/modeles/{id}` |
-| `frontend/js/pages/categories.js` | Place la gestion existante dans une page séparée | Évite d'encombrer l'accueil et rend les actions de catégories plus claires | Sur `#/categories` |
-| `frontend/js/pages/api-keys.js` | Crée, liste et révoque les clés ; affiche la valeur secrète une seule fois pour la copier | Rend l’administration compréhensible sans envoyer la clé dans le navigateur après création | Sur `#/cles-api` |
-| `frontend/js/pages/examples.js` | Présente les exemples autorisés et propose de les copier dans Mes modèles avec une catégorie | Conserve les originaux dans la galerie d'exemples et crée une entrée locale séparée | Sur `#/exemples` |
+| `frontend/js/pages/create.js` | Deux colonnes (photo et catégorie / viewer), suivi compact en dessous, conseils et détails techniques repliés | Concentre l'écran sur l'essentiel ; le stepper redondant a été retiré à l'étape 16b | Sur `#/creer` |
+| `frontend/js/pages/models.js` | Affiche les modèles persistés, le formulaire d'import GLB (ouvrable par `?import=1`), les filtres avec compteurs et un état vide illustré | Réunit créations, imports et exemples copiés avec la même fiche | Sur `#/modeles` |
+| `frontend/js/pages/model-detail.js` | Fiche du modèle : bascule Vue 3D / Photo / Comparer, informations, téléchargement et intégration guidée en 4 étapes (interrupteur, iframe ou widget, code à copier, aperçu réel `/embed`) | Rend l'intégration compréhensible par un débutant sans changer les routes existantes | Sur `#/modeles/{id}` |
+| `frontend/js/pages/categories.js` | Page de gestion des catégories avec compteur de modèles enregistrés par catégorie | Montre quelles catégories sont utilisées avant une suppression | Sur `#/categories` |
+| `frontend/js/pages/login.js` | Écran de connexion plein écran avec mot de passe unique | Le Studio est mono-propriétaire : pas de nom d'utilisateur | Sur `#/login` et pour toute visite non connectée |
+| `frontend/js/pages/dashboard.js` | Accueil : héros, chiffres clés (modèles, clés actives, catégories), modèles récents, exemples et raccourcis | Remplace l'entrée directe sur Créer par une vue d'ensemble | Sur `#/accueil`, page par défaut |
+| `frontend/js/pages/api-keys.js` | Guide en 4 étapes, exemple curl des routes `/api/v1`, création, cartes de clés avec badge et révocation confirmée ; secret affiché une seule fois | Rend l'API compréhensible sans renvoyer la clé au navigateur après création | Sur `#/cles-api` |
+| `frontend/js/pages/examples.js` | Présente les exemples avec la durée réellement mesurée à l'étape 6 et propose de les copier dans Mes modèles | Montre la qualité actuelle sans inventer de chiffres | Sur `#/exemples` |
 | `frontend/widget.js` | Définit `<forma3d-viewer>` et crée une iframe vers le modèle public activé | Isole le viewer du site client et vérifie l'identifiant public avant de construire l'URL | Lorsqu'une boutique colle le code du widget |
 | `examples/integration.html` | Page HTML autonome qui demande l'origine du service et un UUID public puis charge le widget | Permet de tester avec un modèle réel déjà activé sans inventer de GLB | Pour valider le snippet d'intégration en développement |
-| `frontend/js/pages/viewer-markup.js` | Fournit le balisage du viewer utilisé par la page Créer | Évite de dupliquer les commandes accessibles | Au montage du parcours de création |
+| `frontend/js/pages/viewer-markup.js` | Balisage du viewer de Créer : scène avec grille et halo, squelette de chargement, bascule photo/3D, barre d'outils et note discrète | Évite de dupliquer les commandes accessibles | Au montage du parcours de création |
 | `frontend/js/state.js` | Garde en mémoire photo, statut, durée et minuteries de la session | Évite une base de données pour cet état temporaire | Pendant l'envoi et le suivi d'une demande |
-| `frontend/js/main.js` | Démarre le routeur et diffuse l'état de disponibilité | Garde le contrôle santé unique et indépendant des pages | Au chargement et toutes les 30 secondes |
+| `frontend/js/main.js` | Pose l'état de connexion, démarre le routeur, relie la déconnexion et diffuse l'état de disponibilité | Garde le contrôle santé unique et indépendant des pages | Au chargement et toutes les 30 secondes |
+| `frontend/js/auth.js` | Verrou de connexion temporaire : vérification du mot de passe dans le navigateur, session en `sessionStorage`, déconnexion | Prépare la future route `POST /auth/login` ; **ce n'est pas une sécurité réelle** (mot de passe lisible dans le code) | À chaque changement de route et à la connexion |
+| `frontend/js/format.js` | Mises en forme partagées : dates relatives, tailles, durées, détection des modèles enregistrés et durées mesurées des exemples | Évite de dupliquer ces petites fonctions dans chaque page | Par les pages et la galerie |
+| `frontend/favicon.svg` | Icône d'onglet du Studio (cube Forma3D) | Format SVG léger, sans dépendance | À chaque chargement de la page |
 | `frontend/js/views/` | Regroupe les vues de l'interface | Isole les responsabilités visibles du studio | Quand une vue est modifiée ou réutilisée |
 | `frontend/js/views/uploader.js` | Gère dépôt, validation photo, catégorie et explication visible du bouton désactivé | Évite une action bloquée sans raison compréhensible | À chaque changement de photo, catégorie, santé ou activité |
-| `frontend/js/views/categories.js` | Gère le CRUD et demande confirmation avant suppression | Protège les actions destructives et traduit les erreurs en mots simples | Sur `#/categories` |
+| `frontend/js/views/categories.js` | Gère le CRUD, affiche statut et compteur, confirme désactivation et suppression par fenêtre modale | Protège les actions destructives et traduit les erreurs en mots simples | Sur `#/categories` |
 | `frontend/js/views/progress.js` | Traduit les états observés en cinq étapes horizontales, avec état à faire, actif, terminé ou en échec | N'invente ni pourcentage ni délai restant et conserve une annonce aria-live polie | Pendant et après une génération |
-| `frontend/js/views/viewer.js` | Charge le GLB, applique l'éclairage PBR documenté et ouvre la photo source dans une boîte de dialogue accessible | Améliore le rendu et permet de comparer la source sans rétrécir la scène | Après une génération ou une sélection de galerie |
-| `frontend/js/views/gallery.js` | Crée les cartes 3D, filtres, dates et badges d'origine issus de l'API | Rend visibles les différences entre génération, import et exemple | Après le chargement de la galerie |
+| `frontend/js/views/viewer.js` | Charge le GLB avec squelette et rotation douce, bascule Vue 3D / Photo / Comparer et ouvre la photo source agrandie | Améliore la perception du modèle et facilite la comparaison avec la source | Après une génération ou un aperçu local |
+| `frontend/js/views/gallery.js` | Construit les cartes (badge d'origine, date relative, rotation au survol) et la grille filtrable avec compteurs ; `createModelCard()` est réutilisée par l'accueil | Une seule fabrique de cartes pour toutes les pages | Après le chargement de la galerie |
+| `frontend/js/views/confirm-dialog.js` | Fenêtre modale de confirmation accessible (`<dialog>`), renvoie une promesse | Remplace `window.confirm()` par un dialogue aux couleurs du Studio | Avant révocation, désactivation ou suppression |
+| `frontend/js/views/illustrations.js` | Illustration SVG du cube utilisée par les états vides | Un seul dessin partagé par l'accueil, Mes modèles et le viewer | Quand un état vide est affiché |
 
 ## Tests et vérification continue
 
@@ -142,6 +149,7 @@ Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 s
 | `docs/ETAT.md` | Résume les sprints, les étapes prouvées et les points encore ouverts | Distingue les preuves passées du travail non réalisé | Au début et à la fin d'une session |
 | `docs/STRUCTURE.md` | Explique chaque élément du dépôt | Aide l'étudiante à défendre les choix | À chaque ajout ou changement de structure |
 | `docs/STOCKAGE.md` | Explique SQLite, migration d'origine, imports et copie de modèles | Rend les choix de persistance et la provenance présentables à la soutenance | À chaque évolution de la bibliothèque |
+| `docs/ALTERNATIVES-3D.md` | Compare les fournisseurs image-vers-3D gratuits et propose une migration vers TRELLIS en 3 étapes | Prépare une décision du Sprint 6 sans changer le fournisseur actuel | Avant toute discussion sur la qualité des modèles |
 | `docs/etapes/etape-01.md` | Explique FastAPI et GET `/health` | Garde une trace pédagogique du premier socle | Pour réviser l'étape 1 |
 | `docs/etapes/etape-02.md` | Explique le validateur et le contrat d'upload historique | Documente l'évolution de POST `/models` au fil du sprint | Pour réviser l'étape 2 |
 | `docs/etapes/etape-03.md` | Décrit l'API Hugging Face inspectée, les photos, la licence et les erreurs observées | Distingue l'implémentation de sa faisabilité non démontrée | Pour revoir le fournisseur ou expliquer l'essai au jury |
@@ -160,6 +168,7 @@ Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 s
 | `docs/etapes/etape-14.md` | Explique les clés API, leur empreinte, leur révocation, l’écran Studio et le contrôle `X-API-Key` | Distingue le secret affiché une fois des métadonnées conservées | Pour administrer ou expliquer la sécurité du Sprint 5b |
 | `docs/etapes/etape-15.md` | Explique les routes `/api/v1`, erreurs, quota, débit et CORS fermé par défaut | Documente le premier contrat intégrateur et ses limites prouvées | Pour intégrer ou déboguer l’API externe |
 | `docs/etapes/etape-16.md` | Explique la route viewer intégrable, les extraits iframe/widget, la CSP et les limites non vérifiées | Sépare le site marchand du Studio et fixe ce qui est réellement testé | Pour intégrer un modèle activé ou préparer l'étape 5e |
+| `docs/etapes/etape-16b.md` | Explique la refonte visuelle du Studio (connexion, accueil, guides, cartes), les tests modifiés et les limites | Justifie les choix d'interface pour la soutenance | Pour présenter ou reprendre l'interface |
 | `docs/etapes/.gitkeep` | Marqueur ancien du dossier de guides | Conservé sans rôle d'exécution | Au clonage du dépôt |
 | `docs/archive/` et `docs/archive/v1/` | Isolent les documents remplacés | Préservent l'historique tout en gardant les instructions v2 à la racine | Pour consulter l'ancienne vision |
 | `docs/archive/v1/etapes/` | Contient les guides des étapes v1 archivés | Évite de les confondre avec le Sprint 1 v2 | Consultation historique |

@@ -1,6 +1,8 @@
 /*
  * Rôle : affiche un GLB dans model-viewer et gère ses commandes et son origine.
- * Exécution : main.js lui transmet un modèle DONE, un modèle de galerie ou un fichier local.
+ * Exécution : create.js lui transmet un modèle DONE ou un fichier local choisi par la propriétaire.
+ * Refonte : squelette pendant le chargement, rotation automatique douce à l'ouverture,
+ * bascule Vue 3D / Photo source / Comparer quand une photo source est disponible.
  */
 export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
   const viewer = document.querySelector("#model-viewer");
@@ -19,6 +21,11 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
   const localInput = document.querySelector("#local-glb-input");
   const autoRotateButton = document.querySelector("#auto-rotate");
   const arButton = document.querySelector("#ar-button");
+  const skeleton = document.querySelector("#viewer-skeleton");
+  const stage = document.querySelector("#viewer-stage");
+  const viewToggle = document.querySelector("#viewer-view-toggle");
+  const stagePhoto = document.querySelector("#stage-photo");
+  const stagePhotoImage = document.querySelector("#stage-photo-image");
   let localObjectUrl = null;
   let sourcePhotoObjectUrl = null;
   let activeModel = null;
@@ -51,6 +58,16 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
     if (!canActivate) viewer.removeAttribute("ar");
   }
 
+  /* Modes d'affichage : « model » (3D seule), « photo » (photo seule) ou « compare » (côte à côte). */
+  function setView(mode) {
+    stage.dataset.view = mode;
+    stagePhoto.hidden = mode === "model";
+    sourcePhotoFigure.hidden = mode !== "model" || !sourcePhotoImage.getAttribute("src");
+    viewToggle.querySelectorAll("button[data-view]").forEach((button) => {
+      button.setAttribute("aria-pressed", button.dataset.view === mode ? "true" : "false");
+    });
+  }
+
   function clear() {
     viewer.removeAttribute("ar");
     viewer.removeAttribute("auto-rotate");
@@ -59,7 +76,11 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
     releaseLocalObjectUrl();
     releaseSourcePhotoObjectUrl();
     sourcePhotoImage.removeAttribute("src");
+    stagePhotoImage.removeAttribute("src");
     sourcePhotoFigure.hidden = true;
+    viewToggle.hidden = true;
+    skeleton.hidden = true;
+    setView("model");
     activeModel = null;
     viewer.hidden = true;
     emptyState.hidden = false;
@@ -100,7 +121,10 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
       sourcePhotoImage.alt = filename
         ? "Photo source du modèle " + filename
         : "Photo source du produit envoyé";
+      stagePhotoImage.src = sourcePhotoImage.src;
+      stagePhotoImage.alt = sourcePhotoImage.alt;
       sourcePhotoFigure.hidden = false;
+      viewToggle.hidden = false;
     }
 
     activeModel = { source, filename };
@@ -109,6 +133,10 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
       : "Modèle 3D du produit affiché dans le viewer";
     viewer.hidden = false;
     emptyState.hidden = true;
+    skeleton.hidden = false;
+    // Rotation douce à l'ouverture pour mettre le modèle en valeur ; elle se met en pause pendant les gestes.
+    viewer.setAttribute("auto-rotate", "");
+    autoRotateButton.setAttribute("aria-pressed", "true");
     stageHint.hidden = false;
     cameraControls.hidden = false;
     originBadge.hidden = false;
@@ -197,8 +225,14 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
     showModel({ url: file, filename: file.name, source: "local" });
   });
 
+  viewToggle.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-view]");
+    if (button) setView(button.dataset.view);
+  });
+
   viewer.addEventListener("load", () => {
     if (!activeModel) return;
+    skeleton.hidden = true;
     viewer.cameraOrbit = "0deg 75deg 105%";
     viewer.updateFraming();
     updateArAvailability();
@@ -207,6 +241,7 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
   });
 
   viewer.addEventListener("error", () => {
+    skeleton.hidden = true;
     const isLocal = activeModel?.source === "local";
     const message = isLocal
       ? "Ce fichier ne peut pas être affiché comme modèle 3D."

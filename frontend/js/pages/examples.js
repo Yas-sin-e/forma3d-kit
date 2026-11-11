@@ -1,9 +1,12 @@
 /*
  * Rôle : rassemble les modèles de démonstration fournis par l'API dans une galerie distincte.
  * Exécution : router.js monte cette page sur #/exemples ; un clic ouvre la fiche du modèle.
+ * Refonte : une description courte sous chaque carte, avec la durée réellement mesurée
+ * lors des essais de faisabilité (aucune durée n'est inventée).
  */
-import { copyExampleModel, listCategories } from "../api.js?v=20261111-5d";
-import { setupGallery } from "../views/gallery.js?v=20261111-5d";
+import { copyExampleModel, listCategories } from "../api.js?v=20261111-ui";
+import { setupGallery } from "../views/gallery.js?v=20261111-ui";
+import { exampleDescription } from "../format.js?v=20261111-ui";
 
 export const title = "Exemples de modèles";
 const generationIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -11,13 +14,7 @@ const generationIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-
 export function render() {
   return `
     <section class="page-shell gallery-page" aria-labelledby="page-title">
-      <div class="page-intro"><p class="eyebrow">Galerie</p><h1 class="page-title" id="page-title" tabindex="-1">Exemples de modèles</h1><p class="page-lead">Explorez les exemples disponibles et ouvrez leur fiche pour les examiner.</p></div>
-      <section class="panel library-panel" aria-label="Exemples de produits en 3D">
-        <div class="gallery-heading"><div><h2>Exemples du Studio</h2><p class="gallery-copy">Ces modèles servent à découvrir le viewer et les possibilités du service.</p></div><span class="gallery-count" id="gallery-count" aria-live="polite">Chargement…</span></div>
-        <div class="filter-list" id="gallery-filters" role="group" aria-label="Filtrer les exemples par catégorie"></div>
-        <div class="gallery-grid" id="gallery-grid" aria-live="polite"></div>
-        <p class="gallery-message" id="gallery-message" role="status" hidden></p>
-      </section>
+      <div class="page-intro"><p class="eyebrow">Galerie</p><h1 class="page-title" id="page-title" tabindex="-1">Exemples de modèles</h1><p class="page-lead">Ces modèles ont été réellement générés à partir d’une seule photo pendant les essais. Ouvrez une fiche pour les examiner, ou ajoutez-les à votre bibliothèque.</p></div>
       <section class="panel model-import-panel" id="example-copy-panel" aria-labelledby="copy-example-title" hidden>
         <h2 id="copy-example-title">Ajouter l’exemple à Mes modèles</h2>
         <p id="copy-example-name"></p>
@@ -26,6 +23,12 @@ export function render() {
           <div class="form-actions"><button class="button button-primary" type="submit">Ajouter à Mes modèles</button><button class="button button-secondary" id="cancel-copy-example" type="button">Annuler</button></div>
           <p id="copy-example-feedback" role="status" aria-live="polite"></p>
         </form>
+      </section>
+      <section class="panel library-panel" aria-label="Exemples de produits en 3D">
+        <div class="gallery-heading"><div><h2>Exemples du Studio</h2><p class="gallery-copy">Découvrez le viewer et la qualité actuelle du service avant de créer vos propres modèles.</p></div><span class="gallery-count" id="gallery-count" aria-live="polite">Chargement…</span></div>
+        <div class="filter-list" id="gallery-filters" role="group" aria-label="Filtrer les exemples par catégorie"></div>
+        <div class="gallery-grid" id="gallery-grid" aria-live="polite"></div>
+        <p class="gallery-message" id="gallery-message" role="status" hidden></p>
       </section>
     </section>`;
 }
@@ -41,13 +44,16 @@ export function mount() {
       filter: (model) => !generationIdPattern.test(model.id),
       emptyMessage: "Aucun exemple n’est disponible pour le moment.",
       noMatchMessage: "Aucun exemple dans cette catégorie.",
+      description: exampleDescription,
       actionLabel: "Ajouter à mes modèles",
       onAction(model) {
         selectedExample = model;
-        document.querySelector("#copy-example-name").textContent = model.name;
+        document.querySelector("#copy-example-name").textContent = `Modèle choisi : ${model.name}`;
         feedback.textContent = "";
         panel.hidden = false;
-        categorySelect.focus();
+        panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        categorySelect.value = model.category;
+        categorySelect.focus({ preventScroll: true });
       },
     },
   );

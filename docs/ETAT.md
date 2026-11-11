@@ -10,7 +10,7 @@ Les Sprints 3 (comptes publics) et 4 (vitrine/catalogue public) sont retirés du
 
 - Objectif : exposer de façon contrôlée les modèles terminés par une API avec clé et un widget intégrable.
 - Livrable vérifiable : modèle activable individuellement, clé révocable non stockée en clair, routes versionnées authentifiées, iframe/widget intégrable et guide d'intégration.
-- Étapes 0 et 5a à 5d (étapes 13 à 16) terminées et poussées sur `main`. Prochaine sous-étape : 5e / étape 17, dont le guide et l'exemple sont préparés mais dont la vérification complète reste bloquée.
+- Étapes 0 et 5a à 5d (étapes 13 à 16) terminées et poussées sur `main`, plus la refonte visuelle 16b. Sous-étape en cours : 5e / étape 17 (guide et exemple préparés par Codex, à finaliser).
 - Le Sprint 6 reste non démarré et nécessite un OK explicite.
 
 ## Sprint 2 — Qualité et fiabilité (terminé)
@@ -131,6 +131,13 @@ Les Sprints 3 (comptes publics) et 4 (vitrine/catalogue public) sont retirés du
 - Les modules JavaScript et le JavaScript intégré à la page exemple passent `node --check` / analyse de syntaxe ; `git diff --check` passe. Aucun serveur local n'a pu rester à l'écoute et Edge n'a pas pu être activé (`failed to activate captured window` après une nouvelle sélection). Aucune apparence ni intégration navigateur n'est donc déclarée vérifiée.
 - Le travail de l'étape 17 est présent localement mais non commit/push tant que la suite complète n'est pas verte. Relancer la vérification hors sandbox puis sauvegarder le commit. Le Sprint 6 n'est pas commencé.
 - Guide pédagogique : `docs/etapes/etape-17.md`.
+
+## Étape 16b — Refonte visuelle du Studio (frontend uniquement)
+
+- Objectif : interface de produit fini (connexion, accueil, guides intégrés, cartes animées), sans framework ni changement de backend.
+- Ajouts : écran `#/login` (verrou de démonstration côté navigateur, mot de passe par défaut documenté dans `docs/etapes/etape-16b.md` ; **pas une sécurité réelle**), accueil `#/accueil`, menu Administration, guide API en 4 étapes avec curl, intégration guidée en 4 étapes avec aperçu réel `/embed`, compteurs par catégorie, modales de confirmation, favicon.
+- Analyse des fournisseurs : `docs/ALTERNATIVES-3D.md` recommande TRELLIS derrière `Image3DProvider` ; **aucun fournisseur n'a été changé** (décision du Sprint 6).
+- Tests : 4 assertions de `backend/tests/test_frontend.py` adaptées aux éléments supprimés à la demande, 2 tests ajoutés ; 101 tests réussis. Vérification navigateur faite sur toutes les pages (bureau et 375 px), sans génération réelle.
 
 ## Sprint 1 — terminé (état documenté au 3 novembre)
 

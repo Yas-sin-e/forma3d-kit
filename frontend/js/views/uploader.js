@@ -1,8 +1,9 @@
 /*
  * Rôle : gère le choix, le dépôt et la validation côté interface d'une photo.
- * Exécution : main.js initialise cette vue et reçoit le fichier quand le formulaire est soumis.
+ * Exécution : create.js initialise cette vue et reçoit le fichier quand le formulaire est soumis.
+ * Refonte : la photo choisie s'affiche en vignette dans la zone de dépôt (URL locale, rien n'est envoyé).
  */
-import { appState } from "../state.js?v=20261111-5d";
+import { appState } from "../state.js?v=20261111-ui";
 
 const acceptedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const acceptedExtensions = new Set(["jpg", "jpeg", "png", "webp"]);
@@ -28,6 +29,8 @@ export function setupUploader(onSubmit, onStateChange = () => {}) {
   const submitReason = document.querySelector("#submit-reason");
   const uploadFeedback = document.querySelector("#upload-feedback");
   const openLocalButton = document.querySelector("#open-local-glb");
+  const dropPreview = document.querySelector("#drop-preview");
+  let previewObjectUrl = null;
   let selectedPhoto = null;
   let busy = false;
   let providerAvailable = false;
@@ -59,6 +62,24 @@ export function setupUploader(onSubmit, onStateChange = () => {}) {
     });
   }
 
+  function updatePreview(file, error) {
+    if (previewObjectUrl !== null) {
+      URL.revokeObjectURL(previewObjectUrl);
+      previewObjectUrl = null;
+    }
+    if (!dropPreview) return;
+    if (file && !error) {
+      previewObjectUrl = URL.createObjectURL(file);
+      dropPreview.src = previewObjectUrl;
+      dropPreview.hidden = false;
+      dropZone.classList.add("has-photo");
+    } else {
+      dropPreview.removeAttribute("src");
+      dropPreview.hidden = true;
+      dropZone.classList.remove("has-photo");
+    }
+  }
+
   function setSelectedPhoto(file) {
     selectedPhoto = file ?? null;
     appState.selectedPhoto = selectedPhoto;
@@ -66,6 +87,7 @@ export function setupUploader(onSubmit, onStateChange = () => {}) {
     setFeedback("");
     const error = selectedPhoto ? validatePhoto(selectedPhoto) : "";
     if (error) setFeedback(error);
+    updatePreview(selectedPhoto, error);
     syncState();
   }
 

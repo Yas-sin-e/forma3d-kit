@@ -1,23 +1,75 @@
 /*
- * Rôle : permet à la propriétaire de créer, consulter et révoquer ses clés API.
- * Exécution : router.js monte cette page uniquement sur #/cles-api ; le secret reste en mémoire le temps de l’affichage.
+ * Rôle : permet à la propriétaire de créer, consulter et révoquer ses clés API, avec un guide d'utilisation.
+ * Exécution : router.js monte cette page sur #/cles-api ; le secret reste en mémoire le temps de l’affichage.
+ * Refonte : guide en 4 étapes, exemple curl réel (routes /api/v1 existantes), cartes avec badge
+ * de statut et confirmation de révocation par fenêtre modale.
  */
-import { createApiKey, listApiKeys, revokeApiKey } from "../api.js?v=20261111-5d";
+import { createApiKey, listApiKeys, revokeApiKey } from "../api.js?v=20261111-ui";
+import { confirmDialog } from "../views/confirm-dialog.js?v=20261111-ui";
+import { formatLongDate, pluralize } from "../format.js?v=20261111-ui";
 
 export const title = "Clés API";
+
+function curlExample(baseUrl) {
+  return [
+    "# 1. Envoyer une photo : la réponse contient l’identifiant du modèle",
+    `curl -X POST ${baseUrl}/api/v1/models \\`,
+    '  -H "X-API-Key: votre_clé_ici" \\',
+    '  -F "file=@photo.jpg" \\',
+    '  -F "category=chair"',
+    "",
+    "# 2. Suivre l’état du modèle (PENDING, RUNNING, DONE ou FAILED)",
+    `curl ${baseUrl}/api/v1/models/IDENTIFIANT_DU_MODELE \\`,
+    '  -H "X-API-Key: votre_clé_ici"',
+  ].join("\n");
+}
 
 export function render() {
   return `
     <section class="page-shell api-keys-page" aria-labelledby="page-title">
-      <div class="page-intro"><p class="eyebrow">Intégration</p><h1 class="page-title" id="page-title" tabindex="-1">Clés API</h1><p class="page-lead">Créez une clé pour autoriser vos futurs appels à l’API Forma3D. Gardez-la privée et révoquez-la si elle est exposée.</p></div>
+      <div class="page-intro"><p class="eyebrow">Intégration</p><h1 class="page-title" id="page-title" tabindex="-1">Clés API</h1><p class="page-lead">Une clé autorise un site ou un script à appeler l’API Forma3D en votre nom. Gardez-la privée et révoquez-la si elle est exposée.</p></div>
+
+      <section class="panel" id="integration-guide" aria-labelledby="guide-title">
+        <div class="section-header"><div><h2 id="guide-title">Comment utiliser l’API</h2><p>Quatre étapes, de la création de la clé au premier appel.</p></div></div>
+        <ol class="steps-guide">
+          <li class="guide-card"><strong>Créez une clé</strong><span>Donnez-lui un nom pour la reconnaître, par exemple celui de la boutique.</span></li>
+          <li class="guide-card"><strong>Copiez le secret</strong><span>Il n’est affiché qu’une fois : sauvegardez-le dans un gestionnaire de mots de passe.</span></li>
+          <li class="guide-card"><strong>Ajoutez l’en-tête</strong><span>Envoyez <code>X-API-Key</code> dans chaque requête, depuis votre serveur.</span></li>
+          <li class="guide-card"><strong>Testez l’API</strong><span>Lancez l’exemple <code>curl</code> ci-dessous avec votre clé.</span></li>
+        </ol>
+        <div class="code-block">
+          <div class="code-block-header"><span>Exemple · terminal</span><button class="copy-button" id="copy-curl" type="button">Copier</button></div>
+          <pre><code id="curl-example"></code></pre>
+        </div>
+        <p class="api-note">N’utilisez jamais la clé dans du JavaScript public : appelez l’API depuis un serveur. Quotas par clé : <code>API_DAILY_GENERATION_LIMIT</code> créations par jour et <code>API_RATE_LIMIT_PER_MINUTE</code> requêtes par minute (voir <code>.env.example</code>).</p>
+      </section>
+
       <section class="panel api-key-panel" aria-labelledby="create-api-key-title">
         <h2 id="create-api-key-title">Créer une clé</h2>
         <form id="api-key-create-form" class="api-key-create-form"><label for="api-key-name">Nom pour la reconnaître</label><input id="api-key-name" name="name" maxlength="80" autocomplete="off" placeholder="Ex. Boutique de mobilier" required><button class="button button-primary" type="submit">Créer une clé API</button></form>
         <p id="api-key-feedback" class="api-key-feedback" role="status" aria-live="polite" hidden></p>
-        <section id="api-key-reveal" class="api-key-reveal" aria-labelledby="api-key-reveal-title" hidden><h3 id="api-key-reveal-title">Copiez votre clé maintenant</h3><p>Elle ne sera affichée qu’une seule fois. Après avoir quitté cette page, créez-en une nouvelle si vous ne l’avez pas sauvegardée.</p><code id="api-key-secret" class="api-key-secret"></code><button class="button button-secondary" id="copy-api-key" type="button">Copier la clé</button></section>
+        <section id="api-key-reveal" class="api-key-reveal" aria-labelledby="api-key-reveal-title" hidden>
+          <h3 id="api-key-reveal-title">Copiez votre clé maintenant</h3>
+          <p>Elle ne sera affichée qu’une seule fois. Après avoir quitté cette page, créez-en une nouvelle si vous ne l’avez pas sauvegardée.</p>
+          <div class="api-key-secret-row"><code id="api-key-secret" class="api-key-secret"></code><button class="button button-secondary" id="copy-api-key" type="button">Copier la clé</button></div>
+        </section>
       </section>
-      <section class="panel api-key-panel" aria-labelledby="api-key-list-title"><div class="gallery-heading"><div><h2 id="api-key-list-title">Clés existantes</h2><p class="gallery-copy">La liste n’affiche jamais les clés complètes.</p></div><span id="api-key-count" class="gallery-count" aria-live="polite">Chargement…</span></div><div id="api-key-list" class="api-key-list" aria-live="polite"></div></section>
+
+      <section class="panel api-key-panel" aria-labelledby="api-key-list-title"><div class="gallery-heading"><div><h2 id="api-key-list-title">Clés existantes</h2><p class="gallery-copy">Seul le début de chaque clé est affiché ; le secret complet n’est jamais conservé.</p></div><span id="api-key-count" class="gallery-count" aria-live="polite">Chargement…</span></div><div id="api-key-list" class="api-key-list" aria-live="polite"></div></section>
     </section>`;
+}
+
+async function copyText(text, button) {
+  try {
+    await navigator.clipboard.writeText(text);
+    button.dataset.copied = "true";
+    const previous = button.textContent;
+    button.textContent = "Copié ✓";
+    window.setTimeout(() => { button.textContent = previous; button.dataset.copied = "false"; }, 1800);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function mount() {
@@ -28,57 +80,81 @@ export function mount() {
   const secretElement = document.querySelector("#api-key-secret");
   const list = document.querySelector("#api-key-list");
   const count = document.querySelector("#api-key-count");
+  const curl = document.querySelector("#curl-example");
   let revealedSecret = "";
+
+  curl.textContent = curlExample(window.location.origin);
+  document.querySelector("#copy-curl").addEventListener("click", async (event) => {
+    if (!(await copyText(curl.textContent, event.currentTarget))) {
+      showFeedback("La copie automatique est indisponible ; sélectionnez l’exemple à la main.");
+    }
+  });
+
+  function showFeedback(message) {
+    feedback.textContent = message;
+    feedback.hidden = false;
+  }
+
+  function makeKeyCard(key) {
+    const card = document.createElement("article");
+    card.className = key.revoked ? "api-key-card is-revoked" : "api-key-card";
+    const top = document.createElement("div");
+    top.className = "api-key-card-top";
+    const heading = document.createElement("h3");
+    heading.textContent = key.name;
+    const status = document.createElement("span");
+    status.className = key.revoked ? "status-badge is-revoked" : "status-badge";
+    status.textContent = key.revoked ? "Révoquée" : "Active";
+    top.append(heading, status);
+    const prefix = document.createElement("code");
+    prefix.textContent = `${key.prefix}…`;
+    const date = document.createElement("p");
+    date.className = "api-key-meta";
+    date.textContent = `Créée le ${formatLongDate(key.created_at)}`;
+    card.append(top, prefix, date);
+    if (!key.revoked) {
+      const revoke = document.createElement("button");
+      revoke.className = "button button-danger";
+      revoke.type = "button";
+      revoke.textContent = "Révoquer";
+      revoke.addEventListener("click", async () => {
+        const confirmed = await confirmDialog({
+          title: "Révoquer cette clé ?",
+          message: `La clé « ${key.name} » sera refusée immédiatement par l’API. Cette action est définitive.`,
+          confirmLabel: "Révoquer la clé",
+          danger: true,
+        });
+        if (!confirmed) return;
+        try {
+          await revokeApiKey(key.id);
+          showFeedback("Clé révoquée. Les appels avec cette clé seront refusés.");
+          await reload();
+        } catch (error) {
+          showFeedback(error.message);
+        }
+      });
+      card.append(revoke);
+    }
+    return card;
+  }
 
   async function reload() {
     count.textContent = "Chargement…";
     try {
       const response = await listApiKeys();
       const keys = response.items ?? [];
-      count.textContent = `${keys.length} ${keys.length === 1 ? "clé" : "clés"}`;
+      const active = keys.filter((key) => !key.revoked).length;
+      count.textContent = `${pluralize(active, "active")} · ${pluralize(keys.length, "clé")}`;
       if (!keys.length) {
         const empty = document.createElement("p");
         empty.className = "api-key-empty";
-        empty.textContent = "Aucune clé API. Créez-en une pour préparer l’accès à l’API.";
+        empty.textContent = "Aucune clé API pour l’instant. Créez-en une ci-dessus pour préparer votre premier appel.";
         list.replaceChildren(empty);
         return;
       }
-      list.replaceChildren(...keys.map((key) => {
-        const row = document.createElement("article");
-        row.className = "api-key-row";
-        const identity = document.createElement("div");
-        const title = document.createElement("h3");
-        title.textContent = key.name;
-        const prefix = document.createElement("code");
-        prefix.textContent = `${key.prefix}…`;
-        const date = document.createElement("p");
-        date.textContent = new Date(key.created_at).toLocaleString("fr-FR");
-        identity.append(title, prefix, date);
-        const status = document.createElement("span");
-        status.className = key.revoked ? "api-key-status is-revoked" : "api-key-status";
-        status.textContent = key.revoked ? "Révoquée" : "Active";
-        row.append(identity, status);
-        if (!key.revoked) {
-          const revoke = document.createElement("button");
-          revoke.className = "button button-danger";
-          revoke.type = "button";
-          revoke.textContent = "Révoquer";
-          revoke.addEventListener("click", async () => {
-            if (!window.confirm(`Révoquer la clé « ${key.name} » ? Les appels qui l’utilisent seront refusés.`)) return;
-            try {
-              await revokeApiKey(key.id);
-              feedback.textContent = "Clé révoquée. Les appels avec cette clé seront refusés.";
-              feedback.hidden = false;
-              await reload();
-            } catch (error) {
-              feedback.textContent = error.message;
-              feedback.hidden = false;
-            }
-          });
-          row.append(revoke);
-        }
-        return row;
-      }));
+      // Les clés actives d'abord, puis les révoquées.
+      const sorted = [...keys].sort((a, b) => Number(a.revoked) - Number(b.revoked));
+      list.replaceChildren(...sorted.map(makeKeyCard));
     } catch (error) {
       count.textContent = "Indisponible";
       list.textContent = error.message;
@@ -97,27 +173,24 @@ export function mount() {
       revealedSecret = created.key;
       secretElement.textContent = revealedSecret;
       reveal.hidden = false;
-      feedback.textContent = "Clé créée. Copiez-la maintenant : le serveur ne pourra pas la réafficher.";
-      feedback.hidden = false;
+      showFeedback("Clé créée. Copiez-la maintenant : le serveur ne pourra pas la réafficher.");
       form.reset();
       await reload();
     } catch (error) {
-      feedback.textContent = error.message;
-      feedback.hidden = false;
+      showFeedback(error.message);
     } finally {
       submit.disabled = false;
     }
   });
 
-  document.querySelector("#copy-api-key").addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText(revealedSecret);
-      feedback.textContent = "Clé copiée. Rangez-la dans un endroit sûr.";
-    } catch {
-      feedback.textContent = "La copie automatique est indisponible ; sélectionnez la clé affichée.";
-    }
-    feedback.hidden = false;
+  document.querySelector("#copy-api-key").addEventListener("click", async (event) => {
+    const copied = await copyText(revealedSecret, event.currentTarget);
+    showFeedback(copied
+      ? "Clé copiée. Rangez-la dans un endroit sûr."
+      : "La copie automatique est indisponible ; sélectionnez la clé affichée.");
   });
 
   void reload();
+  // Le secret n'est gardé qu'en mémoire : on l'efface en quittant la page.
+  return () => { revealedSecret = ""; };
 }

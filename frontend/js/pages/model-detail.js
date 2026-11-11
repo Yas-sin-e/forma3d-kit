@@ -1,8 +1,11 @@
 /*
- * Rôle : charge une fiche produit par identifiant et présente son état, sa photo et son GLB.
+ * Rôle : charge une fiche produit par identifiant et présente son état, sa photo, son GLB et son intégration.
  * Exécution : router.js monte cette page sur #/modeles/{id}, y compris pour signaler un identifiant inconnu.
+ * Refonte : bascule Vue 3D / Photo source / Comparer, squelette de chargement, et intégration
+ * guidée en 4 étapes (interrupteur, choix iframe/widget, code à copier, aperçu réel via /embed).
  */
-import { getGenerationStatus, listCategories, listGalleryModels, setModelIntegrationEnabled } from "../api.js?v=20261111-5d";
+import { getGenerationStatus, listCategories, listGalleryModels, setModelIntegrationEnabled } from "../api.js?v=20261111-ui";
+import { exampleGenerationSeconds, formatDuration, formatLongDate } from "../format.js?v=20261111-ui";
 
 export const title = "Fiche du modèle";
 
@@ -14,9 +17,23 @@ export function render(route) {
       <a class="back-link" href="${backHref}">${backLabel}</a>
       <div class="page-intro"><p class="eyebrow">Détail du produit</p><h1 class="page-title" id="page-title" tabindex="-1">Fiche du modèle</h1><p class="page-lead" id="detail-subtitle">Chargement du modèle…</p></div>
       <div class="detail-layout">
-        <section class="panel detail-viewer-panel" aria-label="Aperçu 3D">
-          <model-viewer id="detail-model-viewer" alt="Modèle 3D du produit" camera-controls touch-action="pan-y" interaction-prompt="none" environment-image="neutral" tone-mapping="neutral" shadow-intensity="0.72" shadow-softness="0.8" exposure="1.08" loading="eager" hidden></model-viewer>
-          <div class="detail-empty" id="detail-empty" role="status">Chargement des informations…</div>
+        <section class="panel detail-viewer-panel" aria-labelledby="detail-viewer-title">
+          <div class="detail-viewer-heading">
+            <h2 id="detail-viewer-title">Aperçu 3D</h2>
+            <div class="view-toggle" id="detail-view-toggle" role="group" aria-label="Mode d’affichage" hidden>
+              <button type="button" data-view="model" aria-pressed="true">Vue 3D</button>
+              <button type="button" data-view="photo" aria-pressed="false">Photo source</button>
+              <button type="button" data-view="compare" aria-pressed="false">Comparer</button>
+            </div>
+          </div>
+          <div class="detail-stage" id="detail-stage" data-view="model">
+            <div class="stage-grid" aria-hidden="true"></div>
+            <div class="viewer-skeleton" id="detail-skeleton" hidden>Chargement du modèle 3D…</div>
+            <model-viewer id="detail-model-viewer" alt="Modèle 3D du produit" camera-controls touch-action="pan-y" interaction-prompt="none" environment-image="neutral" tone-mapping="neutral" shadow-intensity="1" shadow-softness="1" exposure="1.1" auto-rotate rotation-per-second="20deg" auto-rotate-delay="2500" camera-orbit="25deg 75deg 105%" loading="eager" hidden></model-viewer>
+            <div class="stage-photo" id="detail-stage-photo" hidden><img id="detail-source-image" alt="Photo d’origine du produit"></div>
+            <div class="detail-empty" id="detail-empty" role="status">Chargement des informations…</div>
+          </div>
+          <p class="stage-footnote"><span class="note-mark" aria-hidden="true">i</span>Aperçu 3D généré automatiquement — idéal pour la visualisation produit. La géométrie est une estimation.</p>
         </section>
         <aside class="panel detail-information" aria-labelledby="detail-name">
           <h2 id="detail-name">Informations</h2>
@@ -25,28 +42,62 @@ export function render(route) {
             <div><dt>Catégorie</dt><dd id="detail-category">—</dd></div>
             <div><dt>Origine</dt><dd id="detail-origin">—</dd></div>
             <div><dt>Date de création</dt><dd id="detail-date">—</dd></div>
-            <div><dt>Durée</dt><dd id="detail-duration">—</dd></div>
+            <div><dt>Durée de génération</dt><dd id="detail-duration">—</dd></div>
           </dl>
-          <section class="detail-integration" id="detail-integration" aria-labelledby="detail-integration-title" hidden>
-            <h3 id="detail-integration-title">Intégration sur un site</h3>
-            <p id="detail-integration-status" role="status" aria-live="polite"></p>
-            <button class="button button-secondary" id="detail-integration-toggle" type="button" aria-pressed="false">Activer l’intégration</button>
-            <section class="detail-integration-code" id="detail-integration-code" aria-labelledby="detail-integration-code-title" hidden>
-              <h4 id="detail-integration-code-title">Code à copier</h4>
-              <p>Pour un autre domaine, demandez au responsable technique de l’ajouter aux sites autorisés.</p>
-              <label for="detail-iframe-code">IFrame</label>
-              <textarea id="detail-iframe-code" rows="4" readonly></textarea>
-              <button class="button button-secondary" type="button" data-copy-integration="detail-iframe-code">Copier l’iframe</button>
-              <label for="detail-widget-code">Balise Forma3D</label>
-              <textarea id="detail-widget-code" rows="4" readonly></textarea>
-              <button class="button button-secondary" type="button" data-copy-integration="detail-widget-code">Copier la balise</button>
-              <p id="detail-integration-copy-feedback" role="status" aria-live="polite"></p>
-            </section>
-          </section>
-          <a class="button button-primary detail-download" id="detail-download" href="#" download hidden>Télécharger le modèle</a>
-          <figure class="detail-source-photo" id="detail-source-figure" hidden><figcaption>Photo d’origine</figcaption><img id="detail-source-image" alt="Photo d’origine du produit"></figure>
+          <a class="button button-primary button-large detail-download" id="detail-download" href="#" download hidden>Télécharger le modèle (.glb)</a>
         </aside>
       </div>
+
+      <section class="panel integration-guide" id="detail-integration" aria-labelledby="detail-integration-title" hidden>
+        <div class="section-header"><div><p class="eyebrow">Intégration</p><h2 id="detail-integration-title">Afficher ce modèle sur un site</h2><p>Suivez les étapes dans l’ordre : rien n’est visible publiquement tant que l’étape 1 n’est pas activée.</p></div></div>
+        <ol class="guide-steps">
+          <li class="guide-step" id="guide-step-enable">
+            <span class="guide-step-number" aria-hidden="true">1</span>
+            <div class="guide-step-body">
+              <h3>Activez l’intégration</h3>
+              <p id="detail-integration-status" role="status" aria-live="polite">Désactivée par défaut. Le modèle reste privé tant que vous ne l’activez pas.</p>
+              <div class="switch-row">
+                <button class="switch" id="detail-integration-toggle" type="button" role="switch" aria-checked="false" aria-labelledby="detail-switch-label"></button>
+                <span class="switch-label" id="detail-switch-label">Intégration publique de ce modèle</span>
+              </div>
+            </div>
+          </li>
+          <li class="guide-step" data-locked="true" data-requires-enabled>
+            <span class="guide-step-number" aria-hidden="true">2</span>
+            <div class="guide-step-body">
+              <h3>Choisissez votre méthode</h3>
+              <p>L’iframe fonctionne partout ; le widget Forma3D est une balise HTML plus simple à personnaliser.</p>
+              <div class="tabs" role="tablist" aria-label="Méthode d’intégration">
+                <button class="tab" type="button" role="tab" id="tab-iframe" aria-selected="true" aria-controls="detail-integration-code" data-method="iframe">IFrame</button>
+                <button class="tab" type="button" role="tab" id="tab-widget" aria-selected="false" aria-controls="detail-integration-code" data-method="widget" tabindex="-1">Widget Forma3D</button>
+              </div>
+            </div>
+          </li>
+          <li class="guide-step" data-locked="true" data-requires-enabled>
+            <span class="guide-step-number" aria-hidden="true">3</span>
+            <div class="guide-step-body">
+              <h3>Copiez le code</h3>
+              <p>Collez-le dans la page produit de votre site. Pour un autre domaine, il doit être ajouté aux sites autorisés (<code>EMBED_ALLOWED_ORIGINS</code>).</p>
+              <div class="code-block" id="detail-integration-code" role="tabpanel" aria-labelledby="tab-iframe">
+                <div class="code-block-header"><span id="detail-code-label">HTML · IFrame</span><button class="copy-button" id="detail-copy-code" type="button">Copier</button></div>
+                <pre><code id="detail-embed-code">Activez l’intégration pour générer le code.</code></pre>
+              </div>
+              <p class="guide-feedback" id="detail-integration-copy-feedback" role="status" aria-live="polite"></p>
+            </div>
+          </li>
+          <li class="guide-step" data-locked="true" data-requires-enabled>
+            <span class="guide-step-number" aria-hidden="true">4</span>
+            <div class="guide-step-body">
+              <h3>Aperçu</h3>
+              <p>Voici ce que verront les visiteurs : la vraie page d’intégration, affichée dans un cadre de navigateur.</p>
+              <div class="browser-frame">
+                <div class="browser-bar"><span></span><span></span><span></span><code id="detail-preview-url">votre-boutique.fr/produit</code></div>
+                <iframe id="detail-preview-frame" title="Aperçu de l’intégration du modèle" loading="lazy"></iframe>
+              </div>
+            </div>
+          </li>
+        </ol>
+      </section>
       <p class="detail-error" id="detail-error" role="alert" hidden></p>
     </section>`;
 }
@@ -55,48 +106,53 @@ export function titleFor(route) {
   return `Modèle ${route.id}`;
 }
 
-function formatDate(value) {
-  if (!value) return "Date non disponible";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "Date non disponible" : new Intl.DateTimeFormat("fr-FR", { dateStyle: "long", timeStyle: "short" }).format(date);
-}
-
-function formatDuration(seconds) {
-  if (!Number.isFinite(seconds) || seconds < 0) return "Non communiquée";
-  const totalSeconds = Math.round(seconds);
-  const minutes = Math.floor(totalSeconds / 60);
-  const remainder = totalSeconds % 60;
-  return minutes ? `${minutes} min ${remainder} s` : `${remainder} s`;
-}
-
 export function mount(route) {
-  const modelViewer = document.querySelector("#detail-model-viewer");
-  const empty = document.querySelector("#detail-empty");
-  const error = document.querySelector("#detail-error");
-  const subtitle = document.querySelector("#detail-subtitle");
-  const name = document.querySelector("#detail-name");
-  const state = document.querySelector("#detail-status");
-  const category = document.querySelector("#detail-category");
-  const origin = document.querySelector("#detail-origin");
-  const date = document.querySelector("#detail-date");
-  const duration = document.querySelector("#detail-duration");
-  const download = document.querySelector("#detail-download");
-  const integration = document.querySelector("#detail-integration");
-  const integrationStatus = document.querySelector("#detail-integration-status");
-  const integrationToggle = document.querySelector("#detail-integration-toggle");
-  const integrationCode = document.querySelector("#detail-integration-code");
-  const iframeCode = document.querySelector("#detail-iframe-code");
-  const widgetCode = document.querySelector("#detail-widget-code");
-  const copyFeedback = document.querySelector("#detail-integration-copy-feedback");
-  const sourceFigure = document.querySelector("#detail-source-figure");
-  const sourceImage = document.querySelector("#detail-source-image");
+  const $ = (selector) => document.querySelector(selector);
+  const modelViewer = $("#detail-model-viewer");
+  const stage = $("#detail-stage");
+  const skeleton = $("#detail-skeleton");
+  const empty = $("#detail-empty");
+  const error = $("#detail-error");
+  const subtitle = $("#detail-subtitle");
+  const name = $("#detail-name");
+  const state = $("#detail-status");
+  const category = $("#detail-category");
+  const origin = $("#detail-origin");
+  const date = $("#detail-date");
+  const duration = $("#detail-duration");
+  const download = $("#detail-download");
+  const viewToggle = $("#detail-view-toggle");
+  const stagePhoto = $("#detail-stage-photo");
+  const sourceImage = $("#detail-source-image");
+  const integration = $("#detail-integration");
+  const integrationStatus = $("#detail-integration-status");
+  const integrationToggle = $("#detail-integration-toggle");
+  const embedCode = $("#detail-embed-code");
+  const codeLabel = $("#detail-code-label");
+  const codePanel = $("#detail-integration-code");
+  const copyFeedback = $("#detail-integration-copy-feedback");
+  const previewFrame = $("#detail-preview-frame");
+  const previewUrl = $("#detail-preview-url");
+  const enableStep = $("#guide-step-enable");
+  const tabs = [...document.querySelectorAll(".tab[data-method]")];
   let pollTimer = null;
   let generation = null;
   let model = null;
   let labels = [];
+  let method = "iframe";
+  let currentModelUrl = null;
+
+  function setView(mode) {
+    stage.dataset.view = mode;
+    stagePhoto.hidden = mode === "model";
+    viewToggle.querySelectorAll("button[data-view]").forEach((button) => {
+      button.setAttribute("aria-pressed", button.dataset.view === mode ? "true" : "false");
+    });
+  }
 
   function showError(message) {
     empty.hidden = true;
+    skeleton.hidden = true;
     modelViewer.hidden = true;
     error.textContent = message;
     error.hidden = false;
@@ -104,83 +160,145 @@ export function mount(route) {
     name.textContent = "Modèle introuvable";
   }
 
-  function showGeneration(record, model = null, labels = []) {
-    const displayName = model?.name || record.filename || "Modèle";
+  function integrationSnippet() {
+    const baseUrl = window.location.origin;
+    const publicId = model.public_id;
+    if (method === "widget") {
+      return `<script src="${baseUrl}/static/widget.js?v=20261111-ui" defer></script>\n<forma3d-viewer model="${publicId}" height="480" auto-rotate></forma3d-viewer>`;
+    }
+    return `<iframe src="${baseUrl}/embed/${encodeURIComponent(publicId)}" title="Aperçu 3D du produit" width="100%" height="480" loading="lazy" style="border:0"></iframe>`;
+  }
+
+  function renderIntegration() {
+    integration.hidden = !model?.public_id;
+    if (!model?.public_id) return;
+    const enabled = Boolean(model.embed_enabled);
+    integrationToggle.setAttribute("aria-checked", String(enabled));
+    integrationStatus.textContent = enabled
+      ? "Activée : ce modèle peut être affiché sur les sites autorisés."
+      : "Désactivée par défaut. Le modèle reste privé tant que vous ne l’activez pas.";
+    enableStep.dataset.done = String(enabled);
+    document.querySelectorAll("[data-requires-enabled]").forEach((step) => {
+      step.dataset.locked = String(!enabled);
+      step.setAttribute("aria-disabled", String(!enabled));
+    });
+    tabs.forEach((tab) => {
+      const selected = tab.dataset.method === method;
+      tab.setAttribute("aria-selected", String(selected));
+      tab.tabIndex = selected ? 0 : -1;
+      tab.disabled = !enabled;
+    });
+    codePanel.setAttribute("aria-labelledby", method === "widget" ? "tab-widget" : "tab-iframe");
+    codeLabel.textContent = method === "widget" ? "HTML · Widget Forma3D" : "HTML · IFrame";
+    $("#detail-copy-code").disabled = !enabled;
+    if (enabled) {
+      embedCode.textContent = integrationSnippet();
+      const embedPath = `/embed/${encodeURIComponent(model.public_id)}`;
+      if (previewFrame.getAttribute("src") !== embedPath) previewFrame.setAttribute("src", embedPath);
+      previewUrl.textContent = `${window.location.host}${embedPath}`;
+    } else {
+      embedCode.textContent = "Activez l’intégration (étape 1) pour générer le code.";
+      previewFrame.removeAttribute("src");
+      previewUrl.textContent = "votre-boutique.fr/produit";
+    }
+  }
+
+  function showGeneration(record, nextModel = null) {
+    const displayName = nextModel?.name || record.filename || "Modèle";
     name.textContent = displayName;
-    subtitle.textContent = model
-      ? "Consultez le modèle et les informations de votre produit."
+    subtitle.textContent = nextModel
+      ? "Examinez le modèle, comparez-le à la photo d’origine, puis téléchargez-le ou intégrez-le."
       : record.status === "FAILED"
         ? "La création n’a pas abouti. Aucun fichier n’est disponible."
         : "Le modèle est encore en cours de création.";
     state.textContent = record.status === "DONE" ? "Prêt" : record.status === "RUNNING" ? "Création en cours" : record.status === "PENDING" ? "En attente" : record.status === "FAILED" ? "Échec" : "Exemple disponible";
-    category.textContent = labels.find((item) => item.slug === (model?.category || record.category))?.label || model?.category || record.category || "Non classée";
-    const originLabels = { generated: "Généré par l’application", imported: "Importé", example: "Exemple" };
-    origin.textContent = originLabels[model?.origin || record.origin] || "Origine inconnue";
-    date.textContent = record.created_at ? formatDate(record.created_at) : "Date non disponible pour cet exemple";
-    duration.textContent = formatDuration(record.duration_seconds);
+    category.textContent = labels.find((item) => item.slug === (nextModel?.category || record.category))?.label || nextModel?.category || record.category || "Non classée";
+    const originLabels = { generated: "Généré par l’application", imported: "Importé", example: "Exemple du catalogue" };
+    origin.textContent = originLabels[nextModel?.origin || record.origin] || "Origine inconnue";
+    date.textContent = record.created_at ? formatLongDate(record.created_at) : "Non disponible pour cet exemple";
+    // Pour les exemples, la durée affichée est celle mesurée lors des essais (étape 6), jamais estimée.
+    const measured = Number.isFinite(record.duration_seconds) ? record.duration_seconds : exampleGenerationSeconds[route.id];
+    duration.textContent = formatDuration(measured);
     error.hidden = true;
-    integration.hidden = !model?.public_id;
-    if (model?.public_id) {
-      const enabled = Boolean(model.embed_enabled);
-      integrationStatus.textContent = enabled
-        ? "L’intégration est activée pour ce modèle."
-        : "Désactivée par défaut. Le modèle reste privé tant que vous ne l’activez pas.";
-      integrationToggle.textContent = enabled ? "Désactiver l’intégration" : "Activer l’intégration";
-      integrationToggle.setAttribute("aria-pressed", String(enabled));
-      integrationCode.hidden = !enabled;
-      if (enabled) {
-        const baseUrl = window.location.origin;
-        const modelId = encodeURIComponent(model.public_id);
-        iframeCode.value = `<iframe src="${baseUrl}/embed/${modelId}" title="Aperçu 3D du produit" width="100%" height="480" loading="lazy" style="border:0"></iframe>`;
-        widgetCode.value = `<script src="${baseUrl}/static/widget.js?v=20261111-5d" defer></script>\n<forma3d-viewer model="${model.public_id}" height="480" auto-rotate></forma3d-viewer>`;
-      }
-    } else {
-      integrationCode.hidden = true;
-    }
+    renderIntegration();
 
-    const modelUrl = model?.model_url || record.model_url;
+    const modelUrl = nextModel?.model_url || record.model_url;
     if (modelUrl) {
-      modelViewer.src = modelUrl;
+      if (currentModelUrl !== modelUrl) {
+        currentModelUrl = modelUrl;
+        skeleton.hidden = false;
+        modelViewer.src = modelUrl;
+      }
       modelViewer.alt = `Modèle 3D : ${displayName}`;
       modelViewer.hidden = false;
       empty.hidden = true;
       download.href = modelUrl;
-      download.download = model?.filename || (record.filename ? record.filename.replace(/\.[^.]+$/, "") + ".glb" : "forma3d-modele.glb");
+      download.download = nextModel?.filename || (record.filename ? record.filename.replace(/\.[^.]+$/, "") + ".glb" : "forma3d-modele.glb");
       download.hidden = false;
     } else {
       modelViewer.removeAttribute("src");
       modelViewer.hidden = true;
+      skeleton.hidden = true;
       empty.textContent = record.status === "FAILED" ? "Aucun fichier 3D n’a été créé." : "Le modèle apparaîtra ici une fois prêt.";
       empty.hidden = false;
       download.hidden = true;
     }
-    const photoUrl = model
-      ? model.source_image_url
+    const photoUrl = nextModel
+      ? nextModel.source_image_url
       : record.status === "DONE"
         ? `/models/${encodeURIComponent(record.id)}/source-image`
         : null;
     if (photoUrl) {
-      sourceImage.src = photoUrl;
-      sourceFigure.hidden = false;
+      if (sourceImage.getAttribute("src") !== photoUrl) sourceImage.src = photoUrl;
+      viewToggle.hidden = false;
     } else {
       sourceImage.removeAttribute("src");
-      sourceFigure.hidden = true;
+      viewToggle.hidden = true;
+      setView("model");
     }
   }
 
-  document.querySelectorAll("[data-copy-integration]").forEach((button) => {
-    button.addEventListener("click", async () => {
-      const field = document.getElementById(button.dataset.copyIntegration);
-      if (!field) return;
-      try {
-        await navigator.clipboard.writeText(field.value);
-        copyFeedback.textContent = "Code copié.";
-      } catch {
-        field.focus();
-        field.select();
-        copyFeedback.textContent = "La copie automatique est indisponible ; le code est sélectionné.";
-      }
+  modelViewer.addEventListener("load", () => { skeleton.hidden = true; });
+  modelViewer.addEventListener("error", () => {
+    skeleton.hidden = true;
+    empty.textContent = "Le modèle n’a pas pu être affiché. Le téléchargement reste disponible.";
+    empty.hidden = false;
+  });
+
+  viewToggle.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-view]");
+    if (button) setView(button.dataset.view);
+  });
+
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      method = tab.dataset.method;
+      copyFeedback.textContent = "";
+      renderIntegration();
     });
+    tab.addEventListener("keydown", (event) => {
+      if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+      const next = tabs[(tabs.indexOf(tab) + 1) % tabs.length];
+      next.focus();
+      next.click();
+    });
+  });
+
+  $("#detail-copy-code").addEventListener("click", async (event) => {
+    const button = event.currentTarget;
+    try {
+      await navigator.clipboard.writeText(embedCode.textContent);
+      button.dataset.copied = "true";
+      button.textContent = "Copié ✓";
+      copyFeedback.textContent = "Code copié. Collez-le dans la page produit de votre site.";
+      window.setTimeout(() => { button.textContent = "Copier"; button.dataset.copied = "false"; }, 1800);
+    } catch {
+      const range = document.createRange();
+      range.selectNodeContents(embedCode);
+      window.getSelection()?.removeAllRanges();
+      window.getSelection()?.addRange(range);
+      copyFeedback.textContent = "La copie automatique est indisponible ; le code est sélectionné.";
+    }
   });
 
   integrationToggle.addEventListener("click", async () => {
@@ -191,7 +309,7 @@ export function mount(route) {
     try {
       const updated = await setModelIntegrationEnabled(model.id, enabled);
       model = { ...model, public_id: updated.public_id, embed_enabled: updated.embed_enabled };
-      showGeneration(generation, model, labels);
+      showGeneration(generation, model);
     } catch (toggleError) {
       integrationStatus.textContent = toggleError.message || "Impossible de modifier l’intégration.";
     } finally {
@@ -218,14 +336,14 @@ export function mount(route) {
         }
         generation = { id: model.id, status: "DONE", filename: model.filename, category: model.category };
       }
-      showGeneration(generation, model, labels);
+      showGeneration(generation, model);
       document.title = `${name.textContent} — Forma3D Studio`;
       if (generation.status === "PENDING" || generation.status === "RUNNING") {
         pollTimer = window.setInterval(async () => {
           try {
             generation = await getGenerationStatus(`/models/${encodeURIComponent(route.id)}`);
-            const refreshed = (await listGalleryModels()).items?.find((item) => item.id === route.id) || model;
-            showGeneration(generation, refreshed, labels);
+            model = (await listGalleryModels()).items?.find((item) => item.id === route.id) || model;
+            showGeneration(generation, model);
             if (!["PENDING", "RUNNING"].includes(generation.status)) window.clearInterval(pollTimer);
           } catch {
             window.clearInterval(pollTimer);

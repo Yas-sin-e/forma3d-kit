@@ -1,12 +1,88 @@
 /*
- * Rôle : affiche une bande de vignettes réelles et filtre les modèles par catégorie.
- * Exécution : main.js charge la galerie et cette vue ouvre le modèle choisi au clic ou au clavier.
+ * Rôle : construit les cartes de modèles et la grille filtrable par catégorie (avec compteurs).
+ * Exécution : Mes modèles et Exemples appellent setupGallery() ; l'accueil réutilise createModelCard().
+ * Refonte : badge d'origine sur l'aperçu, date relative, rotation animée au survol, compteur par filtre.
  */
-import { listGalleryModels } from "../api.js?v=20261111-5d";
-import { appState } from "../state.js?v=20261111-5d";
+import { listGalleryModels } from "../api.js?v=20261111-ui";
+import { appState } from "../state.js?v=20261111-ui";
+import { formatMegabytes, formatRelativeDate } from "../format.js?v=20261111-ui";
 
-function formatMegabytes(bytes) {
-  return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 }).format(bytes / (1024 * 1024)) + " Mo";
+const originLabels = {
+  generated: "Généré",
+  imported: "Importé",
+  example: "Exemple",
+};
+
+/* Crée une carte autonome ; options : categories, onOpen, description, actionLabel, onAction. */
+export function createModelCard(model, options = {}) {
+  const categories = options.categories ?? [];
+  const article = document.createElement("article");
+  article.className = "model-card";
+
+  const openButton = document.createElement("button");
+  openButton.className = "model-card-open";
+  openButton.type = "button";
+  openButton.setAttribute("aria-label", "Ouvrir la fiche de « " + model.name + " »");
+
+  const preview = document.createElement("div");
+  preview.className = "model-card-preview";
+  const miniViewer = document.createElement("model-viewer");
+  miniViewer.setAttribute("src", model.model_url);
+  miniViewer.setAttribute("alt", "Aperçu 3D : " + model.name);
+  miniViewer.setAttribute("loading", "lazy");
+  miniViewer.setAttribute("interaction-prompt", "none");
+  miniViewer.setAttribute("environment-image", "neutral");
+  miniViewer.setAttribute("tone-mapping", "neutral");
+  miniViewer.setAttribute("exposure", "1.1");
+  miniViewer.setAttribute("shadow-intensity", "0.8");
+  miniViewer.setAttribute("shadow-softness", "1");
+  miniViewer.setAttribute("camera-orbit", "25deg 75deg 105%");
+  miniViewer.setAttribute("rotation-per-second", "40deg");
+  miniViewer.setAttribute("auto-rotate-delay", "0");
+  miniViewer.setAttribute("aria-hidden", "true");
+  const badge = document.createElement("span");
+  badge.className = "source-badge";
+  badge.dataset.origin = model.origin ?? "example";
+  badge.textContent = options.sourceLabel?.(model) ?? originLabels[model.origin] ?? "Origine inconnue";
+  preview.append(miniViewer, badge);
+
+  const content = document.createElement("div");
+  content.className = "model-card-content";
+  const heading = document.createElement("h3");
+  heading.textContent = model.name;
+  const meta = document.createElement("p");
+  meta.className = "model-card-meta";
+  const categoryLabel = categories.find((item) => item.slug === model.category)?.label ?? model.category;
+  const dateLabel = model.created_at ? formatRelativeDate(model.created_at) : "Catalogue";
+  meta.textContent = [categoryLabel, dateLabel, formatMegabytes(model.size_bytes)].filter(Boolean).join(" · ");
+  content.append(heading, meta);
+  if (options.description) {
+    const description = document.createElement("p");
+    description.className = "model-card-description";
+    description.textContent = typeof options.description === "function" ? options.description(model) : options.description;
+    content.append(description);
+  }
+
+  openButton.append(preview, content);
+  openButton.addEventListener("click", () => options.onOpen?.(model));
+  // Aperçu animé : la miniature tourne seulement pendant le survol ou le focus clavier.
+  const startRotation = () => miniViewer.setAttribute("auto-rotate", "");
+  const stopRotation = () => miniViewer.removeAttribute("auto-rotate");
+  openButton.addEventListener("pointerenter", startRotation);
+  openButton.addEventListener("pointerleave", stopRotation);
+  openButton.addEventListener("focus", startRotation);
+  openButton.addEventListener("blur", stopRotation);
+  article.append(openButton);
+
+  if (typeof options.onAction === "function") {
+    const action = document.createElement("button");
+    action.type = "button";
+    action.className = "button button-secondary model-card-action";
+    action.textContent = options.actionLabel ?? "Ajouter à mes modèles";
+    action.addEventListener("click", () => options.onAction(model));
+    article.append(action);
+  }
+  return article;
 }
 
 export function setupGallery(onOpenModel, options = {}) {
@@ -17,130 +93,90 @@ export function setupGallery(onOpenModel, options = {}) {
   const emptyActions = document.querySelector("#library-empty-actions");
   let models = [];
   let categories = [];
+  let loaded = false;
   const includeModel = typeof options.filter === "function" ? options.filter : () => true;
 
-  function createCard(model) {
-    const article = document.createElement("article");
-    article.className = "model-card";
-    const openButton = document.createElement("button");
-    openButton.className = "model-card-open";
-    openButton.type = "button";
-    openButton.setAttribute("aria-label", "Ouvrir « " + model.name + " » dans le viewer");
-
-    const preview = document.createElement("div");
-    preview.className = "model-card-preview";
-    const miniViewer = document.createElement("model-viewer");
-    miniViewer.setAttribute("src", model.model_url);
-    miniViewer.setAttribute("alt", "Aperçu 3D : " + model.name);
-    miniViewer.setAttribute("loading", "lazy");
-    miniViewer.setAttribute("interaction-prompt", "none");
-    miniViewer.setAttribute("environment-image", "neutral");
-    miniViewer.setAttribute("tone-mapping", "neutral");
-    miniViewer.setAttribute("exposure", "1.08");
-    miniViewer.setAttribute("shadow-intensity", "0.45");
-    miniViewer.setAttribute("shadow-softness", "0.8");
-    miniViewer.setAttribute("camera-orbit", "0deg 75deg 100%");
-    miniViewer.setAttribute("aria-hidden", "true");
-    preview.append(miniViewer);
-
-    const content = document.createElement("div");
-    content.className = "model-card-content";
-
-    const heading = document.createElement("h3");
-    heading.textContent = model.name;
-
-    const category = document.createElement("p");
-    category.className = "model-card-category";
-    category.textContent = categories.find((item) => item.slug === model.category)?.label ?? model.category;
-
-    const source = document.createElement("span");
-    source.className = "source-badge";
-    const size = document.createElement("p");
-    size.className = "model-card-size";
-    size.textContent = "Modèle 3D · " + formatMegabytes(model.size_bytes);
-
-    content.append(heading, category, source, size);
-    const originLabels = {
-      generated: "Généré par l’application",
-      imported: "Importé",
-      example: "Exemple",
-    };
-    source.textContent = options.sourceLabel?.(model) ?? originLabels[model.origin] ?? "Origine inconnue";
-    const created = document.createElement("p");
-    created.className = "model-card-date";
-    created.textContent = model.created_at
-      ? new Intl.DateTimeFormat("fr-FR", { dateStyle: "medium" }).format(new Date(model.created_at))
-      : "Exemple du catalogue";
-    content.append(created);
-    openButton.append(preview, content);
-    openButton.addEventListener("click", () => onOpenModel(model));
-    article.append(openButton);
-    if (typeof options.onAction === "function") {
-      const action = document.createElement("button");
-      action.type = "button";
-      action.className = "button button-secondary model-card-action";
-      action.textContent = options.actionLabel ?? "Ajouter à mes modèles";
-      action.addEventListener("click", () => options.onAction(model));
-      article.append(action);
-    }
-    return article;
+  function availableModels() {
+    return models.filter(includeModel);
   }
 
   function render() {
-    const availableModels = models.filter(includeModel);
+    // Tant que l'API n'a pas répondu, on garde les cartes squelettes au lieu d'un faux état vide.
+    if (!loaded) return;
+    const available = availableModels();
     const visibleModels = appState.selectedGalleryCategory === "all"
-      ? availableModels
-      : availableModels.filter((model) => model.category === appState.selectedGalleryCategory);
-    grid.replaceChildren(...visibleModels.map(createCard));
-    count.textContent = availableModels.length + (availableModels.length > 1 ? " modèles" : " modèle");
-    message.hidden = visibleModels.length > 0;
-    if (emptyActions) emptyActions.hidden = availableModels.length > 0;
-    if (!availableModels.length) {
+      ? available
+      : available.filter((model) => model.category === appState.selectedGalleryCategory);
+    grid.replaceChildren(...visibleModels.map((model) => createModelCard(model, {
+      categories,
+      onOpen: onOpenModel,
+      description: options.description,
+      sourceLabel: options.sourceLabel,
+      actionLabel: options.actionLabel,
+      onAction: options.onAction,
+    })));
+    count.textContent = available.length + (available.length > 1 ? " modèles" : " modèle");
+    grid.hidden = visibleModels.length === 0;
+    if (emptyActions) emptyActions.hidden = available.length > 0;
+    filters.hidden = available.length === 0;
+    message.hidden = visibleModels.length > 0 || (Boolean(emptyActions) && available.length === 0);
+    if (!available.length) {
       message.textContent = options.emptyMessage ?? "Aucun modèle n’est disponible pour le moment.";
     } else if (!visibleModels.length) {
       message.textContent = options.noMatchMessage ?? "Aucun modèle dans cette catégorie.";
     }
+    renderFilters();
+  }
+
+  function makeFilterButton(slug, label, total) {
+    const button = document.createElement("button");
+    button.className = "filter-chip";
+    button.type = "button";
+    button.dataset.category = slug;
+    button.setAttribute("aria-pressed", appState.selectedGalleryCategory === slug ? "true" : "false");
+    const text = document.createElement("span");
+    text.textContent = label;
+    const counter = document.createElement("span");
+    counter.className = "filter-count";
+    counter.textContent = String(total);
+    counter.setAttribute("aria-label", `${total} modèle${total > 1 ? "s" : ""}`);
+    button.append(text, counter);
+    return button;
   }
 
   function renderFilters() {
-    const allButton = document.createElement("button");
-    allButton.className = "filter-chip";
-    allButton.type = "button";
-    allButton.dataset.category = "all";
-    allButton.setAttribute("aria-pressed", appState.selectedGalleryCategory === "all" ? "true" : "false");
-    allButton.textContent = "Tous";
-    const buttons = categories.map((category) => {
-      const button = document.createElement("button");
-      button.className = "filter-chip";
-      button.type = "button";
-      button.dataset.category = category.slug;
-      button.setAttribute("aria-pressed", appState.selectedGalleryCategory === category.slug ? "true" : "false");
-      button.textContent = category.label + (category.is_active ? "" : " · inactive");
-      return button;
-    });
-    filters.replaceChildren(allButton, ...buttons);
+    const available = availableModels();
     if (appState.selectedGalleryCategory !== "all" && !categories.some((item) => item.slug === appState.selectedGalleryCategory)) {
       appState.selectedGalleryCategory = "all";
-      allButton.setAttribute("aria-pressed", "true");
     }
+    const allButton = makeFilterButton("all", "Tous", available.length);
+    const buttons = categories.map((category) => {
+      const total = available.filter((model) => model.category === category.slug).length;
+      return makeFilterButton(category.slug, category.label + (category.is_active ? "" : " · inactive"), total);
+    });
+    filters.replaceChildren(allButton, ...buttons);
   }
 
   filters.addEventListener("click", (event) => {
     const button = event.target.closest("button[data-category]");
     if (!button) return;
     appState.selectedGalleryCategory = button.dataset.category;
-    filters.querySelectorAll("button[data-category]").forEach((filter) => {
-      filter.setAttribute("aria-pressed", filter === button ? "true" : "false");
-    });
     render();
   });
 
   async function load() {
-    count.textContent = "Chargement des modèles…";
+    count.textContent = "Chargement…";
     message.hidden = true;
+    grid.replaceChildren(...Array.from({ length: 3 }, () => {
+      const skeleton = document.createElement("div");
+      skeleton.className = "model-card skeleton-card";
+      skeleton.setAttribute("aria-hidden", "true");
+      return skeleton;
+    }));
     try {
       const response = await listGalleryModels();
       models = Array.isArray(response.items) ? response.items : [];
+      loaded = true;
       render();
     } catch (error) {
       grid.replaceChildren();
@@ -155,24 +191,11 @@ export function setupGallery(onOpenModel, options = {}) {
     reload: load,
     setCategories(nextCategories) {
       categories = Array.isArray(nextCategories) ? nextCategories : [];
-      renderFilters();
       render();
     },
     selectCategory(category) {
-      const button = filters.querySelector(`button[data-category="${category}"]`);
-      if (!button) return;
       appState.selectedGalleryCategory = category;
-      filters.querySelectorAll("button[data-category]").forEach((filter) => {
-        filter.setAttribute("aria-pressed", filter === button ? "true" : "false");
-      });
       render();
-    },
-    async openFirstModel() {
-      if (!models.length) await load();
-      const model = models[0];
-      if (!model) return false;
-      onOpenModel(model);
-      return true;
     },
   };
 }

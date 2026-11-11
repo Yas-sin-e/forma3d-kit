@@ -37,8 +37,8 @@ def test_home_serves_the_studio_shell_and_separate_navigation() -> None:
     assert 'id="image-preparation-warning"' in create_page
     assert 'id="model-viewer"' in viewer
     assert 'id="source-photo-image"' in viewer
-    assert "Modèle approximatif créé à partir d’une seule photo" in create_page
-    assert "Parcours de création" in create_page
+    assert "La géométrie est une estimation" in viewer
+    assert "Parcours de création" not in create_page
     assert "Photo et catégorie" in create_page
     assert "submit-reason" in create_page
     assert "Détails techniques" in create_page
@@ -59,6 +59,12 @@ def test_static_frontend_assets_are_served_and_only_api_module_calls_fetch() -> 
     module_paths = (
         "/static/js/main.js",
         "/static/js/router.js",
+        "/static/js/auth.js",
+        "/static/js/format.js",
+        "/static/js/pages/login.js",
+        "/static/js/pages/dashboard.js",
+        "/static/js/views/confirm-dialog.js",
+        "/static/js/views/illustrations.js",
         "/static/js/state.js",
         "/static/js/pages/create.js",
         "/static/js/pages/models.js",
@@ -125,7 +131,7 @@ def test_hash_router_and_pages_cover_accessible_seller_routes() -> None:
     assert "detail-duration" in detail
     assert "Catégories" in categories_page
     assert "Exemples de modèles" in examples
-    assert "window.confirm" in category_view
+    assert "confirmDialog" in category_view and "window.confirm" not in category_view
     assert "Ce nom de catégorie est déjà utilisé" in category_view
     assert "Importer un modèle (.glb)" in models
     assert "Créer à partir d’une photo" in models
@@ -174,18 +180,18 @@ def test_local_model_controls_do_not_send_files_to_the_backend() -> None:
     assert "FormData" not in local_handler
 
 
-def test_create_page_keeps_horizontal_journey_and_progress_layout() -> None:
+def test_create_page_keeps_workspace_then_progress_layout() -> None:
     client = TestClient(app)
     shell = client.get("/").text
     create_page = client.get("/static/js/pages/create.js").text
     router = client.get("/static/js/router.js").text
     components = client.get("/static/css/components.css").text
 
-    journey = create_page.index('<ol class="creation-steps"')
+    # Refonte 16b : le stepper en 3 étapes, redondant avec le suivi, a été retiré.
+    assert '<ol class="creation-steps"' not in create_page
     workspace = create_page.index('<section class="workspace"')
     progress = create_page.index('<section class="panel progress-panel"')
-    assert journey < workspace < progress
-    assert 'aria-current="step"' in create_page
+    assert workspace < progress
 
     section_depth = 0
     for tag in re.finditer(r"</?section\b", create_page[workspace:progress]):
@@ -194,8 +200,8 @@ def test_create_page_keeps_horizontal_journey_and_progress_layout() -> None:
 
     assert 'grid-template-columns: repeat(3, minmax(0, 1fr));' in components
     assert 'grid-template-columns: repeat(5, minmax(0, 1fr));' in components
-    assert "components.css?v=20261111-5d" in shell
-    assert '"./pages/create.js?v=20261111-5d"' in router
+    assert "components.css?v=20261111-ui" in shell
+    assert '"./pages/create.js?v=20261111-ui"' in router
 
 
 def test_widget_script_defines_the_integrator_tag_and_uses_embed_iframe() -> None:
@@ -234,3 +240,44 @@ def test_integrator_guide_documents_the_real_contract_and_security_limits() -> N
     assert "EMBED_ALLOWED_ORIGINS" in guide
     assert "API_DAILY_GENERATION_LIMIT" in guide
     assert "pas un service de production" in guide
+
+
+def test_login_screen_guards_every_studio_route() -> None:
+    client = TestClient(app)
+    shell = client.get("/").text
+    router = client.get("/static/js/router.js").text
+    auth = client.get("/static/js/auth.js").text
+    login = client.get("/static/js/pages/login.js").text
+    dashboard = client.get("/static/js/pages/dashboard.js").text
+
+    assert 'href="#/accueil"' in shell
+    assert 'id="logout-button"' in shell
+    assert 'id="admin-nav-group"' in shell
+    assert "/static/favicon.svg" in shell
+    assert client.get("/static/favicon.svg").status_code == 200
+    assert 'parts[0] === "login"' in router
+    assert "isAuthenticated()" in router
+    assert "#/login" in router
+    assert "sessionStorage" in auth
+    assert "TEMPORARY_STUDIO_PASSWORD" in auth
+    assert "PAS une sécurité réelle" in auth
+    assert "Accéder au Studio" in login
+    assert "Transformez vos photos en" in dashboard
+    assert "listApiKeys" in dashboard and "listGalleryModels" in dashboard
+
+
+def test_redesigned_pages_offer_guides_counts_and_honest_examples() -> None:
+    client = TestClient(app)
+    api_keys = client.get("/static/js/pages/api-keys.js").text
+    detail = client.get("/static/js/pages/model-detail.js").text
+    gallery = client.get("/static/js/views/gallery.js").text
+    formatters = client.get("/static/js/format.js").text
+
+    assert "/api/v1/models" in api_keys and "X-API-Key" in api_keys
+    assert "confirmDialog" in api_keys and "window.confirm" not in api_keys
+    assert 'role="switch"' in detail and 'role="tab"' in detail
+    assert "/embed/" in detail
+    assert "filter-count" in gallery
+    assert "formatRelativeDate" in gallery
+    # Les durées d'exemple proviennent des mesures de docs/etapes/etape-06.md.
+    assert '"chair-bentwood": 215.0' in formatters

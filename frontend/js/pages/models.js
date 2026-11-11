@@ -1,9 +1,11 @@
 /*
- * Rôle : affiche uniquement les modèles que le vendeur a créés avec le Studio.
- * Exécution : router.js monte la grille sur #/modeles et la remplit depuis l'API existante.
+ * Rôle : affiche la bibliothèque des modèles enregistrés (créés, importés ou copiés depuis les exemples).
+ * Exécution : router.js monte la grille sur #/modeles ; #/modeles?import=1 ouvre directement l'import GLB.
+ * Refonte : état vide illustré avec appel à l'action, cartes animées, filtres avec compteurs.
  */
-import { importGlbModel, listCategories } from "../api.js?v=20261111-5d";
-import { setupGallery } from "../views/gallery.js?v=20261111-5d";
+import { importGlbModel, listCategories } from "../api.js?v=20261111-ui";
+import { setupGallery } from "../views/gallery.js?v=20261111-ui";
+import { emptyCubeIllustration } from "../views/illustrations.js?v=20261111-ui";
 
 export const title = "Mes modèles";
 const generationIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -11,21 +13,31 @@ const generationIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-
 export function render() {
   return `
     <section class="page-shell gallery-page" aria-labelledby="page-title">
-      <div class="page-intro"><p class="eyebrow">Votre catalogue</p><h1 class="page-title" id="page-title" tabindex="-1">Mes modèles</h1><p class="page-lead">Retrouvez ici les modèles créés, importés ou ajoutés depuis les exemples.</p></div>
+      <div class="page-intro section-header">
+        <div><p class="eyebrow">Votre catalogue</p><h1 class="page-title" id="page-title" tabindex="-1">Mes modèles</h1><p class="page-lead">Retrouvez ici les modèles créés, importés ou ajoutés depuis les exemples.</p></div>
+        <button class="button button-primary" id="open-model-import" type="button">Importer un modèle (.glb)</button>
+      </div>
       <section class="panel library-panel" aria-label="Vos modèles 3D">
-        <div class="gallery-heading"><div><h2>Modèles enregistrés</h2><p class="gallery-copy">Cette liste rassemble les modèles terminés associés à votre compte local.</p></div><button class="button button-primary" id="open-model-import" type="button">Importer un modèle (.glb)</button><span class="gallery-count" id="gallery-count" aria-live="polite">Chargement…</span></div>
-        <section class="model-import-panel panel" id="model-import-panel" aria-labelledby="import-title" hidden>
+        <section class="model-import-panel" id="model-import-panel" aria-labelledby="import-title" hidden>
           <h2 id="import-title">Importer un modèle GLB</h2>
-          <p>Le fichier est vérifié puis enregistré dans Mes modèles. L’import n’est pas une génération à partir d’une photo.</p>
+          <p>Le fichier est vérifié puis enregistré dans Mes modèles. Un import n’est pas une génération à partir d’une photo : il sera marqué « Importé ».</p>
           <form id="model-import-form">
-            <label for="import-file">Fichier .glb</label><input id="import-file" name="file" type="file" accept=".glb,model/gltf-binary" required>
-            <label for="import-title-field">Titre</label><input id="import-title-field" name="title" type="text" maxlength="100" required>
-            <label for="import-category">Catégorie</label><select id="import-category" name="category" required><option value="">Chargement des catégories…</option></select>
+            <div class="import-grid">
+              <div><label for="import-file">Fichier .glb</label><input id="import-file" name="file" type="file" accept=".glb,model/gltf-binary" required></div>
+              <div><label for="import-title-field">Titre</label><input id="import-title-field" name="title" type="text" maxlength="100" placeholder="Ex. Fauteuil velours" required></div>
+              <div><label for="import-category">Catégorie</label><select id="import-category" name="category" required><option value="">Chargement des catégories…</option></select></div>
+            </div>
             <div class="form-actions"><button class="button button-primary" type="submit">Importer dans Mes modèles</button><button class="button button-secondary" id="cancel-model-import" type="button">Annuler</button></div>
             <p id="model-import-feedback" role="status" aria-live="polite"></p>
           </form>
         </section>
-        <div class="library-empty-actions" id="library-empty-actions" hidden><p>Votre liste contient les créations, les imports GLB et les exemples que vous choisissez d’ajouter.</p><div><a class="button button-primary" href="#/creer">Créer à partir d’une photo</a><button class="button button-secondary" id="empty-import-button" type="button">Importer un modèle</button></div></div>
+        <div class="gallery-heading"><div><h2>Modèles enregistrés</h2><p class="gallery-copy">Filtrez par catégorie, puis ouvrez une fiche pour télécharger ou intégrer le modèle.</p></div><span class="gallery-count" id="gallery-count" aria-live="polite">Chargement…</span></div>
+        <div class="library-empty-actions" id="library-empty-actions" hidden>
+          ${emptyCubeIllustration()}
+          <h3>Votre bibliothèque est vide</h3>
+          <p>Créez votre premier modèle 3D ! Partez d’une photo, importez un fichier GLB existant ou ajoutez un exemple du catalogue.</p>
+          <div class="form-actions"><a class="button button-primary button-large" href="#/creer">Créer à partir d’une photo</a><button class="button button-secondary button-large" id="empty-import-button" type="button">Importer un modèle</button></div>
+        </div>
         <div class="filter-list" id="gallery-filters" role="group" aria-label="Filtrer vos modèles par catégorie"></div>
         <div class="gallery-grid" id="gallery-grid" aria-live="polite"></div>
         <p class="gallery-message" id="gallery-message" role="status" hidden></p>
@@ -33,14 +45,18 @@ export function render() {
     </section>`;
 }
 
-export function mount() {
+export function mount(route) {
   const panel = document.querySelector("#model-import-panel");
   const form = document.querySelector("#model-import-form");
   const fileInput = document.querySelector("#import-file");
   const titleInput = document.querySelector("#import-title-field");
   const categorySelect = document.querySelector("#import-category");
   const feedback = document.querySelector("#model-import-feedback");
-  const openImport = () => { panel.hidden = false; fileInput.focus(); };
+  const openImport = () => {
+    panel.hidden = false;
+    panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    fileInput.focus({ preventScroll: true });
+  };
   document.querySelector("#open-model-import").addEventListener("click", openImport);
   document.querySelector("#empty-import-button").addEventListener("click", openImport);
   document.querySelector("#cancel-model-import").addEventListener("click", () => { panel.hidden = true; });
@@ -86,4 +102,6 @@ export function mount() {
       submit.disabled = false;
     }
   });
+  // Raccourci de l'accueil : #/modeles?import=1 ouvre le formulaire d'import.
+  if (route?.query?.get("import") === "1") openImport();
 }
