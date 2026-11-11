@@ -1,52 +1,56 @@
 /*
- * Rôle : gère le verrou d'accès du Studio (connexion, session, déconnexion).
- * Exécution : router.js appelle isAuthenticated() avant chaque page ; login.js appelle login().
+ * Rôle : suit l'état de connexion de la propriétaire, vérifié par le serveur (étape 5f).
+ * Exécution : main.js appelle refreshSession() avant de démarrer le routeur ; router.js lit
+ * isAuthenticated() ; login.js appelle login() ; un 401 renvoyé par api.js ramène à #/login.
  *
- * IMPORTANT — solution TEMPORAIRE de démonstration :
- * le mot de passe est vérifié dans le navigateur. Toute personne qui lit ce fichier
- * peut le retrouver : ce n'est donc PAS une sécurité réelle, seulement un écran
- * d'accueil qui évite d'ouvrir le Studio par accident pendant une démonstration.
- * La version sûre prévue : POST /auth/login côté FastAPI (hash bcrypt du mot de passe
- * dans backend/.env, cookie HttpOnly). Cet appel sera alors ajouté dans api.js,
- * seul module autorisé à faire des requêtes HTTP, et login() ci-dessous l'utilisera.
- * Le Studio reste réservé à un usage local tant que ce backend n'existe pas.
+ * Le mot de passe n'est jamais dans le navigateur : il est comparé côté serveur à
+ * FORMA3D_OWNER_PASSWORD, et la session est un cookie HttpOnly signé (illisible en JavaScript).
+ * Ce module ne garde qu'un indicateur en mémoire, rafraîchi par GET /auth/me.
  */
+import { getSession, loginOwner, logoutOwner } from "./api.js?v=20261111-ui";
 
-// Mot de passe par défaut, documenté dans docs/etapes/etape-16b.md. À remplacer par la vérification serveur.
-const TEMPORARY_STUDIO_PASSWORD = "forma3d-demo";
-const SESSION_KEY = "forma3d:session";
 const NEXT_ROUTE_KEY = "forma3d:next-route";
+let authenticated = false;
+let passwordConfigured = true;
 
-function createSessionToken() {
-  const bytes = new Uint8Array(16);
-  window.crypto.getRandomValues(bytes);
-  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+function setAuthenticated(value) {
+  authenticated = value;
+  document.body.dataset.auth = value ? "member" : "guest";
+  window.dispatchEvent(new CustomEvent("forma3d:auth", { detail: { authenticated: value } }));
 }
 
 export function isAuthenticated() {
+  return authenticated;
+}
+
+/* Indique si le serveur a un mot de passe configuré (sinon la connexion est impossible). */
+export function isPasswordConfigured() {
+  return passwordConfigured;
+}
+
+export async function refreshSession() {
   try {
-    return Boolean(window.sessionStorage.getItem(SESSION_KEY));
+    const session = await getSession();
+    passwordConfigured = session.configured !== false;
+    setAuthenticated(session.authenticated === true);
   } catch {
-    return false;
+    setAuthenticated(false);
   }
+  return authenticated;
 }
 
-/* Simule la future route POST /auth/login ; renvoie une promesse pour garder la même signature. */
 export async function login(password) {
-  await new Promise((resolve) => window.setTimeout(resolve, 350));
-  if (typeof password !== "string" || password !== TEMPORARY_STUDIO_PASSWORD) {
-    throw new Error("Mot de passe incorrect. Vérifiez la saisie et réessayez.");
-  }
-  window.sessionStorage.setItem(SESSION_KEY, createSessionToken());
-  document.body.dataset.auth = "member";
-  window.dispatchEvent(new CustomEvent("forma3d:auth", { detail: { authenticated: true } }));
+  await loginOwner(password);
+  setAuthenticated(true);
 }
 
-export function logout() {
-  window.sessionStorage.removeItem(SESSION_KEY);
-  document.body.dataset.auth = "guest";
-  window.dispatchEvent(new CustomEvent("forma3d:auth", { detail: { authenticated: false } }));
-  window.location.hash = "#/login";
+export async function logout() {
+  try {
+    await logoutOwner();
+  } finally {
+    setAuthenticated(false);
+    window.location.hash = "#/login";
+  }
 }
 
 /* Mémorise la page demandée avant la connexion pour y revenir ensuite. */
@@ -60,3 +64,11 @@ export function consumeNextRoute() {
   window.sessionStorage.removeItem(NEXT_ROUTE_KEY);
   return next && next.startsWith("#/") && !next.startsWith("#/login") ? next : "#/accueil";
 }
+
+// Une route du Studio a répondu 401 (session expirée ou serveur redémarré) : retour à la connexion.
+window.addEventListener("forma3d:unauthorized", () => {
+  if (!authenticated) return;
+  setAuthenticated(false);
+  rememberNextRoute(window.location.hash);
+  window.location.hash = "#/login";
+});

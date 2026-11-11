@@ -2,10 +2,10 @@
  * Rôle : démarre le Studio — état de connexion, routeur, bouton de déconnexion
  * et contrôle de disponibilité du serveur 3D partagé entre les pages.
  * Exécution : chargé une fois depuis index.html ; le contrôle de santé continue entre les pages.
- * Refonte : la session est vérifiée avant le premier affichage (router.js redirige vers #/login).
+ * Étape 5f : la session est demandée au serveur (GET /auth/me) avant le premier affichage.
  */
 import { getProviderHealth } from "./api.js?v=20261111-ui";
-import { isAuthenticated, logout } from "./auth.js?v=20261111-ui";
+import { logout, refreshSession } from "./auth.js?v=20261111-ui";
 import { appState } from "./state.js?v=20261111-ui";
 import { startRouter } from "./router.js?v=20261111-ui";
 
@@ -37,10 +37,10 @@ async function refreshProviderHealth() {
   }
 }
 
-// L'état de connexion est posé avant le premier rendu pour éviter un flash de la navigation.
-document.body.dataset.auth = isAuthenticated() ? "member" : "guest";
-logoutButton.addEventListener("click", () => logout());
+logoutButton.addEventListener("click", () => void logout());
 
+// Le routeur démarre après la réponse du serveur, pour éviter d'afficher une page puis de rediriger.
+await refreshSession();
 startRouter();
 void refreshProviderHealth();
 const providerHealthTimer = window.setInterval(() => void refreshProviderHealth(), 30_000);

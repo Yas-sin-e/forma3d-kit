@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncIterator
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.cors import CORSMiddleware
@@ -20,6 +20,8 @@ from fastapi.staticfiles import StaticFiles
 from app.providers.huggingface import HuggingFaceSpaceProvider
 from app.repositories.sqlite_repository import SQLiteGenerationRepository
 from app.routers.api_keys import router as api_keys_router
+from app.routers.auth import require_owner
+from app.routers.auth import router as auth_router
 from app.routers.api_v1 import router as api_v1_router
 from app.routers.embed import router as embed_router
 from app.routers.categories import router as categories_router
@@ -29,6 +31,7 @@ from app.services.api_key_service import APIKeyService
 from app.services.category_service import CategoryService
 from app.services.demo_gallery import DemoGallery
 from app.services.generation_service import GenerationService
+from app.services.owner_auth import OwnerAuthService
 from app.storage.local_storage import LocalStorage
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -48,6 +51,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     backend_env = _PROJECT_ROOT / "backend" / ".env"
     if not backend_env.is_file():
         logger.warning("backend/.env est absent ; vérifiez le fichier local avant une génération distante.")
+    if not app.state.owner_auth.is_configured():
+        logger.warning("FORMA3D_OWNER_PASSWORD est vide ; la connexion au Studio est refusée.")
     if not provider.settings.hf_space_id.strip():
         logger.warning("HF_SPACE_ID est vide ; les générations distantes sont désactivées.")
     yield
@@ -73,11 +78,16 @@ app.state.embed_allowed_origins = provider.settings.embed_allowed_origins
 app.state.generation_provider = provider
 app.state.max_glb_upload_bytes = provider.settings.max_glb_upload_mb * 1024 * 1024
 app.state.demo_gallery = DemoGallery()
+app.state.owner_auth = OwnerAuthService()
 
-app.include_router(models_router)
+# Routes du Studio : protégées par la session de la propriétaire (cookie signé, étape 5f).
+studio_protection = [Depends(require_owner)]
+app.include_router(auth_router)
+app.include_router(models_router, dependencies=studio_protection)
+app.include_router(categories_router, dependencies=studio_protection)
+app.include_router(api_keys_router, dependencies=studio_protection)
+# Routes publiques ou authentifiées autrement : /public (modèle activé), /api/v1 (X-API-Key), /embed.
 app.include_router(public_models_router)
-app.include_router(categories_router)
-app.include_router(api_keys_router)
 app.include_router(api_v1_router)
 app.include_router(embed_router)
 app.add_middleware(

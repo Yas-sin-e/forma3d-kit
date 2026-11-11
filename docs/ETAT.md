@@ -10,7 +10,7 @@ Les Sprints 3 (comptes publics) et 4 (vitrine/catalogue public) sont retirés du
 
 - Objectif : exposer de façon contrôlée les modèles terminés par une API avec clé et un widget intégrable.
 - Livrable vérifiable : modèle activable individuellement, clé révocable non stockée en clair, routes versionnées authentifiées, iframe/widget intégrable et guide d'intégration.
-- Étapes 0 et 5a à 5e (étapes 13 à 17) terminées, plus la refonte visuelle 16b. Prochaine sous-étape : 5f, connexion côté serveur.
+- Étapes 0 et 5a à 5f (étapes 13 à 18) terminées, plus la refonte visuelle 16b. Le Sprint 6 reste à valider.
 - Le Sprint 6 reste non démarré et nécessite un OK explicite.
 
 ## Sprint 2 — Qualité et fiabilité (terminé)
@@ -123,6 +123,14 @@ Les Sprints 3 (comptes publics) et 4 (vitrine/catalogue public) sont retirés du
 - Vérification : 15 tests ciblés puis 99 tests pytest complets réussis en 9,04 s avec `PYTHON_DOTENV_DISABLED=true` et `HF_SPACE_ID` vide. Le test HTTP utilise un GLB synthétique dans un stockage temporaire, sans réseau fournisseur. La syntaxe JS et le rendu navigateur restent à vérifier dans cette session.
 - Guide : `docs/etapes/etape-16.md` ; stockage et politique d'intégration : `docs/STOCKAGE.md`.
 
+## Étape 18 — Sprint 5f : connexion côté serveur (terminée)
+
+- La constante JavaScript `forma3d-demo` est supprimée. Le mot de passe unique vient de `FORMA3D_OWNER_PASSWORD` (documenté dans `.env.example`, jamais dans Git) ; s'il est absent, `POST /auth/login` répond 503 avec un message clair.
+- Routes `POST /auth/login` (`hmac.compare_digest`), `POST /auth/logout`, `GET /auth/me`. Session : cookie HttpOnly, SameSite=Lax (Secure en HTTPS), jeton signé HMAC-SHA256 expirant après 8 h ; clé aléatoire par processus, donc reconnexion après redémarrage. Limite : 5 tentatives par minute et par IP, en mémoire.
+- `require_owner` protège `/models`, `/categories` et `/api-keys` (génération, import, intégration, clés). Restent ouverts : `/api/v1` (X-API-Key), `/embed`, `/public`, `/static`, le widget, `/` et `/health`.
+- Tests : `test_auth.py` (14 cas) ; les tests existants passent par une surcharge de dépendance (`conftest.py`). Non vérifié : parcours de connexion dans un vrai navigateur.
+- Limite : usage local uniquement tant que le déploiement HTTPS n'est pas fait ; pas de protection CSRF dédiée au-delà de SameSite=Lax.
+
 ## Étape 17 — Sprint 5e : guide intégrateur et exemple (terminée)
 
 - `docs/INTEGRATION.md` (rédigé par Codex, relu) décrit clé, `POST /api/v1/models`, suivi, téléchargement GLB, activation, `integration-code`, iframe `/embed/{public_id}`, widget `<forma3d-viewer>`, erreurs, quotas, CORS/CSP et sécurité.
@@ -215,4 +223,4 @@ Les tailles ont été mesurées sur les photos et GLB présents localement. Les 
 
 ## Prochaine action recommandée
 
-Réaliser l’étape 5f (connexion côté serveur du Studio). Ne pas commencer le Sprint 6 sans OK explicite. La CI GitHub reste à vérifier par l’étudiante.
+Définir `FORMA3D_OWNER_PASSWORD` dans `backend/.env`, vérifier la connexion dans le navigateur, puis décider du Sprint 6 (OK explicite requis). Ne pas commencer le Sprint 6 sans OK explicite. La CI GitHub reste à vérifier par l’étudiante.

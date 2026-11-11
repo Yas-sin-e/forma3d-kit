@@ -1,6 +1,6 @@
 # Structure expliquée — Forma3D Studio
 
-Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 sont retirés. Les étapes 11, 11b et 12 ont amélioré le Studio avant le Sprint 5, maintenant actif (étapes 0, 13 / 5a, 14 / 5b, 15 / 5c et 16 / 5d terminées, plus la refonte visuelle 16b ; étape 17 / 5e terminée). Le Sprint 6 n'est pas démarré.
+Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 sont retirés. Les étapes 11, 11b et 12 ont amélioré le Studio avant le Sprint 5, maintenant actif (étapes 0, 13 / 5a, 14 / 5b, 15 / 5c et 16 / 5d terminées, plus la refonte visuelle 16b ; étapes 17 / 5e et 18 / 5f terminées). Le Sprint 6 n'est pas démarré.
 
 ## Racine et documents de cadrage
 
@@ -12,7 +12,7 @@ Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 s
 | `README.md` | Démarrage du dépôt, état et commandes Windows | Point d'entrée pour l'étudiante et le jury | Au clonage et au lancement |
 | `PROMPT-1.md` | Prompt local de démarrage de session v2 | Rappelle les règles au travail quotidien | Au début d'une session Codex ; ignoré par Git |
 | `.gitignore` | Exclut secrets, environnements, caches, uploads et sorties générées | Évite de versionner les données locales ou sensibles | Avant chaque commit |
-| `.env.example` | Variables fournisseur, plafond GLB, quotas, débit API, origines CORS et origines autorisées à intégrer (aucune par défaut) | Rend la configuration explicite sans cible ni secret ni politique de cadrage ouverte | Avant le lancement du service intégrable |
+| `.env.example` | Variables fournisseur, plafond GLB, quotas, débit API, origines CORS et origines autorisées à intégrer (aucune par défaut) et mot de passe propriétaire `FORMA3D_OWNER_PASSWORD` (vide = connexion refusée) | Rend la configuration explicite sans cible ni secret ni politique de cadrage ouverte | Avant le lancement du service intégrable |
 | `sprint-1-v2-saas-3d-ecommerce.docx` | Cahier des charges remis pour le sprint | Conserve la référence de départ et ses exigences | Au cadrage et à la soutenance |
 | `.github/` | Configuration destinée au dépôt GitHub | Sépare l'automatisation distante des sources | Sur GitHub |
 | `.github/workflows/` | Répertoire des workflows CI | Range les vérifications reproductibles | À chaque push ou pull request |
@@ -57,12 +57,14 @@ Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 s
 | `backend/app/schemas.py` | Fixe les réponses JSON avec l'origine, l'état, la date, les liens et les deux extraits d'intégration | Stabilise les contrats HTTP sans exposer les chemins locaux | Sur `/categories`, `/models`, `/api-keys` et les contrats publics |
 | `backend/app/routers/__init__.py` | Marque le paquet des routes | Clarifie l'organisation Python | À l'import des routes |
 | `backend/app/routers/categories.py` | Expose lister, créer, renommer, activer/désactiver et supprimer les catégories | Garde la validation HTTP distincte des règles métier | Aux actions de gestion et au chargement des choix |
+| `backend/app/routers/auth.py` | Routes `POST /auth/login`, `POST /auth/logout`, `GET /auth/me` et dépendance `require_owner` qui protège les routes du Studio | Cookie HttpOnly SameSite=Lax ; `/api/v1`, `/embed`, `/public`, `/static` et le widget restent hors session | À la connexion et à chaque appel du Studio |
 | `backend/app/routers/api_keys.py` | Crée, liste et révoque les clés ; fournit `require_api_key` pour authentifier `X-API-Key` | Ne renvoie le secret qu’à la création et compare des empreintes à temps constant | Sur `#/cles-api` et `/api/v1` |
 | `backend/app/routers/api_v1.py` | Crée les modèles avec le service existant, sert l’état et le GLB et retourne les codes iframe/widget | Versionne les URL, impose une clé, un quota quotidien et un débit par clé | Aux appels externes `/api/v1` |
 | `backend/app/routers/embed.py` | Sert le viewer isolé d'un modèle terminé et activé sous `/embed/{public_id}` | N'inclut pas la navigation du Studio ; applique `frame-ancestors` limité au même site et aux origines configurées | Quand une boutique intègre un modèle |
 | `backend/app/routers/models.py` | Reçoit les photos, importe les GLB, copie les exemples autorisés, expose les états et les routes d’activation/intégration publique | Sépare HTTP du métier et valide les catégories avant l'enregistrement | À l'envoi, au suivi, à l'import, à l'activation et à la consultation des modèles |
 | `backend/app/services/__init__.py` | Marque le paquet métier | Clarifie les imports de services | À l'import du validateur et du service |
 | `backend/app/services/category_service.py` | Vérifie les catégories, les slugs et les libellés puis traduit les erreurs de persistance | Centralise les règles réutilisables par les routes et les tests | Lors du CRUD et avant chaque upload |
+| `backend/app/services/owner_auth.py` | Compare le mot de passe avec `hmac.compare_digest`, signe des jetons HMAC expirant après 8 h et limite à 5 tentatives par minute et par IP (en mémoire) | Aucune dépendance ajoutée ; clé de signature aléatoire par processus | À chaque connexion et vérification de session |
 | `backend/app/services/api_key_service.py` | Génère un secret aléatoire, persiste son empreinte SHA-256, vérifie les clés et applique leurs limites | La clé complète n’est jamais stockée ni journalisée | À la création, à la révocation et sur `/api/v1` |
 | `backend/app/services/upload_validator.py` | Contrôle extension, MIME, signature et plafond de 10 Mo | Le nom ou le type annoncé seul ne suffit pas | Avant d'enregistrer une photo |
 | `backend/app/services/image_preparer.py` | Redresse, compose une image carrée avec marges et mesure petite taille/netteté via Pillow | Prépare une copie temporaire sans modifier l'original ni ajouter de modèle | Juste avant l'appel du fournisseur |
@@ -104,7 +106,7 @@ Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 s
 | `frontend/js/pages/viewer-markup.js` | Balisage du viewer de Créer : scène avec grille et halo, squelette de chargement, bascule photo/3D, barre d'outils et note discrète | Évite de dupliquer les commandes accessibles | Au montage du parcours de création |
 | `frontend/js/state.js` | Garde en mémoire photo, statut, durée et minuteries de la session | Évite une base de données pour cet état temporaire | Pendant l'envoi et le suivi d'une demande |
 | `frontend/js/main.js` | Pose l'état de connexion, démarre le routeur, relie la déconnexion et diffuse l'état de disponibilité | Garde le contrôle santé unique et indépendant des pages | Au chargement et toutes les 30 secondes |
-| `frontend/js/auth.js` | Verrou de connexion temporaire : vérification du mot de passe dans le navigateur, session en `sessionStorage`, déconnexion | Prépare la future route `POST /auth/login` ; **ce n'est pas une sécurité réelle** (mot de passe lisible dans le code) | À chaque changement de route et à la connexion |
+| `frontend/js/auth.js` | Suit l'état de connexion fourni par `GET /auth/me`, appelle login/logout et renvoie vers `#/login` après un 401 | Le mot de passe n'est plus dans le navigateur ; le cookie de session est illisible en JavaScript | Au démarrage, à chaque route et à la connexion |
 | `frontend/js/format.js` | Mises en forme partagées : dates relatives, tailles, durées, détection des modèles enregistrés et durées mesurées des exemples | Évite de dupliquer ces petites fonctions dans chaque page | Par les pages et la galerie |
 | `frontend/favicon.svg` | Icône d'onglet du Studio (cube Forma3D) | Format SVG léger, sans dépendance | À chaque chargement de la page |
 | `frontend/js/views/` | Regroupe les vues de l'interface | Isole les responsabilités visibles du studio | Quand une vue est modifiée ou réutilisée |
@@ -136,6 +138,8 @@ Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 s
 | `backend/tests/test_embed.py` | Vérifie l'activation, les erreurs 404, la vue du modèle, les en-têtes CSP et les limites de contenu | Utilise SQLite et stockage temporaires sans navigateur ni fournisseur | À chaque suite pytest |
 | `backend/tests/test_demo_gallery.py` | Vérifie les modèles autorisés et les photos source facultatives sans réseau | Protège la galerie et sa comparaison photo/GLB | À chaque suite pytest |
 | `backend/tests/test_model_library.py` | Vérifie l'import GLB, limites, catégories, copie d'exemple et migration de modèle | Couvre les cas de bibliothèque avec SQLite temporaire et sans fournisseur | À chaque suite pytest |
+| `backend/tests/conftest.py` | Ouvre la session propriétaire par surcharge de `require_owner`, sauf pour les tests marqués `real_auth` | Garde les tests métier existants centrés sur leur logique | À chaque suite pytest |
+| `backend/tests/test_auth.py` | Vérifie 401 sans cookie, connexion réussie/refusée, mot de passe absent, limite de tentatives, jeton falsifié ou expiré et routes publiques ouvertes | Prouve la protection sans navigateur ni réseau externe | À chaque suite pytest |
 | `backend/tests/test_api_keys.py` | Vérifie empreinte seule, révélation unique, révocation, comparaison et compteurs par clé | Couvre le contrôle d’accès et les quotas sans réseau externe | À chaque suite pytest |
 | `backend/tests/test_api_settings.py` | Vérifie les valeurs par défaut, la lecture des variables et le refus du joker CORS | Évite un CORS ou des limites ouverts par erreur | À chaque suite pytest |
 | `backend/tests/test_api_v1.py` | Vérifie l’API versionnée, création simulée, suivi, GLB, codes iframe/widget, erreurs, quota, débit et CORS | Appelle TestClient en local et n’utilise pas le vrai fournisseur | À chaque suite pytest |
@@ -202,4 +206,5 @@ Le registre des métadonnées, les empreintes de clés, les quotas journaliers e
 |---|---|---|---|
 | `docs/INTEGRATION.md` | Guide la création d'une clé et les requêtes d'intégration, les erreurs, quotas, CORS et CSP | Donne à une personne externe un parcours basé sur les routes réellement existantes | Lors du branchement d'une boutique |
 | `examples/integration.html` | Page de démonstration pour saisir une origine serveur et un UUID public puis charger le widget | Montre le composant avec un modèle réel activé, sans intégrer de faux GLB ni clé | Pour un test local d'intégration |
+| `docs/etapes/etape-18.md` | Explique la connexion serveur (5f) : routes, cookie, jeton, limite, routes publiques et limites de sécurité | Justifie le remplacement du verrou navigateur pour la soutenance | Pour configurer ou présenter la connexion |
 | `docs/etapes/etape-17.md` | Explique le guide, la page `#/guide`, l'exemple HTML et les vérifications réellement faites | Clôture le Sprint 5e avec une preuve honnête | Pour présenter l'intégration à la soutenance |

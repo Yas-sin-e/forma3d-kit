@@ -8,7 +8,7 @@ Ce guide s’adresse à la personne qui connecte une boutique au service Forma3D
 - Créez une clé dans la page locale **Clés API** (`#/cles-api`). La clé complète n'apparaît qu'une fois. Copiez-la immédiatement dans le coffre ou la configuration du serveur intégrateur.
 - Envoyez les requêtes API depuis un backend marchand protégé. Ne placez jamais `X-API-Key` dans JavaScript, HTML public, application mobile distribuée, capture ou dépôt Git.
 - Une génération doit être terminée dans le Studio puis activée sur la fiche du modèle avant que les clients puissent voir son viewer public.
-- Le Studio d'administration n'a pas d'authentification. Gardez-le sur la machine de développement/démonstration ; les routes de gestion de clés et de modèles ne sont pas une console publique.
+- Le Studio est protégé par le mot de passe de la propriétaire (`FORMA3D_OWNER_PASSWORD`, session par cookie HttpOnly). Les routes `/api/v1` n'utilisent pas cette session : elles exigent `X-API-Key`. Gardez néanmoins le Studio en local tant qu'il n'est pas déployé en HTTPS.
 
 ## 1. Envoyer une photo
 
@@ -102,7 +102,7 @@ Par défaut, une clé peut lancer jusqu'à 20 créations par jour UTC et 10 requ
 - Le viewer d'intégration ne requiert pas la clé API. Après activation, quiconque possède son UUID public peut consulter le modèle. Désactivez l'intégration dans le Studio pour couper les routes publiques.
 - La CSP `frame-ancestors` limite les sites pouvant encadrer le viewer. CORS seul ne remplace pas cette règle.
 - Les exemples locaux utilisent HTTP sans chiffrement. Toute utilisation depuis un réseau partagé ou déploiement public exige un hébergement HTTPS, une protection d'accès appropriée et la configuration du serveur par la propriétaire.
-- Le projet ne comporte pas de compte vendeur, de facturation, de promesse de disponibilité ni d'authentification sur l'interface Studio. Cette intégration est un prototype de démonstration/développement personnel, pas un service de production.
+- Le projet ne comporte pas de compte vendeur, de facturation, de promesse de disponibilité ni de comptes multiples : le Studio n'a qu'un mot de passe propriétaire. Cette intégration est un prototype de démonstration/développement personnel, pas un service de production.
 
 ## Vérification de la documentation
 

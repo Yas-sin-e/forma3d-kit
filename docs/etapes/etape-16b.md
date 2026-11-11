@@ -27,7 +27,7 @@ Les routes API, les noms des endpoints et le code Python de l'application sont i
 
 ## Choix justifiés pour la soutenance
 
-- **Connexion temporaire** : la demande précise que le backend `POST /auth/login` viendra après. Le mot de passe par défaut est `forma3d-demo` (constante `TEMPORARY_STUDIO_PASSWORD` dans `auth.js`). Il est lisible dans le code source : c'est un **verrou de démonstration, pas une sécurité**. Le Studio reste réservé à un usage local, comme avant.
+- **Connexion temporaire (remplacée à l'étape 18 / 5f)** : la constante et le mot de passe par défaut ont été supprimés au profit d'une vérification serveur. Historique : la demande précise que le backend `POST /auth/login` viendra après. Le mot de passe par défaut était `forma3d-demo` (constante `TEMPORARY_STUDIO_PASSWORD` dans `auth.js`), lisible dans le code source : c'est un **verrou de démonstration, pas une sécurité**. Le Studio reste réservé à un usage local, comme avant.
 - **Aucun chiffre inventé** : la demande proposait « généré en ~2 min » sous chaque exemple. Cette durée n'est pas prouvée pour chaque objet ; les cartes affichent donc les durées **mesurées** à l'étape 6 (de 1 min 23 s à 3 min 35 s).
 - **Aperçu d'intégration réel** : l'étape 4 de la fiche affiche la vraie page `/embed/{id}` dans une iframe ; c'est possible car la CSP du viewer autorise `frame-ancestors 'self'`.
 - **Message honnête** : la note « Modèle approximatif… » devient « Aperçu 3D généré automatiquement — idéal pour la visualisation produit. La géométrie est une estimation. », placée sous la scène.

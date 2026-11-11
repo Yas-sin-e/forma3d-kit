@@ -1,8 +1,9 @@
 /*
  * Rôle : affiche l'écran de connexion plein écran du Studio (mot de passe unique).
  * Exécution : router.js monte cette page sur #/login et y redirige toute visite non connectée.
+ * Étape 5f : le mot de passe est envoyé à POST /auth/login et vérifié par le serveur.
  */
-import { consumeNextRoute, login } from "../auth.js?v=20261111-ui";
+import { consumeNextRoute, isPasswordConfigured, login } from "../auth.js?v=20261111-ui";
 
 export const title = "Connexion";
 
@@ -30,7 +31,7 @@ export function render() {
             <span class="button-label">Accéder au Studio</span><span aria-hidden="true">→</span>
           </button>
         </form>
-        <p class="login-note">Verrou de démonstration : à utiliser en local uniquement.</p>
+        <p class="login-note">Session protégée par le serveur · usage local tant que le Studio n’est pas déployé en HTTPS.</p>
       </div>
     </section>`;
 }
@@ -73,5 +74,9 @@ export function mount() {
     }
   });
 
+  if (!isPasswordConfigured()) {
+    error.textContent = "Connexion impossible : définissez FORMA3D_OWNER_PASSWORD dans backend/.env, puis redémarrez le serveur.";
+    error.hidden = false;
+  }
   window.setTimeout(() => password.focus(), 50);
 }

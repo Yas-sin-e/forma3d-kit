@@ -4,6 +4,10 @@
  * suivre son état et lire uniquement la galerie réelle du backend.
  */
 async function readResponse(response, fallbackMessage) {
+  // Session expirée ou absente sur une route du Studio : auth.js renvoie vers l'écran de connexion.
+  if (response.status === 401 && !new URL(response.url, window.location.origin).pathname.startsWith("/auth/")) {
+    window.dispatchEvent(new CustomEvent("forma3d:unauthorized"));
+  }
   let data = {};
   try {
     data = await response.json();
@@ -148,4 +152,24 @@ export async function revokeApiKey(keyId) {
     headers: { Accept: "application/json" },
   });
   return readResponse(response, "Impossible de révoquer cette clé API.");
+}
+
+/* Étape 5f : session de la propriétaire, vérifiée côté serveur (cookie HttpOnly signé). */
+export async function getSession() {
+  const response = await fetch("/auth/me", { cache: "no-store", headers: { Accept: "application/json" } });
+  return readResponse(response, "Impossible de vérifier la session.");
+}
+
+export async function loginOwner(password) {
+  const response = await fetch("/auth/login", {
+    method: "POST",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
+  return readResponse(response, "Connexion refusée.");
+}
+
+export async function logoutOwner() {
+  const response = await fetch("/auth/logout", { method: "POST", headers: { Accept: "application/json" } });
+  return readResponse(response, "Déconnexion impossible.");
 }

@@ -258,9 +258,12 @@ def test_login_screen_guards_every_studio_route() -> None:
     assert 'parts[0] === "login"' in router
     assert "isAuthenticated()" in router
     assert "#/login" in router
-    assert "sessionStorage" in auth
-    assert "TEMPORARY_STUDIO_PASSWORD" in auth
-    assert "PAS une sécurité réelle" in auth
+    # Étape 5f : plus aucun mot de passe dans le navigateur ; la session vient du serveur.
+    assert "forma3d-demo" not in auth and "TEMPORARY_STUDIO_PASSWORD" not in auth
+    assert "getSession" in auth and "loginOwner" in auth
+    api = client.get("/static/js/api.js").text
+    assert 'fetch("/auth/me"' in api and 'fetch("/auth/login"' in api
+    assert "forma3d:unauthorized" in api
     assert "Accéder au Studio" in login
     assert "Transformez vos photos en" in dashboard
     assert "listApiKeys" in dashboard and "listGalleryModels" in dashboard
