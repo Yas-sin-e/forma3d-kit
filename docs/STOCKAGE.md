@@ -44,4 +44,6 @@ Un modèle public n'est consultable qu'après activation explicite depuis sa fic
 
 La réponse CSP définit `frame-ancestors 'self'` et ajoute uniquement les origines HTTP(S) exactes de `EMBED_ALLOWED_ORIGINS`. Une liste vide signifie qu'un site d'une autre origine ne pourra pas encadrer le viewer. CORS (`API_CORS_ORIGINS`) est un réglage distinct : il autorise les requêtes JavaScript vers l'API, tandis que `EMBED_ALLOWED_ORIGINS` autorise l'inclusion de la page viewer dans une iframe. Aucune des deux listes ne permet `*`.
 
+Depuis l'étape 20, le GLB enregistré pour une génération est la version complétée par `glb_finisher` (matériau mat et normales ajoutés, géométrie identique) ; les imports et exemples sont stockés tels quels.
+
 Le guide `docs/INTEGRATION.md` accompagne ce schéma avec des appels `curl`, les statuts, les erreurs et les limites de quota. La page `examples/integration.html` ne modifie pas SQLite : elle ne fait qu'insérer le composant `<forma3d-viewer>` à partir d'un UUID public choisi. Aucun identifiant ou GLB de démonstration n'est prérempli. La page Studio `#/guide` est un texte statique : elle ne lit ni n'écrit SQLite.

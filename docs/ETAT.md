@@ -123,6 +123,12 @@ Les Sprints 3 (comptes publics) et 4 (vitrine/catalogue public) sont retirés du
 - Vérification : 15 tests ciblés puis 99 tests pytest complets réussis en 9,04 s avec `PYTHON_DOTENV_DISABLED=true` et `HF_SPACE_ID` vide. Le test HTTP utilise un GLB synthétique dans un stockage temporaire, sans réseau fournisseur. La syntaxe JS et le rendu navigateur restent à vérifier dans cette session.
 - Guide : `docs/etapes/etape-16.md` ; stockage et politique d'intégration : `docs/STOCKAGE.md`.
 
+## Étape 20 — Sous-étape B : finition serveur des GLB (terminée)
+
+- `backend/app/services/glb_finisher.py` ajoute un matériau mat (`forma3d-product`) et des normales par sommet à chaque nouveau GLB généré, juste avant l'enregistrement ; positions, indices et couleurs sont inchangés ; original conservé si le résultat n'est pas valide. Aucune dépendance ajoutée.
+- Mesures sur des copies des 5 GLB réels : 0,09 à 0,29 s, GLB 2.0 valides, +30 % de taille. Gain visible surtout dû au matériau ; normales peu visibles sur ces maillages denses.
+- Non modifiés : imports, exemples du catalogue, modèles déjà enregistrés. Pas de génération réelle (serveur 3D hors ligne). Prochaine sous-étape proposée : C (grille de qualité et essais fournisseurs, Sprint 6), sur accord.
+
 ## Étape 19 — Sous-étape A : rendu fidèle des GLB (terminée)
 
 - Diagnostic : les 5 GLB TripoSR n'ont ni matériau, ni normales, ni texture (couleurs par sommet). Le matériau glTF par défaut (metallic = 1, roughness = 1) les assombrissait.

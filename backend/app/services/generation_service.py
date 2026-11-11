@@ -21,6 +21,7 @@ from app.services.upload_validator import ValidatedUpload
 from app.services.image_preparer import ImagePreparer, ImagePreparationError
 from app.storage.base import Storage
 from app.services.demo_gallery import DemoGallery
+from app.services.glb_finisher import finish_glb
 
 logger = logging.getLogger(__name__)
 
@@ -186,6 +187,19 @@ class GenerationService:
             persisted = self._repository.get_generation(model_id)
         return persisted or record
 
+    @staticmethod
+    def _finish_generated_model(model_bytes: bytes) -> bytes:
+        """Ajoute matériau mat et normales au GLB généré ; garde l'original si le résultat n'est pas valide."""
+        finished, report = finish_glb(model_bytes)
+        if report.changed and DemoGallery.is_valid_glb_2(finished):
+            logger.info(
+                "GLB complété : %s normale(s), %s matériau(x) ajoutés.",
+                report.normals_added,
+                report.materials_added,
+            )
+            return finished
+        return model_bytes
+
     def run(self, generation_id: str) -> None:
         """Exécute le fournisseur et publie DONE ou FAILED de façon atomique."""
         started_at = monotonic()
@@ -223,7 +237,7 @@ class GenerationService:
                 )
                 with self._lock:
                     self._repository.save_generation(running_record)
-                model_bytes = self._provider.generate(provider_image_path)
+                model_bytes = self._finish_generated_model(self._provider.generate(provider_image_path))
                 model_path = self._storage.save_model(generation_id, model_bytes)
         except ProviderError as error:
             provider_settings = getattr(self._provider, "settings", None)
