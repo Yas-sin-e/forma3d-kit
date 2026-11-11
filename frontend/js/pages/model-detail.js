@@ -2,7 +2,7 @@
  * Rôle : charge une fiche produit par identifiant et présente son état, sa photo et son GLB.
  * Exécution : router.js monte cette page sur #/modeles/{id}, y compris pour signaler un identifiant inconnu.
  */
-import { getGenerationStatus, listCategories, listGalleryModels, setModelIntegrationEnabled } from "../api.js?v=20261111-5b";
+import { getGenerationStatus, listCategories, listGalleryModels, setModelIntegrationEnabled } from "../api.js?v=20261111-5d";
 
 export const title = "Fiche du modèle";
 
@@ -31,6 +31,17 @@ export function render(route) {
             <h3 id="detail-integration-title">Intégration sur un site</h3>
             <p id="detail-integration-status" role="status" aria-live="polite"></p>
             <button class="button button-secondary" id="detail-integration-toggle" type="button" aria-pressed="false">Activer l’intégration</button>
+            <section class="detail-integration-code" id="detail-integration-code" aria-labelledby="detail-integration-code-title" hidden>
+              <h4 id="detail-integration-code-title">Code à copier</h4>
+              <p>Pour un autre domaine, demandez au responsable technique de l’ajouter aux sites autorisés.</p>
+              <label for="detail-iframe-code">IFrame</label>
+              <textarea id="detail-iframe-code" rows="4" readonly></textarea>
+              <button class="button button-secondary" type="button" data-copy-integration="detail-iframe-code">Copier l’iframe</button>
+              <label for="detail-widget-code">Balise Forma3D</label>
+              <textarea id="detail-widget-code" rows="4" readonly></textarea>
+              <button class="button button-secondary" type="button" data-copy-integration="detail-widget-code">Copier la balise</button>
+              <p id="detail-integration-copy-feedback" role="status" aria-live="polite"></p>
+            </section>
           </section>
           <a class="button button-primary detail-download" id="detail-download" href="#" download hidden>Télécharger le modèle</a>
           <figure class="detail-source-photo" id="detail-source-figure" hidden><figcaption>Photo d’origine</figcaption><img id="detail-source-image" alt="Photo d’origine du produit"></figure>
@@ -73,6 +84,10 @@ export function mount(route) {
   const integration = document.querySelector("#detail-integration");
   const integrationStatus = document.querySelector("#detail-integration-status");
   const integrationToggle = document.querySelector("#detail-integration-toggle");
+  const integrationCode = document.querySelector("#detail-integration-code");
+  const iframeCode = document.querySelector("#detail-iframe-code");
+  const widgetCode = document.querySelector("#detail-widget-code");
+  const copyFeedback = document.querySelector("#detail-integration-copy-feedback");
   const sourceFigure = document.querySelector("#detail-source-figure");
   const sourceImage = document.querySelector("#detail-source-image");
   let pollTimer = null;
@@ -112,6 +127,15 @@ export function mount(route) {
         : "Désactivée par défaut. Le modèle reste privé tant que vous ne l’activez pas.";
       integrationToggle.textContent = enabled ? "Désactiver l’intégration" : "Activer l’intégration";
       integrationToggle.setAttribute("aria-pressed", String(enabled));
+      integrationCode.hidden = !enabled;
+      if (enabled) {
+        const baseUrl = window.location.origin;
+        const modelId = encodeURIComponent(model.public_id);
+        iframeCode.value = `<iframe src="${baseUrl}/embed/${modelId}" title="Aperçu 3D du produit" width="100%" height="480" loading="lazy" style="border:0"></iframe>`;
+        widgetCode.value = `<script src="${baseUrl}/static/widget.js?v=20261111-5d" defer></script>\n<forma3d-viewer model="${model.public_id}" height="480" auto-rotate></forma3d-viewer>`;
+      }
+    } else {
+      integrationCode.hidden = true;
     }
 
     const modelUrl = model?.model_url || record.model_url;
@@ -143,6 +167,21 @@ export function mount(route) {
       sourceFigure.hidden = true;
     }
   }
+
+  document.querySelectorAll("[data-copy-integration]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const field = document.getElementById(button.dataset.copyIntegration);
+      if (!field) return;
+      try {
+        await navigator.clipboard.writeText(field.value);
+        copyFeedback.textContent = "Code copié.";
+      } catch {
+        field.focus();
+        field.select();
+        copyFeedback.textContent = "La copie automatique est indisponible ; le code est sélectionné.";
+      }
+    });
+  });
 
   integrationToggle.addEventListener("click", async () => {
     if (!model?.public_id || integrationToggle.disabled) return;

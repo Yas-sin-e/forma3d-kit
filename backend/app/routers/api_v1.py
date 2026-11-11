@@ -162,4 +162,11 @@ def get_integration_code(
         f'<iframe src="{source}" title="Aperçu 3D : {title}" width="100%" height="480" '
         'loading="lazy" style="border:0" allow="fullscreen; xr-spatial-tracking"></iframe>'
     )
-    return APIIntegrationCodeResponse(public_id=record.public_id, iframe_html=iframe)
+    widget_script = escape(f"{base_url}/static/widget.js?v=20261111-5d", quote=True)
+    widget = (
+        f'<script src="{widget_script}" defer></script>\n'
+        f'<forma3d-viewer model="{record.public_id}" height="480"></forma3d-viewer>'
+    )
+    return APIIntegrationCodeResponse(
+        public_id=record.public_id, iframe_html=iframe, widget_html=widget
+    )

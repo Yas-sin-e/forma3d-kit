@@ -21,6 +21,7 @@ from app.providers.huggingface import HuggingFaceSpaceProvider
 from app.repositories.sqlite_repository import SQLiteGenerationRepository
 from app.routers.api_keys import router as api_keys_router
 from app.routers.api_v1 import router as api_v1_router
+from app.routers.embed import router as embed_router
 from app.routers.categories import router as categories_router
 from app.routers.models import public_router as public_models_router
 from app.routers.models import router as models_router
@@ -68,6 +69,7 @@ app.state.api_key_service = APIKeyService(generation_repository)
 app.state.api_daily_generation_limit = provider.settings.api_daily_generation_limit
 app.state.api_rate_limit_per_minute = provider.settings.api_rate_limit_per_minute
 app.state.api_cors_origins = provider.settings.api_cors_origins
+app.state.embed_allowed_origins = provider.settings.embed_allowed_origins
 app.state.generation_provider = provider
 app.state.max_glb_upload_bytes = provider.settings.max_glb_upload_mb * 1024 * 1024
 app.state.demo_gallery = DemoGallery()
@@ -77,6 +79,7 @@ app.include_router(public_models_router)
 app.include_router(categories_router)
 app.include_router(api_keys_router)
 app.include_router(api_v1_router)
+app.include_router(embed_router)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list(provider.settings.api_cors_origins),

@@ -2,7 +2,7 @@
  * Rôle : permet à la propriétaire de créer, consulter et révoquer ses clés API.
  * Exécution : router.js monte cette page uniquement sur #/cles-api ; le secret reste en mémoire le temps de l’affichage.
  */
-import { createApiKey, listApiKeys, revokeApiKey } from "../api.js?v=20261111-5b";
+import { createApiKey, listApiKeys, revokeApiKey } from "../api.js?v=20261111-5d";
 
 export const title = "Clés API";
 

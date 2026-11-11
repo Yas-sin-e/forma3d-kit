@@ -80,6 +80,8 @@ def test_api_v1_creates_tracks_downloads_and_returns_embed_code(tmp_path: Path) 
             code = client.get(f"/api/v1/models/{model_id}/integration-code", headers=headers)
             assert code.status_code == 200
             assert f"/embed/{status_response.json()['public_id']}" in code.json()["iframe_html"]
+            assert "<forma3d-viewer" in code.json()["widget_html"]
+            assert "/static/widget.js" in code.json()["widget_html"]
 
             over_quota = client.post(
                 "/api/v1/models", headers=headers,

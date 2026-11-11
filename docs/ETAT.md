@@ -106,13 +106,22 @@ Les Sprints 3 (comptes publics) et 4 (vitrine/catalogue public) sont retirés du
 ## Étape 15 — Sprint 5c : API d’intégration versionnée
 
 - `POST /api/v1/models` exige une clé `X-API-Key`, valide une photo et une catégorie active puis réutilise `GenerationService` et sa tâche de fond. `GET /api/v1/models/{id}` retourne l’état avec des liens versionnés ; le téléchargement GLB n’est proposé que lorsque le statut est `DONE`.
-- `GET /api/v1/models/{id}/integration-code` retourne le code iframe si le modèle est terminé et si son intégration a été activée dans le Studio. Le chemin `/embed/{public_id}` sera servi à l’étape 16.
+- `GET /api/v1/models/{id}/integration-code` retourne les codes iframe et widget si le modèle est terminé et si son intégration a été activée dans le Studio. `/embed/{public_id}` est servi par l’étape 16.
 - Chaque clé est limitée à 20 créations par jour UTC et 10 requêtes sur une fenêtre glissante de 60 secondes par défaut. Les seuils sont configurables via `API_DAILY_GENERATION_LIMIT` et `API_RATE_LIMIT_PER_MINUTE`. Les compteurs SQLite sont atomiques et persistants.
 - `API_CORS_ORIGINS` accepte une liste d’origines HTTP(S) exactes, séparées par des virgules. Vide par défaut, le CORS n’autorise aucun site tiers ; le joker `*` est refusé. Aucune dépendance ou aucun service payant n’est ajouté.
 - Les erreurs HTTP de `/api/v1` utilisent un JSON `{error: {code, message}}` ; les routes externes renvoient notamment 401, 403, 404 et 429 avec `Retry-After` pour les limites.
 - Vérification : 10 tests ciblés et 97 tests pytest complets réussis en 9,43 s ; `node --check` sur les modules JavaScript et `git diff --check` réussis. Le fournisseur est simulé dans le test d’intégration et aucun appel externe n’a eu lieu.
-- Non vérifié : API avec un fournisseur 3D réel, rendu navigateur, vrai CORS depuis un site configuré et CI GitHub. L’iframe reste indisponible jusqu’à l’étape 16.
+- Non vérifié à cette étape : API avec un fournisseur 3D réel, rendu navigateur, vrai CORS depuis un site configuré et CI GitHub. L’accès iframe est couvert par les tests HTTP de l’étape 16, sans navigateur réel.
 - Guides : `docs/etapes/etape-15.md` et `docs/STOCKAGE.md`.
+
+## Étape 16 — Sprint 5d : page d’intégration et widget
+
+- `/embed/{public_id}` sert uniquement un `<model-viewer>` minimal pour un modèle `DONE`, présent et activé ; un modèle inconnu, supprimé ou désactivé répond par une page 404 claire.
+- La CSP `frame-ancestors` autorise le même site et les origines HTTP(S) précises définies dans `EMBED_ALLOWED_ORIGINS`. La valeur est vide par défaut ; `*`, chemins et identifiants intégrés sont refusés. Ce réglage est distinct du CORS de l'API.
+- La fiche de Mes modèles affiche, après activation, des extraits copiables d'iframe et de widget. `frontend/widget.js` définit `<forma3d-viewer>`, valide l'UUID public, encadre `/embed/{public_id}` et borne la hauteur demandée ; le GLB reste servi par la route publique existante.
+- `.env.example` documente la liste d'origines ; aucun changement au fournisseur 3D, au modèle choisi, à la clé API ou aux dépendances.
+- Vérification : 15 tests ciblés puis 99 tests pytest complets réussis en 9,04 s avec `PYTHON_DOTENV_DISABLED=true` et `HF_SPACE_ID` vide. Le test HTTP utilise un GLB synthétique dans un stockage temporaire, sans réseau fournisseur. La syntaxe JS et le rendu navigateur restent à vérifier dans cette session.
+- Guide : `docs/etapes/etape-16.md` ; stockage et politique d'intégration : `docs/STOCKAGE.md`.
 
 ## Sprint 1 — terminé (état documenté au 3 novembre)
 
@@ -192,4 +201,4 @@ Les tailles ont été mesurées sur les photos et GLB présents localement. Les 
 
 ## Prochaine action recommandée
 
-Continuer avec l’étape 16 (Sprint 5d) : page `/embed/{public_id}`, widget `<forma3d-viewer>`, code à copier et CSP frame-ancestors paramétrable. Ne pas commencer le Sprint 6 sans OK explicite. La CI GitHub reste à vérifier par l’étudiante.
+Continuer avec l’étape 17 (Sprint 5e) : documentation, exemples et parcours d’intégration du service sur un site tiers. Ne pas commencer le Sprint 6 sans OK explicite. La CI GitHub reste à vérifier par l’étudiante.

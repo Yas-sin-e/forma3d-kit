@@ -65,6 +65,7 @@ def test_static_frontend_assets_are_served_and_only_api_module_calls_fetch() -> 
         "/static/js/pages/categories.js",
         "/static/js/pages/examples.js",
         "/static/js/pages/api-keys.js",
+        "/static/widget.js",
         "/static/js/pages/viewer-markup.js",
         "/static/js/views/uploader.js",
         "/static/js/views/progress.js",
@@ -147,6 +148,8 @@ def test_model_detail_has_an_opt_in_integration_control() -> None:
     assert 'id="detail-integration-toggle"' in detail
     assert "Désactivée par défaut" in detail
     assert "setModelIntegrationEnabled" in detail
+    assert 'id="detail-integration-code"' in detail
+    assert "<forma3d-viewer" in detail
     assert 'fetch(`/models/${encodeURIComponent(modelId)}/integration`' in api
 
     api = client.get("/static/js/api.js").text
@@ -190,5 +193,16 @@ def test_create_page_keeps_horizontal_journey_and_progress_layout() -> None:
 
     assert 'grid-template-columns: repeat(3, minmax(0, 1fr));' in components
     assert 'grid-template-columns: repeat(5, minmax(0, 1fr));' in components
-    assert "components.css?v=20261111-5b" in shell
-    assert '"./pages/create.js?v=20261111-5b"' in router
+    assert "components.css?v=20261111-5d" in shell
+    assert '"./pages/create.js?v=20261111-5d"' in router
+
+
+def test_widget_script_defines_the_integrator_tag_and_uses_embed_iframe() -> None:
+    client = TestClient(app)
+    response = client.get("/static/widget.js")
+    assert response.status_code == 200
+    assert "customElements.define(\"forma3d-viewer\"" in response.text
+    assert "new URL(scriptUrl, document.baseURI).origin" in response.text
+    assert "auto-rotate" in response.text
+    assert "/embed/" in response.text
+    assert "fetch(" not in response.text

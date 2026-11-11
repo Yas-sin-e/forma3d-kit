@@ -157,3 +157,4 @@ class APIIntegrationCodeResponse(BaseModel):
 
     public_id: str
     iframe_html: str
+    widget_html: str

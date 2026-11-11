@@ -2,8 +2,8 @@
  * Rôle : affiche une bande de vignettes réelles et filtre les modèles par catégorie.
  * Exécution : main.js charge la galerie et cette vue ouvre le modèle choisi au clic ou au clavier.
  */
-import { listGalleryModels } from "../api.js?v=20261111-5b";
-import { appState } from "../state.js?v=20261111-5b";
+import { listGalleryModels } from "../api.js?v=20261111-5d";
+import { appState } from "../state.js?v=20261111-5d";
 
 function formatMegabytes(bytes) {
   return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 2 }).format(bytes / (1024 * 1024)) + " Mo";

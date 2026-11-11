@@ -4,7 +4,7 @@
 
 Les métadonnées de catégorie et de modèle restent dans SQLite, via `SQLiteGenerationRepository`. Les fichiers restent sous `backend/storage/`. SQLite est fourni par Python ; l'étape n'ajoute aucun serveur de base de données.
 
-La base garde son chemin fixe `backend/data/forma3d.sqlite3`, ignoré par Git. Les plafonds API `API_DAILY_GENERATION_LIMIT` (20 créations/jour) et `API_RATE_LIMIT_PER_MINUTE` (10 requêtes/minute) ainsi que les origines CORS exactes `API_CORS_ORIGINS` sont configurables dans `.env.example`.
+La base garde son chemin fixe `backend/data/forma3d.sqlite3`, ignoré par Git. Les plafonds API `API_DAILY_GENERATION_LIMIT` (20 créations/jour) et `API_RATE_LIMIT_PER_MINUTE` (10 requêtes/minute), les origines CORS exactes `API_CORS_ORIGINS` et les origines autorisées à intégrer un viewer `EMBED_ALLOWED_ORIGINS` sont configurables dans `.env.example`. Les deux listes sont vides par défaut et refusent le joker `*`.
 
 ## Tables et origines
 
@@ -37,3 +37,9 @@ Les badges visibles sont dérivés d'`origin` : « Généré par l'application �
 `backend/tests/test_model_library.py` contrôle l'import valide, l'extension et le contenu incorrects, la taille maximale, les catégories absentes/inactives, la copie d'un exemple et la migration sans perte. `backend/tests/test_generation_repository.py` contrôle la persistance SQLite générale. Tous les cas utilisent des fichiers temporaires, des conteneurs GLB minimaux de test et des appels HTTP locaux ; aucun fichier test n'est un modèle réel généré par le fournisseur.
 
 Les compteurs de quota et de débit sont persistants : une relance du serveur ne remet pas les limites à zéro. Les événements de débit plus anciens que 60 secondes sont nettoyés lorsqu'une nouvelle requête est acceptée. La liste locale n'est pas un compte multi-utilisateur : les modèles sont partagés dans le stockage local de cette instance. Les clés protègent les routes versionnées `/api/v1` via `require_api_key` et une limite de débit par clé ; le quota quotidien ne s'applique qu'aux créations valides de modèles. La console de gestion du Studio n'a pas d'authentification et reste réservée à un usage local ou de démonstration. Aucune génération réelle, import depuis le navigateur, inspection visuelle ou vérification CI GitHub n'est déduite des tests automatiques.
+
+## Intégration sur un site tiers
+
+Un modèle public n'est consultable qu'après activation explicite depuis sa fiche. `/embed/{public_id}` vérifie qu'il est terminé, activé et que son GLB est disponible ; sinon la réponse est 404. La page ne révèle ni nom de chemin local, ni clé API, ni donnée de la photo source. Le widget `frontend/widget.js` crée une iframe et laisse le rendu 3D isolé du site marchand. Le code d'intégration est fourni par `/api/v1/models/{id}/integration-code` et affiché sur la fiche dans le Studio.
+
+La réponse CSP définit `frame-ancestors 'self'` et ajoute uniquement les origines HTTP(S) exactes de `EMBED_ALLOWED_ORIGINS`. Une liste vide signifie qu'un site d'une autre origine ne pourra pas encadrer le viewer. CORS (`API_CORS_ORIGINS`) est un réglage distinct : il autorise les requêtes JavaScript vers l'API, tandis que `EMBED_ALLOWED_ORIGINS` autorise l'inclusion de la page viewer dans une iframe. Aucune des deux listes ne permet `*`.
