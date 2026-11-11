@@ -18,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from app.providers.huggingface import HuggingFaceSpaceProvider
 from app.repositories.sqlite_repository import SQLiteGenerationRepository
 from app.routers.categories import router as categories_router
+from app.routers.models import public_router as public_models_router
 from app.routers.models import router as models_router
 from app.services.category_service import CategoryService
 from app.services.demo_gallery import DemoGallery
@@ -63,6 +64,7 @@ app.state.max_glb_upload_bytes = provider.settings.max_glb_upload_mb * 1024 * 10
 app.state.demo_gallery = DemoGallery()
 
 app.include_router(models_router)
+app.include_router(public_models_router)
 app.include_router(categories_router)
 app.mount(
     "/static",

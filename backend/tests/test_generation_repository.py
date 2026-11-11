@@ -10,6 +10,7 @@ import struct
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
+from uuid import UUID
 
 from app.models import GenerationStatus, ProductCategory
 from app.repositories.sqlite_repository import SQLiteGenerationRepository
@@ -89,12 +90,15 @@ def test_completed_generation_survives_repository_and_service_restart(tmp_path: 
 
     assert restored is not None
     assert restored.status is GenerationStatus.DONE
+    assert restored.public_id is not None and UUID(restored.public_id).version == 4
+    assert restored.embed_enabled is False
     assert restored.category == ProductCategory.STOOL
     assert restored.image_path.read_bytes() == b"\x89PNG\r\n\x1a\ntest"
     assert restored.model_path is not None and restored.model_path.is_file()
     assert restarted_service.get_model_path(record.id) == restored.model_path
     assert restarted_service.get_source_image_path(record.id) == restored.image_path
     assert [item.id for item in restarted_service.list_completed_generations()] == [record.id]
+    assert restarted_service.get_generation(record.id).public_id == restored.public_id
 
 
 def test_initialize_fails_pending_and_running_generations_after_restart(tmp_path: Path) -> None:

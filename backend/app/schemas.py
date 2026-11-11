@@ -27,6 +27,8 @@ class GenerationResponse(BaseModel):
         description="Avertissement non bloquant issu de la préparation locale de la photo.",
     )
     origin: Literal["generated", "imported", "example"] = "generated"
+    public_id: str | None = None
+    embed_enabled: bool = False
 
 
 class DemoModelResponse(BaseModel):
@@ -44,6 +46,26 @@ class DemoModelResponse(BaseModel):
     size_bytes: int
     model_url: str
     source_image_url: str | None = None
+    public_id: str | None = None
+    embed_enabled: bool = False
+
+
+class EmbedIntegrationRequest(BaseModel):
+    """Demande d'activation ou de désactivation pour une fiche terminée."""
+
+    enabled: bool
+
+
+class PublicModelResponse(BaseModel):
+    """Métadonnées minimales exposées lorsque l'intégration est activée."""
+
+    public_id: str
+    name: str
+    filename: str
+    category: str
+    origin: Literal["generated", "imported", "example"]
+    created_at: datetime
+    model_url: str
 
 
 class DemoGalleryResponse(BaseModel):

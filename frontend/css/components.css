@@ -1830,6 +1830,25 @@ main#app {
   font-weight: 650;
 }
 
+.detail-integration {
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background: var(--surface-raised);
+}
+
+.detail-integration h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.detail-integration p {
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 16px;
+}
+
 .detail-download {
   width: 100%;
   justify-content: center;

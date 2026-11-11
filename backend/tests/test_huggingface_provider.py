@@ -551,6 +551,7 @@ def test_settings_reads_backend_env_before_root_env(monkeypatch, tmp_path: Path)
     monkeypatch.delenv("HF_TOKEN", raising=False)
     monkeypatch.delenv("FOREGROUND_RATIO", raising=False)
     monkeypatch.delenv("MC_RESOLUTION", raising=False)
+    monkeypatch.delenv("PYTHON_DOTENV_DISABLED", raising=False)
 
     settings = get_settings()
 

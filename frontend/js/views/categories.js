@@ -2,7 +2,7 @@
  * Rôle : gère la création, le renommage, l'activation et la suppression des catégories.
  * Exécution : main.js charge la vue et la connecte au formulaire et aux filtres de galerie.
  */
-import { createCategory, deleteCategory, listCategories, updateCategory } from "../api.js?v=20261110-11b-final";
+import { createCategory, deleteCategory, listCategories, updateCategory } from "../api.js?v=20261111-5a";
 
 export function setupCategoryManager(onCategoriesChanged) {
   const createForm = document.querySelector("#category-create-form");

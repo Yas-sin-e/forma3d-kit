@@ -75,6 +75,25 @@ class GenerationService:
         with self._lock:
             return self._repository.get_generation(generation_id)
 
+    def get_generation_by_public_id(self, public_id: str) -> GenerationRecord | None:
+        """Retourne un modèle via son identifiant public d'intégration."""
+        with self._lock:
+            return self._repository.get_generation_by_public_id(public_id)
+
+    def set_integration_enabled(
+        self,
+        generation_id: str,
+        enabled: bool,
+    ) -> GenerationRecord | None:
+        """Change l'autorisation publique d'un modèle DONE dont le GLB existe."""
+        with self._lock:
+            record = self._repository.get_generation(generation_id)
+            if record is None:
+                return None
+            if record.status is not GenerationStatus.DONE or self.get_model_path(generation_id) is None:
+                raise ValueError("Seuls les modèles terminés avec un GLB disponible peuvent être intégrés.")
+            return self._repository.set_embed_enabled(generation_id, enabled)
+
     def get_model_path(self, generation_id: str) -> Path | None:
         """Retourne uniquement un modèle lié à une génération DONE."""
         record = self.get_generation(generation_id)
@@ -164,7 +183,8 @@ class GenerationService:
         )
         with self._lock:
             self._repository.save_generation(record)
-        return record
+            persisted = self._repository.get_generation(model_id)
+        return persisted or record
 
     def run(self, generation_id: str) -> None:
         """Exécute le fournisseur et publie DONE ou FAILED de façon atomique."""

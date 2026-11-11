@@ -9,7 +9,13 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPExcepti
 from fastapi.responses import FileResponse
 
 from app.models import GenerationRecord, GenerationStatus, ModelOrigin
-from app.schemas import DemoGalleryResponse, DemoModelResponse, GenerationResponse
+from app.schemas import (
+    DemoGalleryResponse,
+    DemoModelResponse,
+    EmbedIntegrationRequest,
+    GenerationResponse,
+    PublicModelResponse,
+)
 from app.services.generation_service import GenerationService
 from app.services.demo_gallery import DemoGallery
 from app.services.upload_validator import (
@@ -19,6 +25,7 @@ from app.services.upload_validator import (
 )
 
 router = APIRouter(prefix="/models", tags=["models"])
+public_router = APIRouter(prefix="/public/models", tags=["public-models"])
 
 
 def get_generation_service(request: Request) -> GenerationService:
@@ -48,6 +55,8 @@ def _to_response(record: GenerationRecord) -> GenerationResponse:
         image_warning=record.image_warning,
         origin=record.origin.value,
         duration_seconds=record.duration_seconds,
+        public_id=record.public_id,
+        embed_enabled=record.embed_enabled,
     )
 
 
@@ -106,9 +115,73 @@ def list_demo_models(
                 size_bytes=model_path.stat().st_size,
                 model_url=f"/models/{record.id}/glb",
                 source_image_url=f"/models/{record.id}/source-image" if source_path else None,
+                public_id=record.public_id,
+                embed_enabled=record.embed_enabled,
             )
         )
     return DemoGalleryResponse(items=items)
+
+
+@router.patch("/{generation_id}/integration", response_model=GenerationResponse)
+def update_model_integration(
+    generation_id: str,
+    payload: EmbedIntegrationRequest,
+    service: Annotated[GenerationService, Depends(get_generation_service)],
+) -> GenerationResponse:
+    """Active ou désactive l'exposition publique d'un modèle terminé."""
+    try:
+        record = service.set_integration_enabled(generation_id, payload.enabled)
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    if record is None:
+        raise HTTPException(status_code=404, detail="Modèle introuvable.")
+    return _to_response(record)
+
+
+def _get_enabled_public_model(
+    public_id: str,
+    service: GenerationService,
+) -> tuple[GenerationRecord, Path]:
+    """Résout uniquement un GLB terminé et explicitement autorisé à l'intégration."""
+    record = service.get_generation_by_public_id(public_id)
+    if record is None or not record.embed_enabled or record.status is not GenerationStatus.DONE:
+        raise HTTPException(status_code=404, detail="Ce modèle n'est pas disponible pour l'intégration.")
+    model_path = service.get_model_path(record.id)
+    if model_path is None:
+        raise HTTPException(status_code=404, detail="Ce modèle n'est pas disponible pour l'intégration.")
+    return record, model_path
+
+
+@public_router.get("/{public_id}", response_model=PublicModelResponse)
+def read_public_model(
+    public_id: str,
+    service: Annotated[GenerationService, Depends(get_generation_service)],
+) -> PublicModelResponse:
+    """Expose les seules métadonnées nécessaires à un modèle autorisé."""
+    record, _model_path = _get_enabled_public_model(public_id, service)
+    return PublicModelResponse(
+        public_id=public_id,
+        name=Path(record.filename).stem,
+        filename=record.filename,
+        category=record.category,
+        origin=record.origin.value,
+        created_at=record.created_at,
+        model_url=f"/public/models/{public_id}/glb",
+    )
+
+
+@public_router.get("/{public_id}/glb")
+def download_public_model(
+    public_id: str,
+    service: Annotated[GenerationService, Depends(get_generation_service)],
+) -> FileResponse:
+    """Sert le GLB uniquement tant que son intégration est activée."""
+    record, model_path = _get_enabled_public_model(public_id, service)
+    return FileResponse(
+        path=model_path,
+        media_type="model/gltf-binary",
+        filename=record.filename,
+    )
 
 
 @router.post("/import", response_model=GenerationResponse, status_code=201)

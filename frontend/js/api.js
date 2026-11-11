@@ -74,6 +74,15 @@ export async function copyExampleModel(exampleId, title, category) {
   return readResponse(response, "Impossible d’ajouter cet exemple à vos modèles.");
 }
 
+export async function setModelIntegrationEnabled(modelId, enabled) {
+  const response = await fetch(`/models/${encodeURIComponent(modelId)}/integration`, {
+    method: "PATCH",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled }),
+  });
+  return readResponse(response, "Impossible de modifier l’intégration de ce modèle.");
+}
+
 export async function getProviderHealth() {
   const response = await fetch("/health/provider", {
     cache: "no-store",

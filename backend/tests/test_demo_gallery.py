@@ -46,6 +46,8 @@ def test_gallery_lists_only_existing_valid_allowlisted_glb_files(tmp_path: Path)
                 "size_bytes": len(valid_glb),
                 "model_url": "/models/gallery/chair-bentwood",
                 "source_image_url": None,
+                "public_id": None,
+                "embed_enabled": False,
             }
         ]
     }

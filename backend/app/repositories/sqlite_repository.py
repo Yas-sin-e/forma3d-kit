@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Iterator
+from uuid import uuid4
 
 from app.models import CategoryRecord, GenerationRecord, GenerationStatus, ModelOrigin, ProductCategory
 from app.repositories.base import CategoryConflictError, CategoryInUseError, CategoryNotFoundError
@@ -74,6 +75,8 @@ class SQLiteGenerationRepository:
                     error_message TEXT,
                     image_warning TEXT,
                     origin TEXT NOT NULL DEFAULT 'generated' CHECK (origin IN ('generated', 'imported', 'example')),
+                    public_id TEXT,
+                    embed_enabled INTEGER NOT NULL DEFAULT 0 CHECK (embed_enabled IN (0, 1)),
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 )
@@ -89,6 +92,23 @@ class SQLiteGenerationRepository:
                 connection.execute(
                     "ALTER TABLE generations ADD COLUMN origin TEXT NOT NULL DEFAULT 'generated'"
                 )
+            if "public_id" not in generation_columns:
+                connection.execute("ALTER TABLE generations ADD COLUMN public_id TEXT")
+            if "embed_enabled" not in generation_columns:
+                connection.execute(
+                    "ALTER TABLE generations ADD COLUMN embed_enabled INTEGER NOT NULL DEFAULT 0"
+                )
+            completed_without_public_id = connection.execute(
+                "SELECT id FROM generations WHERE status = 'DONE' AND public_id IS NULL"
+            ).fetchall()
+            connection.executemany(
+                "UPDATE generations SET public_id = ? WHERE id = ?",
+                [(str(uuid4()), row["id"]) for row in completed_without_public_id],
+            )
+            connection.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_generations_public_id "
+                "ON generations(public_id) WHERE public_id IS NOT NULL"
+            )
             connection.execute(
                 "CREATE INDEX IF NOT EXISTS idx_generations_status_created "
                 "ON generations(status, created_at DESC)"
@@ -118,10 +138,10 @@ class SQLiteGenerationRepository:
                 INSERT INTO generations (
                     id, category_id, status, filename, content_type,
                     source_photo_path, glb_path, duration_seconds, error_message, image_warning, origin,
-                    created_at, updated_at
+                    public_id, embed_enabled, created_at, updated_at
                 )
                 VALUES (
-                    ?, (SELECT id FROM categories WHERE slug = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                    ?, (SELECT id FROM categories WHERE slug = ?), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
                 )
                 ON CONFLICT(id) DO UPDATE SET
                     category_id = excluded.category_id,
@@ -134,6 +154,8 @@ class SQLiteGenerationRepository:
                     error_message = excluded.error_message,
                     image_warning = excluded.image_warning,
                     origin = excluded.origin,
+                    public_id = COALESCE(generations.public_id, excluded.public_id),
+                    embed_enabled = generations.embed_enabled,
                     created_at = excluded.created_at,
                     updated_at = excluded.updated_at
                 """,
@@ -149,6 +171,8 @@ class SQLiteGenerationRepository:
                     record.error_message,
                     record.image_warning,
                     record.origin.value,
+                    record.public_id or (str(uuid4()) if record.status is GenerationStatus.DONE else None),
+                    int(record.embed_enabled),
                     record.created_at.isoformat(),
                     record.updated_at.isoformat(),
                 ),
@@ -157,6 +181,43 @@ class SQLiteGenerationRepository:
     def get_generation(self, generation_id: str) -> GenerationRecord | None:
         """Reconstruit le modèle métier à partir d'une ligne persistée."""
         with self._connection() as connection:
+            row = connection.execute(
+                """
+                SELECT generations.*, categories.slug AS category_slug
+                FROM generations
+                JOIN categories ON categories.id = generations.category_id
+                WHERE generations.id = ?
+                """,
+                (generation_id,),
+            ).fetchone()
+        return self._record_from_row(row) if row is not None else None
+
+    def get_generation_by_public_id(self, public_id: str) -> GenerationRecord | None:
+        """Recherche une génération par son UUID d'intégration."""
+        with self._connection() as connection:
+            row = connection.execute(
+                """
+                SELECT generations.*, categories.slug AS category_slug
+                FROM generations
+                JOIN categories ON categories.id = generations.category_id
+                WHERE generations.public_id = ?
+                """,
+                (public_id,),
+            ).fetchone()
+        return self._record_from_row(row) if row is not None else None
+
+    def set_embed_enabled(self, generation_id: str, enabled: bool) -> GenerationRecord | None:
+        """Modifie l'autorisation d'intégration sans changer l'UUID public."""
+        with self._connection() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE generations SET embed_enabled = ?, updated_at = ?
+                WHERE id = ? AND status = 'DONE' AND public_id IS NOT NULL
+                """,
+                (int(enabled), datetime.now(UTC).isoformat(), generation_id),
+            )
+            if cursor.rowcount == 0:
+                return None
             row = connection.execute(
                 """
                 SELECT generations.*, categories.slug AS category_slug
@@ -304,4 +365,6 @@ class SQLiteGenerationRepository:
             duration_seconds=row["duration_seconds"],
             image_warning=row["image_warning"],
             origin=ModelOrigin(row["origin"]) if "origin" in row.keys() else ModelOrigin.GENERATED,
+            public_id=row["public_id"] if "public_id" in row.keys() else None,
+            embed_enabled=bool(row["embed_enabled"]) if "embed_enabled" in row.keys() else False,
         )

@@ -34,6 +34,14 @@ class GenerationRepository(Protocol):
         """Retourne une génération par son identifiant, ou None si elle est inconnue."""
         ...
 
+    def get_generation_by_public_id(self, public_id: str) -> GenerationRecord | None:
+        """Retourne une génération par UUID public, ou None si elle n'existe pas."""
+        ...
+
+    def set_embed_enabled(self, generation_id: str, enabled: bool) -> GenerationRecord | None:
+        """Active ou désactive l'intégration d'un modèle terminé."""
+        ...
+
     def list_completed_generations(self) -> list[GenerationRecord]:
         """Retourne les générations terminées, de la plus récente à la plus ancienne."""
         ...

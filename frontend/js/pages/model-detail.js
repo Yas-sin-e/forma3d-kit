@@ -2,7 +2,7 @@
  * Rôle : charge une fiche produit par identifiant et présente son état, sa photo et son GLB.
  * Exécution : router.js monte cette page sur #/modeles/{id}, y compris pour signaler un identifiant inconnu.
  */
-import { getGenerationStatus, listCategories, listGalleryModels } from "../api.js?v=20261110-11b-final";
+import { getGenerationStatus, listCategories, listGalleryModels, setModelIntegrationEnabled } from "../api.js?v=20261111-5a";
 
 export const title = "Fiche du modèle";
 
@@ -27,6 +27,11 @@ export function render(route) {
             <div><dt>Date de création</dt><dd id="detail-date">—</dd></div>
             <div><dt>Durée</dt><dd id="detail-duration">—</dd></div>
           </dl>
+          <section class="detail-integration" id="detail-integration" aria-labelledby="detail-integration-title" hidden>
+            <h3 id="detail-integration-title">Intégration sur un site</h3>
+            <p id="detail-integration-status" role="status" aria-live="polite"></p>
+            <button class="button button-secondary" id="detail-integration-toggle" type="button" aria-pressed="false">Activer l’intégration</button>
+          </section>
           <a class="button button-primary detail-download" id="detail-download" href="#" download hidden>Télécharger le modèle</a>
           <figure class="detail-source-photo" id="detail-source-figure" hidden><figcaption>Photo d’origine</figcaption><img id="detail-source-image" alt="Photo d’origine du produit"></figure>
         </aside>
@@ -65,10 +70,15 @@ export function mount(route) {
   const date = document.querySelector("#detail-date");
   const duration = document.querySelector("#detail-duration");
   const download = document.querySelector("#detail-download");
+  const integration = document.querySelector("#detail-integration");
+  const integrationStatus = document.querySelector("#detail-integration-status");
+  const integrationToggle = document.querySelector("#detail-integration-toggle");
   const sourceFigure = document.querySelector("#detail-source-figure");
   const sourceImage = document.querySelector("#detail-source-image");
   let pollTimer = null;
   let generation = null;
+  let model = null;
+  let labels = [];
 
   function showError(message) {
     empty.hidden = true;
@@ -94,6 +104,15 @@ export function mount(route) {
     date.textContent = record.created_at ? formatDate(record.created_at) : "Date non disponible pour cet exemple";
     duration.textContent = formatDuration(record.duration_seconds);
     error.hidden = true;
+    integration.hidden = !model?.public_id;
+    if (model?.public_id) {
+      const enabled = Boolean(model.embed_enabled);
+      integrationStatus.textContent = enabled
+        ? "L’intégration est activée pour ce modèle."
+        : "Désactivée par défaut. Le modèle reste privé tant que vous ne l’activez pas.";
+      integrationToggle.textContent = enabled ? "Désactiver l’intégration" : "Activer l’intégration";
+      integrationToggle.setAttribute("aria-pressed", String(enabled));
+    }
 
     const modelUrl = model?.model_url || record.model_url;
     if (modelUrl) {
@@ -125,14 +144,30 @@ export function mount(route) {
     }
   }
 
+  integrationToggle.addEventListener("click", async () => {
+    if (!model?.public_id || integrationToggle.disabled) return;
+    const enabled = !model.embed_enabled;
+    integrationToggle.disabled = true;
+    integrationStatus.textContent = "Mise à jour de l’autorisation…";
+    try {
+      const updated = await setModelIntegrationEnabled(model.id, enabled);
+      model = { ...model, public_id: updated.public_id, embed_enabled: updated.embed_enabled };
+      showGeneration(generation, model, labels);
+    } catch (toggleError) {
+      integrationStatus.textContent = toggleError.message || "Impossible de modifier l’intégration.";
+    } finally {
+      integrationToggle.disabled = false;
+    }
+  });
+
   async function load() {
     try {
       const [galleryResponse, categoryResponse] = await Promise.all([
         listGalleryModels(),
         listCategories(true).catch(() => ({ items: [] })),
       ]);
-      const model = (galleryResponse.items ?? []).find((item) => item.id === route.id) || null;
-      const labels = categoryResponse.items ?? [];
+      model = (galleryResponse.items ?? []).find((item) => item.id === route.id) || null;
+      labels = categoryResponse.items ?? [];
       try {
         generation = await getGenerationStatus(`/models/${encodeURIComponent(route.id)}`);
       } catch (statusError) {

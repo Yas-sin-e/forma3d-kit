@@ -132,3 +132,19 @@ def test_run_ignores_unknown_generation_ids(tmp_path: Path) -> None:
     service = GenerationService(UnavailableProvider(), LocalStorage(tmp_path), repository)
 
     service.run(str(uuid4()))
+
+
+def test_integration_cannot_be_enabled_before_a_glb_is_done(tmp_path: Path) -> None:
+    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    repository.initialize()
+    service = GenerationService(UnavailableProvider(), LocalStorage(tmp_path), repository)
+    record = service.create_generation(
+        _validated_upload(), b"\xff\xd8\xffphoto", ProductCategory.CHAIR
+    )
+
+    try:
+        service.set_integration_enabled(record.id, True)
+    except ValueError as error:
+        assert str(error) == "Seuls les modèles terminés avec un GLB disponible peuvent être intégrés."
+    else:
+        raise AssertionError("Une génération en attente ne doit pas être intégrable.")

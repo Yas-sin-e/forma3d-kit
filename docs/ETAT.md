@@ -10,7 +10,7 @@ Les Sprints 3 (comptes publics) et 4 (vitrine/catalogue public) sont retirés du
 
 - Objectif : exposer de façon contrôlée les modèles terminés par une API avec clé et un widget intégrable.
 - Livrable vérifiable : modèle activable individuellement, clé révocable non stockée en clair, routes versionnées authentifiées, iframe/widget intégrable et guide d'intégration.
-- Étape 0 documentaire terminée le 10 novembre 2026. Prochaine sous-étape : 5a / étape 13.
+- Étapes 0 et 5a (étape 13) terminées le 11 novembre 2026. Prochaine sous-étape : 5b / étape 14.
 - Le Sprint 6 reste non démarré et nécessite un OK explicite.
 
 ## Sprint 2 — Qualité et fiabilité (terminé)
@@ -81,6 +81,17 @@ Les Sprints 3 (comptes publics) et 4 (vitrine/catalogue public) sont retirés du
 - Vérification : suite complète pytest, 83 tests réussis en 5,44 s ; les 31 tests ciblés correspondants avaient également réussi. Node `--check` a accepté les modules JavaScript et `git diff --check` n'a trouvé aucune erreur d'espacement. Les tests utilisent SQLite temporaire et un GLB minimal construit uniquement pour vérifier le format ; aucun fournisseur distant n'a été appelé.
 - Non vérifié : navigation et formulaire dans un vrai navigateur, import d'un GLB réel depuis le poste, affichage visuel du nouveau modèle, fonctionnement à 360 px et CI GitHub. Le fournisseur 3D et le modèle choisi n'ont pas été modifiés. `backend/.env` n'a pas été consulté ni modifié.
 - Suivi pédagogique : `docs/etapes/etape-12.md`; détail de persistance : `docs/STOCKAGE.md`; structure des fichiers : `docs/STRUCTURE.md`.
+
+## Étape 13 — Sprint 5a : identifiant public et activation
+
+- Chaque génération terminée, import et exemple copié possède un UUID public de version 4, attribué lors de la fin ou de la migration. L'indicateur embed_enabled est désactivé par défaut.
+- La migration SQLite ajoute public_id et embed_enabled sans reconstruire ni perdre les lignes existantes. Elle attribue une seule fois un UUID4 aux lignes DONE existantes et conserve ensuite cet identifiant.
+- PATCH /models/{id}/integration permet d'activer ou désactiver un modèle DONE dont le GLB existe. La fiche du modèle du Studio expose ce bouton uniquement aux modèles persistés.
+- GET /public/models/{public_id} et GET /public/models/{public_id}/glb répondent 404 tant que le modèle n'est pas explicitement activé. Le JSON public ne révèle ni identifiant interne, ni chemin local, ni photo source.
+- Les exemples fixes de la galerie restent inactivables ; leur copie dans Mes modèles reçoit un UUID public désactivé, comme un import ou une génération.
+- Vérification : 87 tests pytest réussis en 4,02 s avec HF_SPACE_ID vide, dotenv désactivé et accès localhost autorisé pour TestClient ; tous les modules JavaScript passent node --check ; git diff --check passe. Aucun fournisseur n'a été appelé.
+- Non vérifié : parcours visuel dans un navigateur et génération 3D réelle. Le Studio n'a pas d'authentification ; il reste réservé au local ou à une démonstration et ne doit pas être exposé publiquement tel quel.
+- Guide pédagogique : docs/etapes/etape-13.md. Aucun fournisseur, modèle, dépendance ou variable d'environnement n'a changé.
 
 ## Sprint 1 — terminé (état documenté au 3 novembre)
 
@@ -160,4 +171,4 @@ Les tailles ont été mesurées sur les photos et GLB présents localement. Les 
 
 ## Prochaine action recommandée
 
-Après validation d'un environnement d'inférence autorisé, relire son contrat `view_api()` et reprendre les essais qualité laissés en attente ; les étiquettes visuelles et la CI doivent ensuite être vérifiées séparément.
+Continuer avec l'étape 14 (Sprint 5b) : clés API affichées une seule fois, empreinte SHA-256 persistée et révocation ; ne jamais stocker ni journaliser une clé en clair. La CI GitHub reste à vérifier par l'étudiante.

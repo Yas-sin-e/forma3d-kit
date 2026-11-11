@@ -61,3 +61,5 @@ class GenerationRecord:
     duration_seconds: float | None = None
     image_warning: str | None = None
     origin: ModelOrigin = ModelOrigin.GENERATED
+    public_id: str | None = None
+    embed_enabled: bool = False

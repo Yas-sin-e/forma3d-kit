@@ -130,6 +130,17 @@ def test_hash_router_and_pages_cover_accessible_seller_routes() -> None:
     assert "copyExampleModel" in examples
     assert "detail-origin" in detail
 
+
+def test_model_detail_has_an_opt_in_integration_control() -> None:
+    client = TestClient(app)
+    detail = client.get("/static/js/pages/model-detail.js").text
+    api = client.get("/static/js/api.js").text
+
+    assert 'id="detail-integration-toggle"' in detail
+    assert "Désactivée par défaut" in detail
+    assert "setModelIntegrationEnabled" in detail
+    assert 'fetch(`/models/${encodeURIComponent(modelId)}/integration`' in api
+
     api = client.get("/static/js/api.js").text
     viewer_markup = client.get("/static/js/pages/viewer-markup.js").text
     assert 'fetch("/models/import"' in api
@@ -171,5 +182,5 @@ def test_create_page_keeps_horizontal_journey_and_progress_layout() -> None:
 
     assert 'grid-template-columns: repeat(3, minmax(0, 1fr));' in components
     assert 'grid-template-columns: repeat(5, minmax(0, 1fr));' in components
-    assert "components.css?v=20261110-11b-final" in shell
-    assert '"./pages/create.js?v=20261110-11b-final"' in router
+    assert "components.css?v=20261111-5a" in shell
+    assert '"./pages/create.js?v=20261111-5a"' in router
