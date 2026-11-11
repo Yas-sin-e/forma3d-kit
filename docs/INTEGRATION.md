@@ -1,6 +1,6 @@
 # Guide d’intégration Forma3D
 
-Ce guide s’adresse à la personne qui connecte une boutique au service Forma3D. Il décrit les routes et les limites présentes dans le code du dépôt. Il ne contient ni clé API réelle, ni identifiant de modèle réel.
+Ce guide s’adresse à la personne qui connecte une boutique au service Forma3D. Une version lisible est aussi affichée dans le Studio, page **Guide d’intégration** (`#/guide`), avec l’adresse réelle du service dans les exemples. Il décrit les routes et les limites présentes dans le code du dépôt. Il ne contient ni clé API réelle, ni identifiant de modèle réel.
 
 ## Avant de commencer
 

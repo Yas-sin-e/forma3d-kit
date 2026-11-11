@@ -3,7 +3,7 @@
  * et maintient la navigation accessible (lien actif, titre, focus).
  * Exécution : main.js lance startRouter() au chargement de la coque HTML.
  * Refonte : routes #/login et #/accueil, redirection vers #/login sans session,
- * menu « Administration » (Catégories, Clés API), paramètres ?query et ancres #section.
+ * menu « Administration » (Catégories, Clés API, Guide), paramètres ?query et ancres #section.
  */
 import { isAuthenticated, rememberNextRoute } from "./auth.js?v=20261111-ui";
 import * as loginPage from "./pages/login.js?v=20261111-ui";
@@ -14,6 +14,7 @@ import * as modelDetailPage from "./pages/model-detail.js?v=20261111-ui";
 import * as categoriesPage from "./pages/categories.js?v=20261111-ui";
 import * as examplesPage from "./pages/examples.js?v=20261111-ui";
 import * as apiKeysPage from "./pages/api-keys.js?v=20261111-ui";
+import * as guidePage from "./pages/guide.js?v=20261111-ui";
 
 const app = document.querySelector("#app");
 const nav = document.querySelector("#main-nav");
@@ -28,8 +29,9 @@ const pageModules = {
   categories: categoriesPage,
   examples: examplesPage,
   apiKeys: apiKeysPage,
+  guide: guidePage,
 };
-const adminNavKeys = new Set(["categories", "api-keys"]);
+const adminNavKeys = new Set(["categories", "api-keys", "guide"]);
 const generationIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 let createContainer = null;
 let activeContainer = null;
@@ -61,6 +63,7 @@ function parseRoute(hash) {
   }
   if (parts.length === 1 && parts[0] === "categories") return { ...base, key: "categories", navKey: "categories", path: "/categories" };
   if (parts.length === 1 && parts[0] === "exemples") return { ...base, key: "examples", navKey: "examples", path: "/exemples" };
+  if (parts.length === 1 && parts[0] === "guide") return { ...base, key: "guide", navKey: "guide", path: "/guide" };
   if (parts.length === 1 && parts[0] === "cles-api") return { ...base, key: "apiKeys", navKey: "api-keys", path: "/cles-api" };
   return { ...base, key: "notFound", navKey: null, path: raw };
 }

@@ -1,6 +1,6 @@
 # Structure expliquée — Forma3D Studio
 
-Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 sont retirés. Les étapes 11, 11b et 12 ont amélioré le Studio avant le Sprint 5, maintenant actif (étapes 0, 13 / 5a, 14 / 5b, 15 / 5c et 16 / 5d terminées, plus la refonte visuelle 16b ; étape 17 / 5e en cours). Le Sprint 6 n'est pas démarré.
+Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 sont retirés. Les étapes 11, 11b et 12 ont amélioré le Studio avant le Sprint 5, maintenant actif (étapes 0, 13 / 5a, 14 / 5b, 15 / 5c et 16 / 5d terminées, plus la refonte visuelle 16b ; étape 17 / 5e terminée). Le Sprint 6 n'est pas démarré.
 
 ## Racine et documents de cadrage
 
@@ -96,6 +96,7 @@ Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 s
 | `frontend/js/pages/categories.js` | Page de gestion des catégories avec compteur de modèles enregistrés par catégorie | Montre quelles catégories sont utilisées avant une suppression | Sur `#/categories` |
 | `frontend/js/pages/login.js` | Écran de connexion plein écran avec mot de passe unique | Le Studio est mono-propriétaire : pas de nom d'utilisateur | Sur `#/login` et pour toute visite non connectée |
 | `frontend/js/pages/dashboard.js` | Accueil : héros, chiffres clés (modèles, clés actives, catégories), modèles récents, exemples et raccourcis | Remplace l'entrée directe sur Créer par une vue d'ensemble | Sur `#/accueil`, page par défaut |
+| `frontend/js/pages/guide.js` | Guide d'intégration affiché dans le Studio : clé, envoi, suivi, activation, iframe/widget, quotas, origines et sécurité | `docs/` n'est pas servi par FastAPI ; cette page rend le guide accessible depuis l'accueil, le menu et le pied de page | Sur `#/guide` |
 | `frontend/js/pages/api-keys.js` | Guide en 4 étapes, exemple curl des routes `/api/v1`, création, cartes de clés avec badge et révocation confirmée ; secret affiché une seule fois | Rend l'API compréhensible sans renvoyer la clé au navigateur après création | Sur `#/cles-api` |
 | `frontend/js/pages/examples.js` | Présente les exemples avec la durée réellement mesurée à l'étape 6 et propose de les copier dans Mes modèles | Montre la qualité actuelle sans inventer de chiffres | Sur `#/exemples` |
 | `frontend/widget.js` | Définit `<forma3d-viewer>` et crée une iframe vers le modèle public activé | Isole le viewer du site client et vérifie l'identifiant public avant de construire l'URL | Lorsqu'une boutique colle le code du widget |
@@ -201,4 +202,4 @@ Le registre des métadonnées, les empreintes de clés, les quotas journaliers e
 |---|---|---|---|
 | `docs/INTEGRATION.md` | Guide la création d'une clé et les requêtes d'intégration, les erreurs, quotas, CORS et CSP | Donne à une personne externe un parcours basé sur les routes réellement existantes | Lors du branchement d'une boutique |
 | `examples/integration.html` | Page de démonstration pour saisir une origine serveur et un UUID public puis charger le widget | Montre le composant avec un modèle réel activé, sans intégrer de faux GLB ni clé | Pour un test local d'intégration |
-| `docs/etapes/etape-17.md` | Explique le guide et l'exemple, et consigne que les tests complets/navigateur restent bloqués | Sépare le travail écrit de la validation qui n'a pas été possible | Pour reprendre et clôturer le Sprint 5e |
+| `docs/etapes/etape-17.md` | Explique le guide, la page `#/guide`, l'exemple HTML et les vérifications réellement faites | Clôture le Sprint 5e avec une preuve honnête | Pour présenter l'intégration à la soutenance |

@@ -281,3 +281,18 @@ def test_redesigned_pages_offer_guides_counts_and_honest_examples() -> None:
     assert "formatRelativeDate" in gallery
     # Les durées d'exemple proviennent des mesures de docs/etapes/etape-06.md.
     assert '"chair-bentwood": 215.0' in formatters
+
+
+def test_integration_guide_page_is_reachable_from_the_studio() -> None:
+    client = TestClient(app)
+    shell = client.get("/").text
+    router = client.get("/static/js/router.js").text
+    dashboard = client.get("/static/js/pages/dashboard.js").text
+    guide = client.get("/static/js/pages/guide.js")
+
+    assert guide.status_code == 200
+    assert "fetch(" not in guide.text
+    assert 'parts[0] === "guide"' in router
+    assert 'href="#/guide"' in shell and 'href="#/guide"' in dashboard
+    for fragment in ("/api/v1/models", "X-API-Key", "/embed/", "<forma3d-viewer", "EMBED_ALLOWED_ORIGINS", "API_DAILY_GENERATION_LIMIT"):
+        assert fragment in guide.text

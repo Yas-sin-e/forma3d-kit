@@ -70,7 +70,7 @@ export function render() {
           <a class="shortcut-card" href="#/creer"><span class="shortcut-icon">${icon("sparkle")}</span><strong>Créer un modèle</strong><span>À partir d’une photo produit</span></a>
           <a class="shortcut-card" href="#/modeles?import=1"><span class="shortcut-icon">${icon("upload")}</span><strong>Importer un GLB</strong><span>Ajouter un fichier existant</span></a>
           <a class="shortcut-card" href="#/cles-api"><span class="shortcut-icon">${icon("key")}</span><strong>Gérer les clés API</strong><span>Créer ou révoquer un accès</span></a>
-          <a class="shortcut-card" href="#/cles-api#integration-guide"><span class="shortcut-icon">${icon("book")}</span><strong>Guide d’intégration</strong><span>Appeler l’API en 4 étapes</span></a>
+          <a class="shortcut-card" href="#/guide"><span class="shortcut-icon">${icon("book")}</span><strong>Guide d’intégration</strong><span>API, iframe et widget pas à pas</span></a>
         </div>
       </section>
       <p class="dashboard-error" id="dashboard-error" role="alert" hidden></p>

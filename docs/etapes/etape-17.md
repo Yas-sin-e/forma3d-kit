@@ -35,10 +35,13 @@ Boutique --<forma3d-viewer>--> /embed/{UUID public} --> viewer 3D
 | `backend/app/routers/embed.py` | Sert la vue publique minimale sous CSP. |
 | `docs/STOCKAGE.md` | Explique le lien entre base SQLite, clés, compteurs et modèle public. |
 
+## Guide accessible dans le Studio
+
+`docs/` n'est pas servi par FastAPI : un lien vers `docs/INTEGRATION.md` ne s'ouvrirait pas dans le navigateur. La page `frontend/js/pages/guide.js` (route `#/guide`) reprend donc le même contrat en HTML, avec l'adresse réelle du service insérée dans les commandes `curl` et les extraits iframe/widget, et un bouton Copier par bloc. Elle est reliée depuis le raccourci « Guide d'intégration » de l'accueil, le menu Administration, le pied de page et la page Clés API. Les identifiants restent des marqueurs (`ID_DU_MODELE`, `UUID_PUBLIC`) : aucun modèle n'est inventé.
+
 ## Vérification honnête
 
-Deux tests statiques ciblés passent : ils vérifient la page exemple et le guide sans contacter l'API. La syntaxe de tous les fichiers JavaScript du frontend et du script inline de l'exemple a été contrôlée ; `git diff --check` doit être relancé après cette mise à jour documentaire.
-
-La suite complète n'a pas été vérifiée pour cette étape. Sous le sandbox, le premier test `TestClient` se bloque sur son appel HTTP local. La commande nécessitant l'autorisation réseau locale a été refusée par le contrôle automatique après l'atteinte de la limite d'usage ; aucune tentative de contournement n'a été faite. La suite comptait 99 tests verts avant les modifications de 5e.
-
-Le démarrage du serveur local n'a pas été confirmé : le processus lancé s'est arrêté et l'accès socket local a été refusé. Microsoft Edge n'a pas pu être activé après une nouvelle sélection (`failed to activate captured window`). Le rendu visuel, la vraie intégration sur un site tiers, le fournisseur distant et la CI ne sont pas vérifiés. Ne pas annoncer le Sprint 5 terminé avant pytest complet et vérification manuelle.
+- Tests statiques : le guide et l'exemple (tests de Codex) et la page `#/guide` (route, liens, contrat).
+- Suite pytest complète lancée une fois en fin d'étape (résultat dans le compte rendu de commit).
+- `node --check` sur les modules JavaScript.
+- Non vérifié : rendu de la page `#/guide` dans un navigateur (pas de pilotage demandé), intégration depuis un vrai site tiers, génération réelle avec le service 3D et CI GitHub.

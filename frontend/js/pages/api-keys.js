@@ -30,7 +30,7 @@ export function render() {
       <div class="page-intro"><p class="eyebrow">Intégration</p><h1 class="page-title" id="page-title" tabindex="-1">Clés API</h1><p class="page-lead">Une clé autorise un site ou un script à appeler l’API Forma3D en votre nom. Gardez-la privée et révoquez-la si elle est exposée.</p></div>
 
       <section class="panel" id="integration-guide" aria-labelledby="guide-title">
-        <div class="section-header"><div><h2 id="guide-title">Comment utiliser l’API</h2><p>Quatre étapes, de la création de la clé au premier appel.</p></div></div>
+        <div class="section-header"><div><h2 id="guide-title">Comment utiliser l’API</h2><p>Quatre étapes, de la création de la clé au premier appel.</p></div><a class="text-link" href="#/guide">Guide complet →</a></div>
         <ol class="steps-guide">
           <li class="guide-card"><strong>Créez une clé</strong><span>Donnez-lui un nom pour la reconnaître, par exemple celui de la boutique.</span></li>
           <li class="guide-card"><strong>Copiez le secret</strong><span>Il n’est affiché qu’une fois : sauvegardez-le dans un gestionnaire de mots de passe.</span></li>
