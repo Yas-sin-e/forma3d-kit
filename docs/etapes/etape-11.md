@@ -1,6 +1,6 @@
 # Étape 11 — Refonte UX de la navigation
 
-Cette étape est une amélioration frontend indépendante ; elle ne démarre pas le Sprint 3.
+Cette étape est une amélioration frontend historique du Studio ; elle précède le Sprint 5.
 
 ## Routes et responsabilités
 
@@ -9,7 +9,7 @@ flowchart TD
   Shell["Coque commune · index.html"] --> Router["router.js · hash, titre, focus, menu actif"]
   Router --> Create["#/creer · photo, suivi, viewer"]
   Router --> Models["#/modeles · Mes modèles et filtres"]
-  Router --> Categories["#/categories · gestion du catalogue"]
+  Router --> Categories["#/categories · gestion des catégories"]
   Router --> Examples["#/exemples · Exemples de modèles"]
   Models --> Detail["#/modeles/{id} · fiche, photo, état, téléchargement"]
   Examples --> Detail
@@ -21,7 +21,7 @@ flowchart TD
 
 - `models.js` et `examples.js` réutilisent `GET /models/gallery` et séparent les identifiants UUID de génération des identifiants fixes des exemples. Les filtres de catégorie viennent de `GET /categories`.
 - `model-detail.js` réutilise les routes existantes d'état, galerie, téléchargement et photo source. Un identifiant absent affiche un message clair. Les exemples n'ont pas de date/durée ; le schéma actuel ne transmet pas la durée des générations. La page affiche donc « Non communiquée ».
-- Aucun endpoint backend, fournisseur, modèle ou configuration n'a changé. La suppression de catégorie demande une confirmation native du navigateur. Les erreurs liées aux identifiants internes sont traduites pour le vendeur.
+- Aucun endpoint backend, fournisseur, modèle ou configuration n'a changé. La suppression de catégorie demande une confirmation native du navigateur. Les erreurs liées aux identifiants internes sont traduites en français simple pour la propriétaire.
 - Sous 640 px, le menu est replié derrière un bouton burger ; les pages et cartes s'adaptent jusqu'à 360 px. La palette reste celle de `DESIGN.md`.
 
 ## Vérifications

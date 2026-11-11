@@ -2,7 +2,7 @@
 
 ## Objectif et livrable vérifiable
 
-Donner au vendeur une page sombre et lisible pour transmettre une photo, suivre les états réels du backend, examiner un GLB dans un viewer interactif et télécharger le résultat. La même page permet d'ouvrir des modèles de faisabilité présents sur ce poste et de les distinguer d'un résultat venant de la génération courante.
+Donner à la propriétaire une page sombre et lisible pour transmettre une photo, suivre les états réels du backend, examiner un GLB dans un viewer interactif et télécharger le résultat. La même page permet d'ouvrir des modèles de faisabilité présents sur ce poste et de les distinguer d'un résultat venant de la génération courante.
 
 La structure est organisée en modules sans framework. Les appels HTTP du navigateur sont centralisés dans frontend/js/api.js ; les vues du formulaire, du suivi, du viewer et de la galerie restent séparées. FastAPI sert la page et ces ressources sur la même origine.
 

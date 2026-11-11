@@ -2,13 +2,13 @@
 
 ## But et livrable
 
-Un vendeur peut enregistrer un modèle GLB déjà disponible sur son ordinateur, ou ajouter une copie d'un exemple, puis retrouver le modèle dans **Mes modèles** et ouvrir sa fiche. L'origine est persistée afin de distinguer un modèle généré depuis une photo, un import et un exemple copié.
+La propriétaire peut enregistrer un modèle GLB déjà disponible sur son ordinateur, ou ajouter une copie d'un exemple, puis retrouver le modèle dans **Mes modèles** et ouvrir sa fiche. L'origine est persistée afin de distinguer un modèle généré depuis une photo, un import et un exemple copié.
 
-Cette étape est un incrément isolé. Elle ne démarre pas le Sprint 5. Elle ne change ni le fournisseur image-vers-3D ni le modèle retenu.
+Cette étape est un incrément du Studio achevé avant le Sprint 5. Elle ne change ni le fournisseur image-vers-3D ni le modèle retenu.
 
 ## Parcours d'import
 
-1. Dans `frontend/js/pages/models.js`, le vendeur ouvre le formulaire, choisit un fichier `.glb`, ajuste si besoin le titre automatiquement nettoyé, puis choisit une catégorie active chargée par `listCategories()`.
+1. Dans `frontend/js/pages/models.js`, la propriétaire ouvre le formulaire, choisit un fichier `.glb`, ajuste si besoin le titre automatiquement nettoyé, puis choisit une catégorie active chargée par `listCategories()`.
 2. `frontend/js/api.js` envoie les champs à `POST /models/import`. Cette couche est l'unique point d'appel HTTP du frontend.
 3. `backend/app/routers/models.py` lit au plus la limite configurée plus un octet, vérifie l'extension et traduit les erreurs en réponses HTTP claires.
 4. `GenerationService.create_library_model()` contrôle la taille, le conteneur GLB 2.0 et la catégorie active. Le validateur partagé `DemoGallery.is_valid_glb_2()` vérifie l'en-tête, la taille déclarée, la version glTF et les limites des chunks.

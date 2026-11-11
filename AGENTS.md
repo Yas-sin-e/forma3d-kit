@@ -1,10 +1,10 @@
 # SaaS 3D pour l'e-commerce — Instructions permanentes du projet
 
 ## Mission
-Forma3D Studio aide un vendeur à partir d'une photo de produit pour obtenir un modèle 3D interactif. Le SaaS complet prévoit trois composants :
-1. Le service API : génère et conserve le modèle.
-2. Le widget intégrable : affiche le modèle dans une boutique existante.
-3. La boutique vitrine : démontre le parcours dans un catalogue de produits.
+Forma3D Studio est un module 3D intégrable dans tout site. Il comprend deux composants :
+1. Le service API : génère, conserve et expose les modèles selon des autorisations explicites.
+2. Le widget : affiche un modèle activé dans le site qui l'intègre.
+Le Studio est la console privée de la propriétaire, en mode propriétaire unique ; aucun compte public ni catalogue public n'est prévu.
 
 ## Contraintes décidées par l'étudiante
 1. 100 % gratuit : aucune API payante, carte bancaire ou abonnement.
@@ -17,23 +17,22 @@ Forma3D Studio aide un vendeur à partir d'une photo de produit pour obtenir un 
 Pour chaque fichier ou dossier créé :
 1. Ajouter une ligne à docs/STRUCTURE.md : chemin, rôle, raison du choix et moment d'utilisation.
 2. Ajouter un commentaire d'en-tête en français dans chaque fichier de code, indiquant son rôle et son exécution.
-3. Avant d'écrire du code, annoncer la liste des fichiers et leur intérêt, puis attendre l'accord de l'étudiante.
+3. Avant le code, annoncer les fichiers et leur rôle. Respecter l'accord explicite déjà donné pour les étapes 5a à 5e, sans demander une validation intermédiaire ; pour toute étape future du Sprint 6, attendre un OK explicite.
 
 ## Découpage en six sprints de deux semaines
 1. De la photo au modèle 3D — terminé (contrôle CI GitHub laissé à l'étudiante).
-2. Qualité et fiabilité : qualité d'image, arrière-plan, base de données, historique — sprint actif depuis le 9 novembre 2026.
-3. Comptes vendeurs et produits.
-4. Boutique vitrine : catalogue et fiches produits 3D.
-5. Intégration : widget, code à copier, API avec clé.
-6. Finalisation : tests E2E, déploiement gratuit, soutenance.
+2. Qualité et fiabilité — terminé (qualité de photo, catégories et historique).
+3. Retiré du périmètre par décision de la propriétaire.
+4. Retiré du périmètre par décision de la propriétaire.
+5. Module intégrable : API avec clé et widget — validé le 10 novembre 2026 ; étapes 5a à 5e autorisées dans l'ordre.
+6. Finalisation — non démarré ; nécessite un OK explicite.
 
-Ne jamais passer à une étape ou à un sprint suivant sans « OK » explicite.
-Avant chaque étape, rappeler l'objectif et le livrable vérifiable.
+Sprint 5 validé le 10 novembre 2026 ; Sprint 6 sur OK explicite. Avant chaque étape du Sprint 5, rappeler l'objectif et le livrable vérifiable.
 
 ## Sprint 1 — périmètre essentiel
 État : terminé par décision de l'étudiante, sauf la vérification de la CI GitHub, qu'elle traite elle-même.
 
-Objectif : le vendeur envoie une photo, obtient un GLB via un fournisseur gratuit de modèle pré-entraîné, l'examine dans un viewer et peut le télécharger.
+Objectif historique du Sprint 1 : la propriétaire envoie une photo, obtient un GLB via un fournisseur gratuit de modèle pré-entraîné, l'examine dans le Studio et peut le télécharger.
 
 Étapes, une à la fois :
 1. Structure, Git, premier test GET /health et documentation de structure.
@@ -46,12 +45,12 @@ Objectif : le vendeur envoie une photo, obtient un GLB via un fournisseur gratui
 
 Pour toute nouvelle génération, l'étudiante choisit une catégorie parmi chaise, tabouret et table d'appoint. Un GLB terminé apparaît dans le filtre correspondant avec sa photo source. Au Sprint 1, les métadonnées restaient en mémoire ; depuis l'étape 8 du Sprint 2, elles sont conservées dans SQLite et relues par la même route de galerie.
 
-Ne pas faire au Sprint 1 : OpenCV, rembg, comptes, base de données, Next.js, Docker, Celery, Redis ou MinIO.
+Ne pas faire au Sprint 1 : OpenCV, rembg, base de données, Next.js, Docker, Celery, Redis ou MinIO. Les comptes publics sont retirés du périmètre global.
 
 ## Sprint 2 — qualité et fiabilité
 Objectif : conserver l'historique des générations après redémarrage, gérer les catégories partagées et préparer les photos avec des contrôles légers.
 
-Étapes de référence, réalisées une à la fois. Pour les sous-étapes restantes, attendre l'OK de l'étudiante :
+Étapes historiques de référence, terminées une à la fois :
 8. SQLite et historique persistant derrière une interface de dépôt ; tables `categories` et `generations`, catégories initiales chaise/tabouret/table d'appoint, galerie inchangée côté API/viewer ; test de persistance après redémarrage ; écrire `docs/STOCKAGE.md`.
 9. CRUD des catégories partagées : créer, renommer, désactiver/réactiver et supprimer si inutilisée ; routes API, menu d'envoi et filtres de galerie alimentés par SQLite.
 10. Préparation locale avec Pillow : carré avec marges, côté de sortie d'au moins 512 px, avertissement non bloquant pour photo petite/floue, original conservé et copie préparée envoyée au fournisseur.
@@ -97,7 +96,7 @@ Ne pas changer le fournisseur 3D ni le modèle retenu au Sprint 2. Ne pas ajoute
 - Lire le contenu d'une skill ou d'un serveur tiers avant de l'activer.
 
 ## État de référence au 19 octobre 2026
-- Vision active : service de génération SaaS, futur widget et boutique vitrine de démonstration.
+- Vision active au 10 novembre 2026 : API intégrable avec clé et widget d'affichage ; le Studio sert de console privée mono-propriétaire.
 - Produit MVP initial : petit mobilier opaque, notamment tabouret, chaise et table d'appoint.
 - Outil de suivi choisi : GitHub Projects.
 - Horizon de soutenance communiqué : deux semaines ; la date exacte reste à confirmer.
@@ -117,8 +116,27 @@ Au début de chaque session, lire AGENTS.md, docs/ETAT.md et docs/STRUCTURE.md, 
 - Une génération de démonstration du tabouret a réussi le 2 novembre et apparaît dans la galerie sous `stool`. Après le lancement local suivant, `/health/provider` a renvoyé `OFFLINE` ; ne pas envoyer d'autre photo tant qu'un serveur valide n'est pas joignable.
 - Les étiquettes `Chaise métal 01/02` ne changent qu'après validation de l'étudiante.
 
-## État au 9 novembre 2026
-- Sprint 2 — Qualité et fiabilité : terminé (étapes 8, 9 et 10). Sprint 3 : non démarré.
+## État mis à jour au 10 novembre 2026
+- Sprint 2 — Qualité et fiabilité : terminé (étapes 8, 9 et 10). Sprints 3 et 4 : retirés du périmètre.
 - Sprint 1 considéré terminé par l'étudiante ; la vérification de la CI GitHub reste à sa charge.
 - Livrable vérifiable de l'étape 8 : une génération terminée reste consultable après redémarrage du backend et apparaît dans la galerie depuis SQLite. Livrable de l'étape 9 : catégories CRUD pilotées par SQLite dans API, formulaire et galerie. Livrable de l'étape 10 : photo source conservée et copie préparée carrée envoyée au fournisseur, avec avertissement non bloquant. Suivi : `docs/ETAT.md`, `docs/STRUCTURE.md` et `docs/etapes/`.
 - Aucun changement au fournisseur ou au choix du modèle n'est autorisé au Sprint 2. Aucun secret n'est requis ni consulté pour le travail prévu.
+
+## Sprint 5 — Module intégrable (actif)
+Objectif : permettre à la propriétaire d'activer explicitement un modèle terminé, de créer des clés API, puis de l'exposer de façon contrôlée par une API versionnée et un viewer intégrable.
+
+Étapes autorisées, sans validation intermédiaire :
+- 5a / étape 13 : identifiant public UUID et activation par modèle, migration SQLite, lecture publique protégée par activation.
+- 5b / étape 14 : clés API dont seul le hash est conservé, affichage du secret une fois et révocation.
+- 5c / étape 15 : API externe /api/v1 authentifiée, erreurs cohérentes, quota configurable, limitation simple et CORS fermé par défaut.
+- 5d / étape 16 : page d'intégration viewer, iframe et composant Web, politique CSP configurable.
+- 5e / étape 17 : guide intégrateur, exemple HTML et preuve documentaire.
+
+Le travail reste gratuit. Aucun fournisseur ni modèle 3D ne change. Les routes internes et pages existantes du Studio restent compatibles. Le Sprint 6 ne commence qu'après un OK explicite.
+
+### Règles de sécurité d'intégration
+- Ne jamais lire ni modifier backend/.env ; toute nouvelle configuration est documentée dans .env.example.
+- Les secrets de clés ne sont rendus qu'une fois et ne sont jamais stockés en clair, journalisés ou commis.
+- Le Studio n'a pas d'authentification : usage local ou démonstration uniquement, ne pas l'exposer publiquement tel quel.
+- L'intégration publique est désactivée par défaut ; origines CORS et frame-ancestors sont fermées par défaut.
+- Pas de service payant, d'entraînement, de Docker, de framework frontend ou de dépendance lourde.

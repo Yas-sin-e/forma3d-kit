@@ -2,6 +2,17 @@
 
 Dernière mise à jour : 10 novembre 2026.
 
+## Avenant au cahier des charges v1.0
+
+Les Sprints 3 (comptes publics) et 4 (vitrine/catalogue public) sont retirés du périmètre. L'objectif prioritaire est un module 3D intégrable partout, composé d'une API avec clé et d'un widget ; le Studio est la console privée mono-propriétaire. Limite connue : le Studio n'a pas d'authentification, donc usage local ou démonstration uniquement ; ne pas l'exposer publiquement tel quel.
+
+## Sprint 5 — Module intégrable (actif)
+
+- Objectif : exposer de façon contrôlée les modèles terminés par une API avec clé et un widget intégrable.
+- Livrable vérifiable : modèle activable individuellement, clé révocable non stockée en clair, routes versionnées authentifiées, iframe/widget intégrable et guide d'intégration.
+- Étape 0 documentaire terminée le 10 novembre 2026. Prochaine sous-étape : 5a / étape 13.
+- Le Sprint 6 reste non démarré et nécessite un OK explicite.
+
 ## Sprint 2 — Qualité et fiabilité (terminé)
 
 - Objectif : rendre l'historique persistant après redémarrage, gérer les catégories partagées et préparer les photos avec des outils légers.
@@ -12,8 +23,8 @@ Dernière mise à jour : 10 novembre 2026.
 - Étape 9a : routes GET/POST/PATCH/DELETE `/categories`, validations de slug/libellé et gestion de conflit ; suppression utilisée refusée en 409. Une catégorie inactive n'est plus proposée aux uploads, mais reste liée aux générations existantes. Commit `cb82ece` ; suite complète : 68 tests réussis.
 - Étape 9b : écran de gestion, formulaire et filtres de galerie alimentés par l'API ; les erreurs API sont présentées dans l'interface. Interface non vérifiée manuellement dans le navigateur durant cette session. Commit `1c3f1ac` ; suite complète : 68 tests réussis.
 - Étape 10 : `ImagePreparer` s'appuie sur Pillow 13.0.0, ajouté à `backend/requirements.txt` (Pillow n'était pas installé dans le venv avant cette étape). La copie envoyée est carrée, conserve 12 % de marge, a un côté de sortie d'au moins 512 px et utilise LANCZOS ; la photo source n'est pas modifiée. Les images petites/floues reçoivent un avertissement non bloquant. En cas de décodage impossible, le service conserve le comportement existant et envoie l'original avec un avertissement. Aucune dépendance `rembg`, OpenCV ou PyTorch n'a été ajoutée.
-- Vérification finale étape 10 : 74 tests pytest réussis, sans réseau fournisseur, avec `backend/.env` protégé contre la lecture. Les tests couvrent les avertissements, le cadrage, la conservation de la source, la migration SQLite, l'envoi de la copie préparée et le contrat HTTP/UI de l'avertissement. Pas de test de génération réelle ni de vérification visuelle navigateur pour cette étape. Sprint 3 non démarré.
-- Étape 11 (travail UX distinct, hors Sprint 3) : navigation hash et cinq pages vendeur ajoutées au frontend uniquement. Aucun endpoint, modèle, fournisseur ou configuration n'a changé. Vérification finale : suite pytest complète de 75 tests, sans fournisseur distant ; 15 fichiers JavaScript vérifiés syntaxiquement. Pas de vérification visuelle navigateur. Commit et push sur `main`.
+- Vérification finale étape 10 : 74 tests pytest réussis, sans réseau fournisseur, avec `backend/.env` protégé contre la lecture. Les tests couvrent les avertissements, le cadrage, la conservation de la source, la migration SQLite, l'envoi de la copie préparée et le contrat HTTP/UI de l'avertissement. Pas de test de génération réelle ni de vérification visuelle navigateur pour cette étape. Sprints 3 et 4 retirés du périmètre.
+- Étape 11 (refonte UX du Studio, avant le Sprint 5) : navigation hash et cinq pages du Studio ajoutées au frontend uniquement. Aucun endpoint, modèle, fournisseur ou configuration n'a changé. Vérification finale : suite pytest complète de 75 tests, sans fournisseur distant ; 15 fichiers JavaScript vérifiés syntaxiquement. Pas de vérification visuelle navigateur. Commit et push sur `main`.
 - Le choix du fournisseur et du modèle reste inchangé. `backend/.env` n'est ni lu ni modifié. Toute base de données prévue sera locale, dans `backend/data/`, ignorée par Git.
 
 ### Étape 8 — SQLite et historique persistant (Sprint 2)
@@ -42,12 +53,12 @@ Dernière mise à jour : 10 novembre 2026.
 - Le champ `image_warning` est persisté dans SQLite, ajouté par migration non destructive, retourné par les réponses de génération et affiché dans le panneau de suivi avec un conseil photo.
 - Vérifications : 74 tests passent via pytest avec fournisseurs simulés. Aucune photo réelle n'a été générée avec le service 3D dans cette étape ; le navigateur n'a pas été piloté et l'apparence de l'avertissement reste à vérifier manuellement.
 
-## Étape 11 — Refonte UX de la navigation (hors Sprint 3)
+## Étape 11 — Refonte UX de la navigation (avant le Sprint 5)
 
 - `frontend/index.html` ne contient plus qu'une coque persistante ; `frontend/js/router.js` résout `#/creer`, `#/modeles`, `#/modeles/{id}`, `#/categories` et `#/exemples`, suit Précédent/Suivant via `hashchange`, met à jour le titre et le lien actif, puis place le focus sur le titre de page.
 - `frontend/js/pages/` contient un module par page. Mes modèles filtre les générations UUID provenant de l'API galerie ; Exemples affiche les cinq modèles de démonstration. Les deux vues utilisent les catégories retournées par l'API.
 - La fiche réutilise les endpoints existants de galerie, état, téléchargement et photo source. L'API ne communique pas la durée : la page affiche « Non communiquée » au lieu de calculer ou inventer une valeur. Aucun nouvel endpoint backend n'était nécessaire.
-- L'en-tête conserve le badge santé, le menu devient repliable sous 640 px, les erreurs courantes sont formulées pour un vendeur et les informations Colab/.env sont uniquement dans les détails techniques repliables de la page Créer.
+- L'en-tête conserve le badge santé, le menu devient repliable sous 640 px, les erreurs courantes sont formulées pour la propriétaire et les informations Colab/.env sont uniquement dans les détails techniques repliables de la page Créer.
 - Vérification automatisée : `backend/tests/test_frontend.py` (5 tests ciblés), suite complète (75 tests), puis analyse syntaxique Node.js des 15 modules JavaScript. Aucun parcours interactif navigateur ni génération réelle n'a été fait.
 - À vérifier manuellement : routes et historique Précédent/Suivant ; menu actif et burger ; filtres de Mes modèles et Exemples ; création/confirmation de suppression des catégories ; fiche inconnue ; photo source et téléchargement ; affichage à 360 px et 1440 px.
 
@@ -55,14 +66,14 @@ Dernière mise à jour : 10 novembre 2026.
 
 - Objectif : rendre le parcours Photo → Création → Résultat visible d'un coup d'œil, puis afficher la carte d'entrée, le viewer et le suivi en lignes compactes.
 - `frontend/js/pages/create.js` présente le stepper informatif, la carte unique Photo et catégorie, la ligne hors service et les détails repliables. `frontend/js/views/uploader.js` actualise l'explication visible du bouton désactivé selon la photo, la catégorie, le serveur ou l'état occupé. `frontend/js/views/progress.js` garde les cinq états et rend explicites les étapes à faire, actives, terminées ou en échec. `frontend/css/components.css` règle la grille stretch, les hauteurs adaptatives, les seuils 1024/640 px et le défilement horizontal contenu du suivi mobile.
-- Aucun code d'application backend, fournisseur 3D, route API ou fichier local `.env` n'a été modifié. Le Sprint 5 n'est pas démarré.
+- Aucun code d'application backend, fournisseur 3D, route API ou fichier local `.env` n'a été modifié. Le Sprint 5 est actif depuis le 10 novembre 2026.
 - Vérification : 5 tests ciblés de `backend/tests/test_frontend.py`, suite complète de 83 tests réussie en 2,65 s, `node --check` sur les modules JavaScript et `git diff --check`. Les tests ne contactent aucun fournisseur.
 - Non vérifié : rendu visuel et défilement réel à 1366×768, 1920×1080, 360 px, tabulation et lecteur d'écran. Aucun navigateur n'a été piloté conformément à la consigne.
-- Guide pédagogique : `docs/etapes/etape-11b.md`. Le Sprint 5 demeure non commencé.
+- Guide pédagogique : `docs/etapes/etape-11b.md`. Le Sprint 5 est actif depuis le 10 novembre 2026.
 
-## Étape 12 — Import GLB et liste unifiée (incrément distinct, hors Sprint 5)
+## Étape 12 — Import GLB et liste unifiée (terminée avant le Sprint 5)
 
-- Objectif : permettre au vendeur d'ajouter un GLB local ou de copier un exemple dans la bibliothèque, avec une origine visible et honnête. Le Sprint 2 reste terminé ; l'étape 12 ne démarre pas le Sprint 5.
+- Objectif : permettre à la propriétaire d'ajouter un GLB local ou de copier un exemple dans la bibliothèque, avec une origine visible et honnête. Le Sprint 2 reste terminé ; l'étape 12 a préparé la bibliothèque avant le Sprint 5.
 - `POST /models/import` vérifie l'extension `.glb`, la taille et la structure GLB 2.0, puis exige une catégorie active. `MAX_GLB_UPLOAD_MB` est configurable dans `.env.example` (30 Mo par défaut ; 1 à 512 Mo). Le nom stocké est un UUID serveur et un fichier existant n'est pas écrasé.
 - `POST /models/examples/{example_id}/copy` copie uniquement un GLB de la liste d'exemples autorisés. Les deux routes créent un état `DONE` dans SQLite et un fichier dans `backend/storage/models/`.
 - La migration SQLite ajoute `origin` avec `generated` pour les anciennes lignes ; les nouveaux objets ont `generated`, `imported` ou `example`. Les imports/copies n'ont ni photo source ni durée de génération. Le dépôt les relit malgré l'absence de photo ; la galerie et la fiche affichent l'origine.

@@ -1,6 +1,6 @@
 # Forma3D Studio
 
-Forma3D Studio est un SaaS 3D pour le commerce en ligne : le vendeur envoie une photo de produit, obtient un modèle GLB interactif et pourra l'intégrer dans sa boutique. Le produit complet prévoit un service de génération, un widget intégrable et une boutique de démonstration.
+Forma3D Studio est un module 3D intégrable dans tout site : son API expose des modèles avec une clé et son widget affiche les modèles activés. Le Studio est la console privée mono-propriétaire ; aucun catalogue public n'est prévu.
 
 ## Contraintes
 
@@ -17,7 +17,7 @@ L'étape 7 ajoute `/health/provider`, un badge de disponibilité, une solution d
 
 Le frontend reste sans framework : CSS et JavaScript séparés en modules, sans serveur de développement ni build. La palette sombre, les tailles de texte et les composants sont définis dans DESIGN.md. Les étapes techniques, les mesures des cinq essais et leurs limites sont documentées dans docs/ETAT.md.
 
-Le Sprint 1 se concentre sur le trajet photo vers GLB, viewer et téléchargement, en commençant par le petit mobilier opaque : tabouret, chaise et table d'appoint. Les notes qualitatives bon/moyen/mauvais des cinq résultats restent à donner par l'étudiante après examen. Le guide Colab est dans docs/etapes/etape-06-colab.md. Les comptes vendeurs, la boutique vitrine et le widget distribuable relèvent des sprints suivants.
+Le Sprint 1 a établi le trajet photo vers GLB, viewer et téléchargement, avec essais sur petit mobilier opaque. Les limites et résultats historiques sont décrits dans docs/ETAT.md. Les Sprints 3 (comptes) et 4 (vitrine) sont retirés. Le Sprint 5, validé le 10 novembre 2026, construit l'API et le widget intégrables ; le Sprint 6 attend un OK explicite.
 
 ## Répertoires et documents
 

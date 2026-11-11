@@ -1,6 +1,6 @@
 # Structure expliquée — Forma3D Studio
 
-Mis à jour le 10 novembre 2026. Le Sprint 2 est terminé. Les étapes 11 et 11b sont des refontes UX indépendantes du Sprint 3. L'étape 12 ajoute l'import GLB et la provenance unifiée ; le Sprint 5 n'est pas démarré.
+Mis à jour le 10 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 sont retirés. Les étapes 11, 11b et 12 ont amélioré le Studio avant le Sprint 5, maintenant actif (étape 0 documentaire terminée, étape 13 / 5a à venir). Le Sprint 6 n'est pas démarré.
 
 ## Racine et documents de cadrage
 
@@ -85,11 +85,11 @@ Mis à jour le 10 novembre 2026. Le Sprint 2 est terminé. Les étapes 11 et 11b
 | `frontend/js/` | Regroupe l'état, l'API et les vues ES modules | Permet de suivre une responsabilité par fichier sans framework | Quand le navigateur charge le module principal |
 | `frontend/js/api.js` | Centralise fetch pour génération, import GLB, copie d'exemple, galerie, catégories et santé | Empêche les vues de disperser les appels serveur | À chaque action et toutes les 30 secondes pour la disponibilité |
 | `frontend/js/router.js` | Résout les routes hash, conserve la page Créer pendant une navigation, active le lien courant et focalise le titre | Gère plusieurs pages sans framework et respecte le clavier et l'historique du navigateur | À l'ouverture, au clic dans le menu et lors de Précédent/Suivant |
-| `frontend/js/pages/` | Contient un module par page visible du vendeur | Isole le balisage et le montage de chaque route | Lorsqu'une route hash est ouverte |
+| `frontend/js/pages/` | Contient un module par page visible dans le Studio | Isole le balisage et le montage de chaque route | Lorsqu'une route hash est ouverte |
 | `frontend/js/pages/create.js` | Présente le parcours Photo/Création/Résultat, une carte Photo et catégorie, viewer, suivi et états hors ligne | Rend le chemin utilisateur immédiatement lisible sans modifier le traitement | Sur `#/creer` |
 | `frontend/js/pages/models.js` | Affiche les modèles persistés, le formulaire d'import GLB, catégories et état vide | Réunit créations, imports et exemples copiés avec la même fiche | Sur `#/modeles` |
 | `frontend/js/pages/model-detail.js` | Charge état, origine, modèle, photo source facultative, date et téléchargement | Réutilise les routes d'état existantes et distingue un import d'une génération | Sur `#/modeles/{id}` |
-| `frontend/js/pages/categories.js` | Place la gestion existante dans une page séparée | Évite d'encombrer l'accueil et rend les actions de catalogue plus claires | Sur `#/categories` |
+| `frontend/js/pages/categories.js` | Place la gestion existante dans une page séparée | Évite d'encombrer l'accueil et rend les actions de catégories plus claires | Sur `#/categories` |
 | `frontend/js/pages/examples.js` | Présente les exemples autorisés et propose de les copier dans Mes modèles avec une catégorie | Conserve les originaux dans la galerie d'exemples et crée une entrée locale séparée | Sur `#/exemples` |
 | `frontend/js/pages/viewer-markup.js` | Fournit le balisage du viewer utilisé par la page Créer | Évite de dupliquer les commandes accessibles | Au montage du parcours de création |
 | `frontend/js/state.js` | Garde en mémoire photo, statut, durée et minuteries de la session | Évite une base de données pour cet état temporaire | Pendant l'envoi et le suivi d'une demande |
@@ -142,9 +142,9 @@ Mis à jour le 10 novembre 2026. Le Sprint 2 est terminé. Les étapes 11 et 11b
 | `docs/etapes/etape-08.md` | Décrit le dépôt SQLite, les catégories initiales, le redémarrage et la galerie | Documente un seul incrément du Sprint 2 et ses tests | Pour expliquer ou vérifier l'étape 8 |
 | `docs/etapes/etape-09.md` | Explique le CRUD catégories backend/frontend, les règles de suppression et les tests | Permet de justifier le cycle de vie et la source SQLite | Pour réviser l'étape 9 |
 | `docs/etapes/etape-10.md` | Explique Pillow, le cadrage, les avertissements, la conservation de la source et les limites | Rend la préparation d'image défendable sans boîte noire lourde | Pour réviser l'étape 10 |
-| `docs/etapes/etape-11.md` | Documente les routes, le schéma, le focus, le menu et les vérifications manuelles | Explique la navigation frontend sans confondre l'étape avec le Sprint 3 | Pour présenter ou faire évoluer le Studio à pages |
-| `docs/etapes/etape-11b.md` | Explique le schéma horizontal Créer, le stepper, le suivi et les limites de vérification visuelle | Documente le layout sans toucher au backend ni démarrer Sprint 5 | Pour expliquer ou vérifier la page Créer |
-| `docs/etapes/etape-12.md` | Explique l'import, la validation GLB, la copie d'exemples, l'origine et les tests | Documente l'ajout à la bibliothèque sans démarrer le Sprint 5 | Pour réviser l'étape 12 |
+| `docs/etapes/etape-11.md` | Documente les routes, le schéma, le focus, le menu et les vérifications manuelles | Explique la navigation frontend comme amélioration du Studio avant le Sprint 5 | Pour présenter ou faire évoluer le Studio à pages |
+| `docs/etapes/etape-11b.md` | Explique le schéma horizontal Créer, le stepper, le suivi et les limites de vérification visuelle | Documente le layout sans toucher au backend, avant le Sprint 5 | Pour expliquer ou vérifier la page Créer |
+| `docs/etapes/etape-12.md` | Explique l'import, la validation GLB, la copie d'exemples, l'origine et les tests | Documente l'ajout à la bibliothèque avant le démarrage du Sprint 5 | Pour réviser l'étape 12 |
 | `docs/etapes/.gitkeep` | Marqueur ancien du dossier de guides | Conservé sans rôle d'exécution | Au clonage du dépôt |
 | `docs/archive/` et `docs/archive/v1/` | Isolent les documents remplacés | Préservent l'historique tout en gardant les instructions v2 à la racine | Pour consulter l'ancienne vision |
 | `docs/archive/v1/etapes/` | Contient les guides des étapes v1 archivés | Évite de les confondre avec le Sprint 1 v2 | Consultation historique |
@@ -169,4 +169,4 @@ Mis à jour le 10 novembre 2026. Le Sprint 2 est terminé. Les étapes 11 et 11b
 | `extension-debug.log` | Journal auxiliaire local de l'environnement de développement | N'est pas une entrée de l'application et est exclu de Git | Seulement si l'outil local le recrée |
 | `__pycache__/`, `.pytest_cache/` | Bytecode et cache de collecte | Ces fichiers se régénèrent automatiquement | Après imports et tests |
 
-Le registre des métadonnées est persisté dans `backend/data/forma3d.sqlite3` ; les photos sources et GLB restent dans `backend/storage/`. Le dépôt d'étape 12 conserve l'origine `generated`, `imported` ou `example` ; les imports/copies ne possèdent pas de photo source et ne reçoivent pas de durée de génération. L'étape 11b change uniquement le frontend. Le Sprint 2 reste terminé, le Sprint 3 n'est pas démarré et les étapes 11b/12 ne démarrent pas le Sprint 5.
+Le registre des métadonnées est persisté dans `backend/data/forma3d.sqlite3` ; les photos sources et GLB restent dans `backend/storage/`. Le dépôt d'étape 12 conserve l'origine `generated`, `imported` ou `example` ; les imports/copies ne possèdent pas de photo source et ne reçoivent pas de durée de génération. L'étape 11b change uniquement le frontend. Le Sprint 2 reste terminé ; les Sprints 3 et 4 sont retirés ; le Sprint 5 est actif depuis le 10 novembre 2026 et le Sprint 6 attend un OK explicite.

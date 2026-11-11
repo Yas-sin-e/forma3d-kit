@@ -56,4 +56,4 @@ Sous 1024 px, les deux cartes se placent l'une sous l'autre. Sur petit écran, l
 
 ## Limites
 
-Les tests sont des contrôles statiques et ne prouvent pas le rendu visuel, l'absence réelle de scrollbar sur une configuration donnée, ni l'accessibilité avec une technologie d'assistance. Aucun code backend, fournisseur, fichier `backend/.env` ou choix de modèle n'a été modifié. Le Sprint 5 reste non démarré.
+Les tests sont des contrôles statiques et ne prouvent pas le rendu visuel, l'absence réelle de scrollbar sur une configuration donnée, ni l'accessibilité avec une technologie d'assistance. Aucun code backend, fournisseur, fichier `backend/.env` ou choix de modèle n'a été modifié. Le Sprint 5 a ensuite été validé le 10 novembre 2026 ; l'étape 11b est une amélioration antérieure du Studio.

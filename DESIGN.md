@@ -2,9 +2,9 @@
 
 ## 1. Intention
 
-L’interface présente un atelier de génération 3D pour des vendeurs en ligne. Elle reprend l’organisation claire d’un espace de travail sombre : outils à gauche, grande scène 3D au centre et galerie de résultats en dessous. La référence de style est une inspiration de composition et de densité ; la marque, les images et le code d’autres produits ne sont pas réutilisés.
+L’interface présente le Studio privé de la propriétaire, une console de génération et de gestion des modèles 3D. Elle reprend l’organisation claire d’un espace de travail sombre : outils à gauche, grande scène 3D au centre et galerie de résultats en dessous. La référence de style est une inspiration de composition et de densité ; la marque, les images et le code d’autres produits ne sont pas réutilisés.
 
-Le Sprint 1 reste une démonstration de faisabilité. Il n’y a ni compte vendeur, ni produit commercial, ni paiement. Le modèle produit par une seule photo est une approximation visuelle, pas une mesure.
+Le Sprint 1 était une démonstration de faisabilité. Les comptes publics, la vitrine et le catalogue public sont retirés du périmètre. Le Studio est mono-propriétaire, sans authentification, et doit rester local ou en démonstration. Le modèle produit par une seule photo est une approximation visuelle, pas une mesure.
 
 ## 2. Couleurs
 
