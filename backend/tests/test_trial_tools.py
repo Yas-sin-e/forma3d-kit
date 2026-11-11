@@ -24,3 +24,25 @@ def test_measure_glb_reports_grid_values_for_a_valid_glb() -> None:
 
 def test_measure_glb_stops_at_validity_for_invalid_content() -> None:
     assert trial_trellis.measure_glb(b"pas un glb") == {"bytes": 10, "valid_glb2": False}
+
+
+_MODELS_SCRIPT = Path(__file__).resolve().parents[2] / "tools" / "trials" / "trial_models.py"
+_models_spec = importlib.util.spec_from_file_location("trial_models", _MODELS_SCRIPT)
+trial_models = importlib.util.module_from_spec(_models_spec)
+_models_spec.loader.exec_module(trial_models)
+
+
+def test_file_path_from_output_accepts_gradio_shapes() -> None:
+    assert trial_models.file_path_from_output("C:/tmp/a.glb") == "C:/tmp/a.glb"
+    assert trial_models.file_path_from_output({"path": "/tmp/b.glb", "url": None}) == "/tmp/b.glb"
+    assert trial_models.file_path_from_output({"value": "/tmp/c.glb"}) == "/tmp/c.glb"
+    assert trial_models.file_path_from_output(None) is None
+    assert trial_models.file_path_from_output("") is None
+    assert trial_models.file_path_from_output({"path": None}) is None
+
+
+def test_missing_functions_stops_when_contract_changes() -> None:
+    sf3d_contract = {"/requires_bg_remove", "/run_button", "/lambda"}
+    assert trial_models.missing_functions("sf3d", sf3d_contract) == set()
+    assert trial_models.missing_functions("trellis", {"/start_session"}) == {"/preprocess_image", "/generate_and_extract_glb"}
+    assert set(trial_models.SPACES) == set(trial_models.REQUIRED_FUNCTIONS) == set(trial_models.RUNNERS)

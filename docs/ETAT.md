@@ -129,6 +129,7 @@ Les Sprints 3 (comptes publics) et 4 (vitrine/catalogue public) sont retirés du
 - Essai sur `chair-bentwood.jpg` : échec `FileNotFoundError` (session), puis arrêt sur le quota ZeroGPU anonyme (« Try again in 23:58:37 »). Aucun contournement.
 - Relance avec le jeton gratuit de l'étudiante (saisie masquée) : 3 GLB TRELLIS valides sur 3 (38,6 à 85,6 s), avec texture PNG mais `metallicFactor` absent (donc métallique par défaut) et sans normales.
 - TRELLIS est techniquement faisable, **pas encore démontré dans Forma3D** (adaptateur à écrire). Notes visuelles (critères 6 à 9) à remplir par l'étudiante.
+- C2 : avec le détourage `/preprocess_image`, TRELLIS donne 3 GLB sur 3 sans sol reconstruit ; Stable Fast 3D échoue 3 fois ; InstantMesh 1 GLB sans texture puis quota gratuit atteint. TRELLIS détouré est le meilleur candidat mesuré, sous réserve de la note visuelle de l'étudiante.
 
 ## Étape 20 — Sous-étape B : finition serveur des GLB (terminée)
 

@@ -66,6 +66,37 @@ Les durées TripoSR viennent de l'étape 6 (GPU Colab T4) ; celles de TRELLIS in
 
 **Conclusion honnête** : TRELLIS est **techniquement faisable** (3 GLB valides sur 3, gratuits, avec texture), mais il n'est **pas encore démontré dans Forma3D** : la règle de réussite exige qu'une génération passe par l'application elle-même. Les critères visuels 6 à 9 restent à noter par l'étudiante ; aucune note n'est inventée.
 
+## 3 bis. Sous-étape C2 : essais après le retour visuel de l'étudiante (11 novembre 2026, soir)
+
+### Retour visuel sur le premier passage
+
+D'après la comparaison faite par l'étudiante : TripoSR garde la forme et la taille, mais ses couleurs sont fausses (table noire rendue blanche, tabouret brun rendu gris). TRELLIS a de bien meilleures couleurs, mais il a reconstruit le **sol de la photo** (plaque sous la chaise, feuille sous le tabouret) et transformé la table en demi-lune en table ovale. Cause identifiée : l'appel n'utilisait pas l'étape `/preprocess_image` (détourage) que l'interface web exécute avant la génération.
+
+### Résultats C2 (outil `tools/trials/trial_models.py`, jeton gratuit de l'étudiante en saisie masquée)
+
+| Photo | Modèle | Résultat | Durée | Taille | Sommets | Matériau / texture | Boîte X × Y × Z |
+|---|---|---|---:|---:|---:|---|---|
+| chair-bentwood | Stable Fast 3D | Échec : `ConnectTimeout` (poignée TLS expirée) | — | — | — | — | — |
+| stool-met-01 | Stable Fast 3D | Échec : le détourage `/requires_bg_remove` renvoie une image vide | — | — | — | — | — |
+| side-table-met | Stable Fast 3D | Même échec | — | — | — | — | — |
+| chair-bentwood | TRELLIS détouré | Succès | 75,8 s | 1 371 124 | 7 604 | 1 / PNG | 0,528 × 1,001 × 0,601 |
+| stool-met-01 | TRELLIS détouré | Succès | 105,1 s | 1 631 744 | 14 231 | 1 / PNG | 0,826 × 0,997 × 0,550 |
+| side-table-met | TRELLIS détouré | Succès | 91,2 s | 1 520 624 | 12 296 | 1 / PNG | 1,000 × 0,679 × 0,654 |
+| chair-bentwood | InstantMesh | Succès | 84,1 s | 859 864 | 21 458 | aucun (couleurs par sommet) | 1,316 × 1,966 × 1,261 |
+| stool-met-01 | InstantMesh | Arrêt : « You have exceeded your free ZeroGPU quota (60s requested vs. 0s left) » | — | — | — | — | — |
+| side-table-met | InstantMesh | Non lancé (arrêt sur quota) | — | — | — | — | — |
+
+Le message de quota propose un abonnement payant : refusé, conformément aux contraintes du projet.
+
+### Lecture
+
+- **Le détourage règle le problème du sol** : les boîtes TRELLIS redeviennent cohérentes (chaise et tabouret debout, hauteur sur l'axe Y). C'est une amélioration mesurée, à confirmer à l'œil.
+- La table d'appoint garde une profondeur de 0,654 pour une largeur de 1 : la face cachée de la demi-lune reste peut-être trop profonde. **À vérifier visuellement.** Une seconde vue (fonction `multiimages`) serait la piste logique.
+- Stable Fast 3D semble exiger une image déjà détourée (fond transparent) ; c'est probablement aussi la cause des 5 échecs d'octobre. Piste non testée : lui fournir l'image détourée par TRELLIS.
+- InstantMesh ne fournit pas de texture (couleurs par sommet, comme TripoSR) ; un seul essai, insuffisant pour conclure.
+
+**Conclusion provisoire** : TRELLIS détouré est le meilleur candidat mesuré (texture, proportions cohérentes, 3 sur 3), sous réserve de la note visuelle de l'étudiante. Rien n'est encore démontré **dans Forma3D**.
+
 ## 4. Relancer l'essai sans contournement
 
 L'outil `tools/trials/trial_trellis.py` lit le contrat, ouvre la session, envoie la photo, copie le GLB dans `backend/data/trials/` (ignoré par Git) et imprime les mesures automatiques. Il s'arrête au premier message de quota.

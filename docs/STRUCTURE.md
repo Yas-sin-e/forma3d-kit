@@ -32,6 +32,7 @@ Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 s
 | `tools/colab/` | Range le notebook d'apprentissage et de contrôle du runtime distant | Isole les dépendances TripoSR des sources backend | Pour vérifier le GPU et comprendre l'historique des essais |
 | `tools/trials/` | Outils d'essai de fournisseurs 3D, hors application | Sépare les expériences du code livré | Pendant la sous-étape C |
 | `tools/trials/trial_trellis.py` | Lit le contrat d'un Space TRELLIS, envoie une photo et mesure le GLB selon la grille | Rend l'essai reproductible et s'arrête au premier message de quota | Pour comparer un fournisseur à TripoSR |
+| `tools/trials/trial_models.py` | Essaie Stable Fast 3D, TRELLIS détouré et InstantMesh en reproduisant l'enchaînement de chaque Space (détourage puis génération) | Compare plusieurs modèles sur les mêmes photos avec les mêmes mesures | Sous-étape C2 |
 | tools/colab/triposr_server.ipynb | Contrôle le GPU et explique l'installation distante, mais arrête le lancement d'un serveur web public sur Colab géré gratuit | Respecte la FAQ Colab, qui restreint les services web de génération sur ses runtimes gérés | Pour comprendre l'ancien essai, ses dépendances et la limite d'hébergement actuelle |
 
 ## Backend Python
@@ -143,7 +144,7 @@ Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 s
 | `backend/tests/test_demo_gallery.py` | Vérifie les modèles autorisés et les photos source facultatives sans réseau | Protège la galerie et sa comparaison photo/GLB | À chaque suite pytest |
 | `backend/tests/test_model_library.py` | Vérifie l'import GLB, limites, catégories, copie d'exemple et migration de modèle | Couvre les cas de bibliothèque avec SQLite temporaire et sans fournisseur | À chaque suite pytest |
 | `backend/tests/test_glb_finisher.py` | Vérifie la finition d'un GLB brut, les cas laissés intacts et le branchement dans GenerationService | Prouve que la géométrie n'est pas modifiée | À chaque suite pytest |
-| `backend/tests/test_trial_tools.py` | Teste les mesures automatiques de l'outil d'essai | Les chiffres de la grille doivent être fiables | À chaque suite pytest |
+| `backend/tests/test_trial_tools.py` | Teste les mesures automatiques et les aides des outils d'essai (chemins de sortie Gradio, contrat incomplet) | Les chiffres de la grille doivent être fiables | À chaque suite pytest |
 | `backend/tests/conftest.py` | Ouvre la session propriétaire par surcharge de `require_owner`, sauf pour les tests marqués `real_auth` | Garde les tests métier existants centrés sur leur logique | À chaque suite pytest |
 | `backend/tests/test_auth.py` | Vérifie 401 sans cookie, connexion réussie/refusée, mot de passe absent, limite de tentatives, jeton falsifié ou expiré et routes publiques ouvertes | Prouve la protection sans navigateur ni réseau externe | À chaque suite pytest |
 | `backend/tests/test_api_keys.py` | Vérifie empreinte seule, révélation unique, révocation, comparaison et compteurs par clé | Couvre le contrôle d’accès et les quotas sans réseau externe | À chaque suite pytest |

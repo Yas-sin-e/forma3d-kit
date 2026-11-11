@@ -19,13 +19,24 @@ Premier passage bloqué par le quota anonyme. Relance le soir même avec le jeto
 
 TRELLIS est techniquement faisable mais **pas encore démontré dans Forma3D** (aucun adaptateur). Notes visuelles à remplir par l'étudiante. Correction de l'outil : `gradio_client` 2.7 attend le paramètre `token` (et non `hf_token`).
 
+## Sous-étape C2
+
+Après la comparaison visuelle de l'étudiante (TripoSR : bonne forme, couleurs fausses ; TRELLIS : bonnes couleurs mais sol reconstruit et demi-lune devenue ovale), nouvel essai avec `tools/trials/trial_models.py` :
+
+- TRELLIS **avec détourage** (`/preprocess_image`) : 3 GLB sur 3, sol supprimé, proportions cohérentes.
+- Stable Fast 3D : 3 échecs (délai réseau, puis détourage renvoyant une image vide).
+- InstantMesh : 1 GLB sans texture, puis arrêt sur le quota gratuit (offre payante refusée).
+
+Détails dans `docs/QUALITE-3D.md`, section 3 bis.
+
 ## Fichiers
 
 | Fichier | Rôle |
 |---|---|
 | `docs/QUALITE-3D.md` | Grille, contrats, résultats, relance, licences |
 | `tools/trials/trial_trellis.py` | Essai reproductible et mesures automatiques (`measure_glb`) |
-| `backend/tests/test_trial_tools.py` | Tests de `measure_glb` sans réseau |
+| `tools/trials/trial_models.py` | Essais multi-modèles (C2) |
+| `backend/tests/test_trial_tools.py` | Tests des outils d'essai sans réseau |
 
 ## Tests
 
