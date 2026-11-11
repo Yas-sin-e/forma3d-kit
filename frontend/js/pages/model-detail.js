@@ -5,9 +5,9 @@
  * guidée en 4 étapes (interrupteur, choix iframe/widget, code à copier, aperçu réel via /embed).
  * Sous-étape A : matériau mat pour les GLB sans matériau, recadrage et rotation en pause en mode Comparer.
  */
-import { getGenerationStatus, listCategories, listGalleryModels, setModelIntegrationEnabled } from "../api.js?v=20261112-c4";
-import { exampleGenerationSeconds, formatDuration, formatLongDate } from "../format.js?v=20261112-c4";
-import { refitCamera, watchProductAppearance } from "../views/model-appearance.js?v=20261112-c4";
+import { getGenerationStatus, listCategories, listGalleryModels, setModelIntegrationEnabled } from "../api.js?v=20261112-c5";
+import { exampleGenerationSeconds, exampleProviders, formatDuration, formatLongDate } from "../format.js?v=20261112-c5";
+import { refitCamera, watchProductAppearance } from "../views/model-appearance.js?v=20261112-c5";
 
 export const title = "Fiche du modèle";
 
@@ -171,7 +171,7 @@ export function mount(route) {
     const baseUrl = window.location.origin;
     const publicId = model.public_id;
     if (method === "widget") {
-      return `<script src="${baseUrl}/static/widget.js?v=20261112-c4" defer></script>\n<forma3d-viewer model="${publicId}" height="480" auto-rotate></forma3d-viewer>`;
+      return `<script src="${baseUrl}/static/widget.js?v=20261112-c5" defer></script>\n<forma3d-viewer model="${publicId}" height="480" auto-rotate></forma3d-viewer>`;
     }
     return `<iframe src="${baseUrl}/embed/${encodeURIComponent(publicId)}" title="Aperçu 3D du produit" width="100%" height="480" loading="lazy" style="border:0"></iframe>`;
   }
@@ -221,7 +221,9 @@ export function mount(route) {
     state.textContent = record.status === "DONE" ? "Prêt" : record.status === "RUNNING" ? "Création en cours" : record.status === "PENDING" ? "En attente" : record.status === "FAILED" ? "Échec" : "Exemple disponible";
     category.textContent = labels.find((item) => item.slug === (nextModel?.category || record.category))?.label || nextModel?.category || record.category || "Non classée";
     const originLabels = { generated: "Généré par l’application", imported: "Importé", example: "Exemple du catalogue" };
-    origin.textContent = originLabels[nextModel?.origin || record.origin] || "Origine inconnue";
+    const exampleProvider = exampleProviders[route.id];
+    origin.textContent = (originLabels[nextModel?.origin || record.origin] || "Origine inconnue")
+      + (exampleProvider ? ` · ${exampleProvider}` : "");
     date.textContent = record.created_at ? formatLongDate(record.created_at) : "Non disponible pour cet exemple";
     // Pour les exemples, la durée affichée est celle mesurée lors des essais (étape 6), jamais estimée.
     const measured = Number.isFinite(record.duration_seconds) ? record.duration_seconds : exampleGenerationSeconds[route.id];

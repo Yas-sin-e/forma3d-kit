@@ -3,10 +3,10 @@
  * Exécution : Mes modèles et Exemples appellent setupGallery() ; l'accueil réutilise createModelCard().
  * Refonte : badge d'origine sur l'aperçu, date relative, rotation animée au survol, compteur par filtre.
  */
-import { listGalleryModels } from "../api.js?v=20261112-c4";
-import { appState } from "../state.js?v=20261112-c4";
-import { formatMegabytes, formatRelativeDate } from "../format.js?v=20261112-c4";
-import { watchProductAppearance } from "./model-appearance.js?v=20261112-c4";
+import { listGalleryModels } from "../api.js?v=20261112-c5";
+import { appState } from "../state.js?v=20261112-c5";
+import { formatMegabytes, formatRelativeDate } from "../format.js?v=20261112-c5";
+import { watchProductAppearance } from "./model-appearance.js?v=20261112-c5";
 
 const originLabels = {
   generated: "Généré",

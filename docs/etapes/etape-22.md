@@ -46,3 +46,11 @@ cd backend
 Première tentative (11/11, soir) : le Studio a appelé TRELLIS, refus du Space pour quota GPU gratuit épuisé (« 120s requested vs. 0s left »). La chaîne Forma3D → Space fonctionne jusqu'au quota ; le résultat GLB n'est pas encore obtenu. La page Créer affichait un message générique accusant la photo : elle montre maintenant la vraie cause renvoyée par le serveur.
 
 Tant qu'une génération n'a pas abouti, TRELLIS n'est **pas** déclaré démontré dans Forma3D.
+
+## Exemples du catalogue remplacés (11 novembre 2026)
+
+À la demande de l'étudiante, les exemples chaise cintrée, tabouret et table d'appoint utilisent désormais les GLB TRELLIS détourés des essais C2 (75,8 s, 105,1 s et 91,2 s), passés par la finition (normales ajoutées, `metallicFactor` mis à 0). Les deux chaises métal restent TripoSR.
+
+- Originaux TripoSR sauvegardés dans `backend/data/feasibility-results-triposr/` (hors Git) : pour revenir en arrière, les recopier dans `backend/data/feasibility-results/`.
+- Honnêteté : `frontend/js/format.js` associe à chaque exemple son fournisseur et sa durée mesurée ; la fiche affiche « Exemple du catalogue · TRELLIS » ou « · TripoSR ».
+- Ces exemples sont des résultats d'essai par script : ils ne remplacent pas la preuve d'une génération lancée depuis le Studio.

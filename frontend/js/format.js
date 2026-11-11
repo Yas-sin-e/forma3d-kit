@@ -10,15 +10,26 @@ export function isSavedModel(model) {
 }
 
 /*
- * Durées réellement mesurées lors des essais de faisabilité (docs/etapes/etape-06.md).
- * Elles ne sont affichées que pour ces exemples ; aucune durée n'est inventée pour les autres.
+ * Fournisseur et durée réellement mesurés pour chaque exemple du catalogue.
+ * TripoSR : essais de faisabilité (docs/etapes/etape-06.md).
+ * TRELLIS : essais C2 avec détourage (docs/QUALITE-3D.md, section 3 bis) ; ces trois exemples
+ * ont remplacé les versions TripoSR le 11 novembre 2026 (sauvegardées hors Git).
+ * Aucune durée n'est inventée pour un modèle absent de cette liste.
  */
+export const exampleProviders = {
+  "stool-metal-01": "TRELLIS",
+  "chair-bentwood": "TRELLIS",
+  "chair-metal-01": "TripoSR",
+  "chair-metal-02": "TripoSR",
+  "side-table-metal": "TRELLIS",
+};
+
 export const exampleGenerationSeconds = {
-  "stool-metal-01": 83.1,
-  "chair-bentwood": 215.0,
+  "stool-metal-01": 105.1,
+  "chair-bentwood": 75.8,
   "chair-metal-01": 99.0,
   "chair-metal-02": 204.0,
-  "side-table-metal": 83.8,
+  "side-table-metal": 91.2,
 };
 
 export function formatMegabytes(bytes) {
@@ -70,7 +81,9 @@ export function pluralize(count, singular, plural = `${singular}s`) {
 /* Description courte d'un exemple : durée mesurée si elle est connue, sinon phrase sans chiffre. */
 export function exampleDescription(model) {
   const seconds = exampleGenerationSeconds[model?.id];
+  const provider = exampleProviders[model?.id];
+  const by = provider ? ` avec ${provider}` : "";
   return Number.isFinite(seconds)
-    ? `Généré à partir d’une seule photo en ${formatDuration(seconds)}.`
-    : "Généré à partir d’une seule photo.";
+    ? `Généré${by} à partir d’une seule photo en ${formatDuration(seconds)}.`
+    : `Généré${by} à partir d’une seule photo.`;
 }

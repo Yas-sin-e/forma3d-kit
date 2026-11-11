@@ -129,6 +129,7 @@ Les Sprints 3 (comptes publics) et 4 (vitrine/catalogue public) sont retirés du
 - La finition des GLB met `metallicFactor = 0` quand un matériau texturé l'omet (cas TRELLIS).
 - 9 tests sans réseau. **Pas encore démontré dans Forma3D** : la génération réelle depuis le Studio doit être faite par l'étudiante (variables dans `backend/.env`), puis consignée ici.
 - Tentative réelle du 11/11 au soir (serveur lancé avec TRELLIS, jeton en saisie masquée, sans modifier `backend/.env`) : Forma3D a bien appelé le Space TRELLIS, qui a refusé avec « You have exceeded your free ZeroGPU quota (120s requested vs. 0s left) » ; quota du jour consommé par les essais C2. Échec propre, aucun contournement.
+- Catalogue d'exemples, à la demande de l'étudiante : chaise cintrée, tabouret et table d'appoint remplacés par les GLB TRELLIS détourés (essais C2), après finition (normales, `metallicFactor` 0). Originaux TripoSR sauvegardés dans `backend/data/feasibility-results-triposr/`. Chaque fiche affiche le fournisseur (« Exemple du catalogue · TRELLIS » ou « · TripoSR ») et la durée réellement mesurée. Ce sont des résultats d'essai par script, pas encore une génération lancée depuis le Studio.
 - Correction : la page Créer affiche désormais la vraie cause renvoyée par le serveur (`error_message`) au lieu d'accuser la photo ; clé de cache passée à `20261112-c3`. À relancer quand le quota sera renouvelé.
 
 ## Étape 21 — Sous-étape C : grille et essais de fournisseurs

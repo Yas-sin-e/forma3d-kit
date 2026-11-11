@@ -4,9 +4,9 @@
  * Refonte : guide en 4 étapes, exemple curl réel (routes /api/v1 existantes), cartes avec badge
  * de statut et confirmation de révocation par fenêtre modale.
  */
-import { createApiKey, listApiKeys, revokeApiKey } from "../api.js?v=20261112-c4";
-import { confirmDialog } from "../views/confirm-dialog.js?v=20261112-c4";
-import { formatLongDate, pluralize } from "../format.js?v=20261112-c4";
+import { createApiKey, listApiKeys, revokeApiKey } from "../api.js?v=20261112-c5";
+import { confirmDialog } from "../views/confirm-dialog.js?v=20261112-c5";
+import { formatLongDate, pluralize } from "../format.js?v=20261112-c5";
 
 export const title = "Clés API";
 

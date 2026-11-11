@@ -201,8 +201,8 @@ def test_create_page_keeps_workspace_then_progress_layout() -> None:
 
     assert 'grid-template-columns: repeat(3, minmax(0, 1fr));' in components
     assert 'grid-template-columns: repeat(5, minmax(0, 1fr));' in components
-    assert "components.css?v=20261112-c4" in shell
-    assert '"./pages/create.js?v=20261112-c4"' in router
+    assert "components.css?v=20261112-c5" in shell
+    assert '"./pages/create.js?v=20261112-c5"' in router
 
 
 def test_widget_script_defines_the_integrator_tag_and_uses_embed_iframe() -> None:
@@ -283,8 +283,9 @@ def test_redesigned_pages_offer_guides_counts_and_honest_examples() -> None:
     assert "/embed/" in detail
     assert "filter-count" in gallery
     assert "formatRelativeDate" in gallery
-    # Les durées d'exemple proviennent des mesures de docs/etapes/etape-06.md.
-    assert '"chair-bentwood": 215.0' in formatters
+    # Durées mesurées : TripoSR (étape 6) ou TRELLIS (C2) selon le fournisseur affiché.
+    assert '"chair-bentwood": 75.8' in formatters and '"chair-metal-01": 99.0' in formatters
+    assert '"chair-bentwood": "TRELLIS"' in formatters and '"chair-metal-01": "TripoSR"' in formatters
 
 
 def test_integration_guide_page_is_reachable_from_the_studio() -> None:
@@ -318,7 +319,7 @@ def test_viewers_fix_default_gltf_material_and_refit_in_compare_mode() -> None:
     assert "updateFraming()" in appearance
     for module in (viewer, detail, gallery, dashboard):
         assert "watchProductAppearance(" in module
-        assert "model-appearance.js?v=20261112-c4" in module
+        assert "model-appearance.js?v=20261112-c5" in module
     assert "refitCamera(viewer)" in viewer and "refitCamera(modelViewer)" in detail
     assert 'removeAttribute("auto-rotate")' in detail
 
