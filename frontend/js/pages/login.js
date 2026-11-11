@@ -3,7 +3,7 @@
  * Exécution : router.js monte cette page sur #/login et y redirige toute visite non connectée.
  * Étape 5f : le mot de passe est envoyé à POST /auth/login et vérifié par le serveur.
  */
-import { consumeNextRoute, isPasswordConfigured, login } from "../auth.js?v=20261112-c3";
+import { consumeNextRoute, isPasswordConfigured, login } from "../auth.js?v=20261112-c4";
 
 export const title = "Connexion";
 

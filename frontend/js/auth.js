@@ -7,7 +7,7 @@
  * FORMA3D_OWNER_PASSWORD, et la session est un cookie HttpOnly signé (illisible en JavaScript).
  * Ce module ne garde qu'un indicateur en mémoire, rafraîchi par GET /auth/me.
  */
-import { getSession, loginOwner, logoutOwner } from "./api.js?v=20261112-c3";
+import { getSession, loginOwner, logoutOwner } from "./api.js?v=20261112-c4";
 
 const NEXT_ROUTE_KEY = "forma3d:next-route";
 let authenticated = false;

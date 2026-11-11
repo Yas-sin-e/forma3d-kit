@@ -36,17 +36,29 @@ export function applyProductAppearance(viewer) {
   return corrected;
 }
 
+export const BASE_RADIUS_PERCENT = 105;
+
 /*
- * Recalcule le cadrage après un changement de taille de la scène (ex. mode « Comparer »
- * qui passe le viewer à demi-largeur) : sans cela, le modèle reste cadré pour l'ancienne largeur.
+ * Distance de caméra (en % du cadrage idéal) pour une scène de rapport largeur/hauteur donné.
+ * Le cadrage automatique se règle sur la hauteur : dans une scène plus haute que large
+ * (mode « Comparer » à demi-largeur), on recule la caméra d'autant pour garder le modèle entier.
  */
+export function radiusForAspect(aspect) {
+  if (!Number.isFinite(aspect) || aspect <= 0) return BASE_RADIUS_PERCENT;
+  return Math.round(BASE_RADIUS_PERCENT * Math.max(1, 1 / aspect));
+}
+
+/* Recalcule le cadrage après un changement de taille de la scène (ex. passage en mode « Comparer »). */
 export function refitCamera(viewer) {
   if (!viewer || typeof viewer.updateFraming !== "function") return;
-  window.requestAnimationFrame(() => {
+  // Deux images d'attente : la nouvelle mise en page CSS doit être appliquée avant de mesurer.
+  window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+    const { width, height } = viewer.getBoundingClientRect();
+    const theta = viewer.getCameraOrbit?.().theta ?? 0;
     viewer.cameraTarget = "auto auto auto";
-    viewer.cameraOrbit = `${viewer.getCameraOrbit?.().theta ?? 0}rad 75deg auto`;
+    viewer.cameraOrbit = `${theta}rad 75deg ${radiusForAspect(width / height)}%`;
     void viewer.updateFraming();
-  });
+  }));
 }
 
 /* Branche la correction sur un viewer : à chaque nouveau modèle chargé. */

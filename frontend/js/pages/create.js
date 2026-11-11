@@ -5,12 +5,12 @@
  * le stepper en 3 étapes (redondant avec le suivi) et la note encadrée sont supprimés,
  * les conseils et détails techniques sont repliés en bas du formulaire.
  */
-import { createGeneration, getGenerationStatus, listCategories } from "../api.js?v=20261112-c3";
-import { appState, beginGeneration, stopGenerationTimers, updateElapsedSeconds, updateGenerationStatus } from "../state.js?v=20261112-c3";
-import { setupUploader } from "../views/uploader.js?v=20261112-c3";
-import { createProgressView } from "../views/progress.js?v=20261112-c3";
-import { setupViewer } from "../views/viewer.js?v=20261112-c3";
-import { viewerMarkup } from "./viewer-markup.js?v=20261112-c3";
+import { createGeneration, getGenerationStatus, listCategories } from "../api.js?v=20261112-c4";
+import { appState, beginGeneration, stopGenerationTimers, updateElapsedSeconds, updateGenerationStatus } from "../state.js?v=20261112-c4";
+import { setupUploader } from "../views/uploader.js?v=20261112-c4";
+import { createProgressView } from "../views/progress.js?v=20261112-c4";
+import { setupViewer } from "../views/viewer.js?v=20261112-c4";
+import { viewerMarkup } from "./viewer-markup.js?v=20261112-c4";
 
 export const title = "Créer";
 

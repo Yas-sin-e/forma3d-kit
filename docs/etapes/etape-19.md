@@ -55,3 +55,11 @@ Visuellement, l'assise, le dossier et les pieds deviennent lisibles au lieu d'ap
 
 - Le recadrage en mode « Comparer » dans le vrai Studio (pas de pilotage de navigateur) : à contrôler par l'étudiante sur une fiche avec photo source, au bureau et sur mobile.
 - La couleur réelle reste celle des sommets générés : la chaise noire laquée apparaît gris foncé mat, ce qui est plus lisible mais pas « photoréaliste ».
+
+## Correctif du 11 novembre 2026 (retour de l'étudiante)
+
+Sur la fiche d'un exemple, l'étudiante a constaté que le mode « Photo source » montrait une photo agrandie et coupée, et que le mode « Comparer » coupait le modèle. Causes : `max-height: 100%` n'agissait pas dans la grille de la scène (la photo gardait sa taille réelle) ; le cadrage automatique de la caméra se règle sur la hauteur et débordait dans une demi-scène plus haute que large.
+
+- `components.css` : la photo prend la taille de la scène avec `object-fit: contain`.
+- `model-appearance.js` : `radiusForAspect()` recule la caméra selon le rapport largeur/hauteur (105 % en scène large, 167 % pour une demi-scène de rapport 0,63) ; mesure après deux images d'attente.
+- Clé de cache passée à `20261112-c4`. Vérification visuelle à refaire par l'étudiante (Ctrl+F5).
