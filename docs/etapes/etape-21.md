@@ -15,7 +15,9 @@ Date : 11 novembre 2026. Validée par l'étudiante (« OK pour C »). Début du 
 
 ## Résultat
 
-**Aucun fournisseur alternatif démontré à ce jour.** TripoSR reste le seul fournisseur prouvé. L'outil d'essai est prêt pour une relance après renouvellement du quota, ou avec un jeton gratuit défini dans le terminal de l'étudiante.
+Premier passage bloqué par le quota anonyme. Relance le soir même avec le jeton gratuit de l'étudiante, saisi de façon masquée dans son terminal (jamais affiché, écrit ni envoyé ailleurs qu'à Hugging Face, effacé à la fin) : **3 GLB TRELLIS valides sur 3**, en 38,6 à 85,6 s, avec une texture PNG. Mesures complètes dans `docs/QUALITE-3D.md`.
+
+TRELLIS est techniquement faisable mais **pas encore démontré dans Forma3D** (aucun adaptateur). Notes visuelles à remplir par l'étudiante. Correction de l'outil : `gradio_client` 2.7 attend le paramètre `token` (et non `hf_token`).
 
 ## Fichiers
 

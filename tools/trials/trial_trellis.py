@@ -61,7 +61,7 @@ def run_trial(space: str, photo: Path, output_dir: Path) -> dict:
     from gradio_client import Client, handle_file
 
     token = os.getenv("HF_TOKEN") or None
-    client = Client(space, hf_token=token, verbose=False)
+    client = Client(space, token=token, verbose=False)
     endpoints = client.view_api(return_format="dict", print_info=False)["named_endpoints"]
     if SPACE_FUNCTION not in endpoints:
         raise SystemExit(f"Contrat changé : {SPACE_FUNCTION} absent ({sorted(endpoints)}).")

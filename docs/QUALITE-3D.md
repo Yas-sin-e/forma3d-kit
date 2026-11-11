@@ -39,9 +39,32 @@ Chaque essai utilise les **mêmes photos libres** de `backend/data/feasibility-i
 | 11/11 | `trellis-community/TRELLIS` | chair-bentwood.jpg | Échec : `AppError: FileNotFoundError` côté Space (appel sans `/start_session`) | Non |
 | 11/11 | `trellis-community/TRELLIS` | chair-bentwood.jpg | Arrêt : « You have exceeded your ZeroGPU quota (120s requested vs. 171s left). Try again in 23:58:37 » (quota anonyme) | Non |
 | 11/11 | `microsoft/TRELLIS.2` | — | Non essayé : même quota ZeroGPU ; un nouvel appel aurait contourné la limite | — |
+| 11/11 (soir) | `trellis-community/TRELLIS` | chair-bentwood.jpg | Succès avec le jeton gratuit de l'étudiante (saisie masquée) : 85,6 s | Oui |
+| 11/11 (soir) | `trellis-community/TRELLIS` | stool-met-01.jpg | Succès : 38,6 s | Oui |
+| 11/11 (soir) | `trellis-community/TRELLIS` | side-table-met.jpg | Succès : 82,7 s | Oui |
 | 02/11 (étape 6) | TripoSR (Colab) | 5 photos | Succès, 83 à 215 s ; GLB sans matériau ni normales (voir `docs/etapes/etape-19.md`) | Oui |
 
-**Conclusion honnête : aucun fournisseur alternatif n'a encore été démontré.** Le seul fournisseur prouvé dans Forma3D reste TripoSR. Aucun score visuel n'est inventé : les critères 6 à 9 seront notés par l'étudiante quand un GLB alternatif existera.
+### Mesures automatiques (critères 1 à 5)
+
+| Photo | Fournisseur | Durée | Valide | Taille | Sommets | Triangles | Matériau | Texture | Normales | Boîte X × Y × Z |
+|---|---|---:|---|---:|---:|---:|---|---|---|---|
+| chair-bentwood | TripoSR | 215,0 s | oui | 1 236 604 | 30 925 | 61 732 | aucun | non (couleurs par sommet) | non | 0,635 × 1,082 × 0,742 |
+| chair-bentwood | TRELLIS | 85,6 s | oui | 1 840 148 | 18 796 | 26 486 | 1 | PNG 1,1 Mo | non | 0,996 × 0,842 × 0,985 |
+| stool-met-01 | TripoSR | 83,1 s | oui | 2 619 760 | 65 520 | 130 868 | aucun | non | non | 0,826 × 1,013 × 0,816 |
+| stool-met-01 | TRELLIS | 38,6 s | oui | 1 630 440 | 16 070 | 24 392 | 1 | PNG 1,0 Mo | non | 1,001 × 0,703 × 1,001 |
+| side-table-met | TripoSR | 83,8 s | oui | 1 035 632 | 25 879 | 51 712 | aucun | non | non | 1,064 × 0,762 × 0,437 |
+| side-table-met | TRELLIS | 82,7 s | oui | 1 583 224 | 14 774 | 19 592 | 1 | PNG 1,1 Mo | non | 0,994 × 0,816 × 0,672 |
+
+Les durées TripoSR viennent de l'étape 6 (GPU Colab T4) ; celles de TRELLIS incluent la file d'attente du Space. Les GLB TRELLIS sont rangés dans `backend/data/trials/` (non versionnés).
+
+### Constats techniques
+
+- TRELLIS fournit une **vraie texture** (image PNG plaquée par coordonnées UV) au lieu de couleurs par sommet : c'est le principal gain attendu sur l'aspect.
+- Son matériau **n'indique pas `metallicFactor`** : la norme glTF le considère alors comme 100 % métallique, le même défaut d'assombrissement que TripoSR. La correction A ne s'applique pas (elle ignore les matériaux texturés) et la finition B n'ajoute que les normales. Un adaptateur TRELLIS devra donc fixer `metallicFactor = 0` pour ce cas précis.
+- Pas de normales non plus : la finition B les ajoutera.
+- Proportions : les boîtes TRELLIS sont normalisées autour de 1. Pour la chaise et le tabouret, la hauteur sur l'axe Y paraît plus petite que la largeur : orientation ou proportions **à vérifier visuellement**, rien n'est conclu automatiquement.
+
+**Conclusion honnête** : TRELLIS est **techniquement faisable** (3 GLB valides sur 3, gratuits, avec texture), mais il n'est **pas encore démontré dans Forma3D** : la règle de réussite exige qu'une génération passe par l'application elle-même. Les critères visuels 6 à 9 restent à noter par l'étudiante ; aucune note n'est inventée.
 
 ## 4. Relancer l'essai sans contournement
 
