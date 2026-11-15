@@ -29,7 +29,13 @@ if ($LASTEXITCODE -ne 0) {
     }
 }
 
-Write-Host "Exécution de la suite pytest..."
+Write-Host "Exécution de la suite pytest (environnement isolé de backend/.env)..."
+# Les tests ne doivent pas dépendre du .env réel : on désactive python-dotenv et on vide
+# HF_SPACE_ID pour pytest uniquement, puis on restaure les valeurs avant de démarrer Uvicorn.
+$savedDotenvDisabled = $env:PYTHON_DOTENV_DISABLED
+$savedSpaceId = $env:HF_SPACE_ID
+$env:PYTHON_DOTENV_DISABLED = "true"
+$env:HF_SPACE_ID = ""
 Push-Location $backendRoot
 try {
     & $pythonPath -m pytest -q
@@ -38,6 +44,8 @@ try {
     }
 } finally {
     Pop-Location
+    $env:PYTHON_DOTENV_DISABLED = $savedDotenvDisabled
+    $env:HF_SPACE_ID = $savedSpaceId
 }
 
 $alreadyRunning = $false
