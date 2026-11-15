@@ -201,8 +201,8 @@ def test_create_page_keeps_workspace_then_progress_layout() -> None:
 
     assert 'grid-template-columns: repeat(3, minmax(0, 1fr));' in components
     assert 'grid-template-columns: repeat(5, minmax(0, 1fr));' in components
-    assert "components.css?v=20261112-d1" in shell
-    assert '"./pages/create.js?v=20261112-d1"' in router
+    assert "components.css?v=20261115-e1" in shell
+    assert '"./pages/create.js?v=20261115-e1"' in router
 
 
 def test_widget_script_defines_the_integrator_tag_and_uses_embed_iframe() -> None:
@@ -319,7 +319,7 @@ def test_viewers_fix_default_gltf_material_and_refit_in_compare_mode() -> None:
     assert "updateFraming()" in appearance
     for module in (viewer, detail, gallery, dashboard):
         assert "watchProductAppearance(" in module
-        assert "model-appearance.js?v=20261112-d1" in module
+        assert "model-appearance.js?v=20261115-e1" in module
     assert "refitCamera(viewer)" in viewer and "refitCamera(modelViewer)" in detail
     assert 'removeAttribute("auto-rotate")' in detail
 
@@ -384,3 +384,33 @@ def test_model_detail_offers_a_confirmed_permanent_delete() -> None:
     assert "storedInHistory = true" in detail and '["PENDING", "RUNNING"].includes(record.status)' in detail
     assert "deleteModel(route.id)" in detail and 'window.location.hash = "#/modeles"' in detail
     assert "export async function deleteModel" in api and 'method: "DELETE"' in api
+
+
+def test_create_page_explains_each_upload_failure_with_cause_and_action() -> None:
+    client = TestClient(app)
+    create = client.get("/static/js/pages/create.js").text
+    api = client.get("/static/js/api.js").text
+    # api.js transmet le code HTTP, le message du serveur et Retry-After sans changer le message existant.
+    assert "error.status = response.status;" in api
+    assert "error.serverDetail" in api and 'response.headers.get("Retry-After")' in api
+    assert "throw new Error(detail)" not in api
+    # La page Créer traduit chaque cause réelle de POST /models en message + action.
+    assert "describeUploadError(error)" in create
+    assert "error instanceof TypeError" in create and "Le Studio ne répond pas." in create
+    for code in ("case 400:", "case 413:", "case 415:", "case 422:", "case 401:", "case 429:", "case 503:"):
+        assert code in create
+    assert "Votre photo dépasse 10 Mo. Réduisez-la ou choisissez une image plus légère." in create
+    assert "renommer le fichier ne suffit pas" in create
+    assert "Votre session a expiré." in create
+    assert "Réessayez dans ${formatWait(error.retryAfterSeconds)}." in create
+    assert "Administration → Catégories" in create
+    assert "Impossible de lancer la création. Vérifiez la photo et réessayez." not in create
+
+
+def test_expired_session_is_announced_on_the_login_page() -> None:
+    client = TestClient(app)
+    auth = client.get("/static/js/auth.js").text
+    login = client.get("/static/js/pages/login.js").text
+    assert 'window.sessionStorage.setItem(SESSION_EXPIRED_KEY, "1");' in auth
+    assert "export function consumeSessionExpired()" in auth
+    assert "consumeSessionExpired()" in login and "Votre session a expiré. Reconnectez-vous pour continuer." in login

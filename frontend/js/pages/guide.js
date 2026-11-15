@@ -58,7 +58,7 @@ export function render() {
           <li>Collez l’une des deux variantes dans la page produit. Remplacez <code>UUID_PUBLIC</code> par l’identifiant public réel de votre modèle.</li>
         </ol>
         ${codeBlock("HTML · IFrame", `<iframe src="${base}/embed/UUID_PUBLIC" title="Aperçu 3D du produit"\n  width="100%" height="480" loading="lazy" style="border:0"></iframe>`)}
-        ${codeBlock("HTML · Widget Forma3D", `<script src="${base}/static/widget.js?v=20261112-d1" defer></script>\n<forma3d-viewer model="UUID_PUBLIC" height="480" auto-rotate></forma3d-viewer>`)}
+        ${codeBlock("HTML · Widget Forma3D", `<script src="${base}/static/widget.js?v=20261115-e1" defer></script>\n<forma3d-viewer model="UUID_PUBLIC" height="480" auto-rotate></forma3d-viewer>`)}
         <p>Le widget ne reçoit jamais la clé API : il crée seulement une iframe vers la page publique <code>/embed/{public_id}</code>. Hauteur acceptée : 240 à 1200 px. Une page de test autonome est fournie dans <code>examples/integration.html</code>.</p>
       </section>
 

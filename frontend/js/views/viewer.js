@@ -5,7 +5,7 @@
  * bascule Vue 3D / Photo source / Comparer quand une photo source est disponible.
  * Sous-étape A : matériau mat pour les GLB sans matériau, recadrage et rotation en pause en mode Comparer.
  */
-import { refitCamera, watchProductAppearance } from "./model-appearance.js?v=20261112-d1";
+import { refitCamera, watchProductAppearance } from "./model-appearance.js?v=20261115-e1";
 
 export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
   const viewer = document.querySelector("#model-viewer");

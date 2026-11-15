@@ -6,10 +6,10 @@
  * Sous-étape A : matériau mat pour les GLB sans matériau, recadrage et rotation en pause en mode Comparer.
  * Suppression : bouton « Supprimer ce modèle » avec confirmation, puis retour à Mes modèles.
  */
-import { deleteModel, getGenerationStatus, listCategories, listGalleryModels, setModelIntegrationEnabled } from "../api.js?v=20261112-d1";
-import { confirmDialog } from "../views/confirm-dialog.js?v=20261112-d1";
-import { exampleGenerationSeconds, exampleProviders, formatDuration, formatLongDate } from "../format.js?v=20261112-d1";
-import { refitCamera, watchProductAppearance } from "../views/model-appearance.js?v=20261112-d1";
+import { deleteModel, getGenerationStatus, listCategories, listGalleryModels, setModelIntegrationEnabled } from "../api.js?v=20261115-e1";
+import { confirmDialog } from "../views/confirm-dialog.js?v=20261115-e1";
+import { exampleGenerationSeconds, exampleProviders, formatDuration, formatLongDate } from "../format.js?v=20261115-e1";
+import { refitCamera, watchProductAppearance } from "../views/model-appearance.js?v=20261115-e1";
 
 export const title = "Fiche du modèle";
 
@@ -179,7 +179,7 @@ export function mount(route) {
     const baseUrl = window.location.origin;
     const publicId = model.public_id;
     if (method === "widget") {
-      return `<script src="${baseUrl}/static/widget.js?v=20261112-d1" defer></script>\n<forma3d-viewer model="${publicId}" height="480" auto-rotate></forma3d-viewer>`;
+      return `<script src="${baseUrl}/static/widget.js?v=20261115-e1" defer></script>\n<forma3d-viewer model="${publicId}" height="480" auto-rotate></forma3d-viewer>`;
     }
     return `<iframe src="${baseUrl}/embed/${encodeURIComponent(publicId)}" title="Aperçu 3D du produit" width="100%" height="480" loading="lazy" style="border:0"></iframe>`;
   }

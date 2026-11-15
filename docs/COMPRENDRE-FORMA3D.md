@@ -295,7 +295,7 @@ Le 15 novembre 2026, la propriétaire a envoyé `fauteuil-retro-sur-fond-blanc�
 - **TripoSR** : modèle de Stability AI et Tripo AI, qui produit une forme fidèle mais des couleurs approximatives.
 - **TRELLIS** : modèle de Microsoft, qui produit un maillage avec une **texture** (meilleures couleurs), mais qui peut inventer des parties cachées.
 - **model-viewer** : une balise HTML fournie par Google qui affiche un GLB avec rotation, zoom et éclairage.
-- **Modules ES** : `import { x } from "./api.js?v=..."`. Le navigateur charge les fichiers à la demande. Le paramètre `?v=20261112-d1` est une **clé de cache** : on la change quand le code change, pour que le navigateur ne garde pas l'ancienne version.
+- **Modules ES** : `import { x } from "./api.js?v=..."`. Le navigateur charge les fichiers à la demande. Le paramètre `?v=20261115-e1` est une **clé de cache** (unique pour tout le frontend, changée le 15 novembre 2026) : on la change quand le code change, pour que le navigateur ne garde pas l'ancienne version.
 - **Web Components** : on définit une nouvelle balise (`customElements.define("forma3d-viewer", ...)`) utilisable dans n'importe quelle page HTML, même sans framework.
 - **pytest** : chaque fonction `test_...` est exécutée ; si une ligne `assert` échoue, le test échoue.
 - **GitHub Actions** : à chaque `git push`, GitHub lance les tests sur une machine virtuelle (voir section 14).
@@ -2177,7 +2177,8 @@ async function startGeneration(photo, category) {
     if (!terminal && appState.currentStatusUrl)
       appState.pollingTimer = window.setInterval(() => void refreshStatus(), 1500);
   } catch (error) {
-    showFailure("Impossible de lancer la création. Vérifiez la photo et réessayez.", "Création indisponible");
+    const [titleText, message] = describeUploadError(error);
+    showFailure(message, titleText);
   }
 }
 ```
@@ -2185,7 +2186,21 @@ async function startGeneration(photo, category) {
 - Deux minuteurs : le **chronomètre** (chaque seconde) et l'**interrogation** du serveur (toutes les 1,5 s).
 - `applyStatus(data)` (ligne 134) : `PENDING`/`RUNNING` → met à jour le suivi ; `FAILED` → affiche `error_message` du serveur ; `DONE` → affiche le modèle, le lien « Ouvrir la fiche du modèle → » et « Votre modèle est prêt ».
 - `appState.pollingInFlight` empêche deux interrogations en même temps.
-- ⚠️ Si l'**envoi** lui-même est refusé (photo refusée par le serveur, par exemple un fichier AVIF renommé en `.jpg`), le message affiché est générique : « Création indisponible — Impossible de lancer la création… ». Le détail exact est dans la réponse du serveur (onglet Réseau, touche F12).
+- Si l'**envoi** lui-même échoue, `describeUploadError(error)` affiche **la cause et l'action à faire**. `api.js` (`readResponse`) attache à l'erreur le code HTTP (`status`), le message du serveur (`serverDetail`) et l'en-tête `Retry-After` (`retryAfterSeconds`) ; les autres pages continuent d'afficher `error.message` comme avant.
+
+| Cas réel | Code | Titre affiché | Message (cause + action) |
+|---|---|---|---|
+| Serveur arrêté, réseau coupé | — (`TypeError` de `fetch`) | Studio injoignable | « Le Studio ne répond pas. Vérifiez que le serveur est lancé (scripts/dev.ps1) et votre connexion, puis réessayez. » |
+| Fichier vide, nom invalide | 400 | Photo refusée | Message du serveur + « Choisissez une autre photo puis réessayez. » |
+| Plus de 10 Mo | 413 | Photo trop lourde | « Votre photo dépasse 10 Mo. Réduisez-la ou choisissez une image plus légère. » |
+| Format, type ou contenu refusé (par exemple un AVIF renommé en `.jpg`) | 415 | Format non accepté | Message du serveur + « Enregistrez la photo en JPG, PNG ou WebP avec un logiciel d'image (renommer le fichier ne suffit pas), puis réessayez. » |
+| Catégorie inconnue ou désactivée | 422 | Catégorie indisponible | Message du serveur + « Choisissez une autre catégorie, ou réactivez-la dans Administration → Catégories. » |
+| Session expirée | 401 | Session expirée | « Votre session a expiré… » ; puis la page de connexion s'ouvre et affiche « Votre session a expiré. Reconnectez-vous pour continuer. » |
+| Trop de demandes | 429 | Trop de demandes | « Réessayez dans N secondes / minutes » si `Retry-After` est présent |
+| Erreur du serveur | 500, 502, 503, 504 | Erreur du serveur | « Le serveur a rencontré un problème. Réessayez dans un instant ; si cela continue, redémarrez le serveur. » |
+| Autre | — | Création indisponible | « Impossible de lancer la création pour une raison inattendue… » |
+
+  Un fournisseur 3D hors ligne n'est **pas** une erreur d'envoi : le bouton est alors désactivé, et une panne pendant la génération donne `FAILED` avec le message réel du serveur (quota, délai…). Aucun jeton, chemin de fichier ni trace technique n'est affiché.
 
 | Étape affichée (`views/progress.js`) | Statut |
 |---|---|
@@ -2503,7 +2518,7 @@ flowchart LR
 
 | Technique | Où (fichier : ligne) | Extrait réel | Ce que ça fait | 🔁 Équivalent | Sans elle |
 |---|---|---|---|---|---|
-| **Modules ES** (`import` / `export`) | `router.js` : 8-17 | `import * as createPage from "./pages/create.js?v=20261112-d1";` | Chaque fichier exporte ce qu'il partage ; le navigateur charge les dépendances | `import { X } from './x'` en TypeScript/Angular | Un seul gros fichier, ou des variables globales |
+| **Modules ES** (`import` / `export`) | `router.js` : 8-17 | `import * as createPage from "./pages/create.js?v=20261115-e1";` | Chaque fichier exporte ce qu'il partage ; le navigateur charge les dépendances | `import { X } from './x'` en TypeScript/Angular | Un seul gros fichier, ou des variables globales |
 | **`async` / `await` et `fetch`** | `api.js` : 24-34 | `const response = await fetch("/models", { method: "POST", body, ... });` | Écrit du code asynchrone comme du code séquentiel | `Observable` + `subscribe` d'Angular `HttpClient` | Des chaînes de `.then()` imbriquées |
 | **Littéraux de gabarit** | `model-detail.js` (fonction `integrationSnippet`) | `` `<iframe src="${baseUrl}/embed/${encodeURIComponent(publicId)}" ...>` `` | Chaîne multiligne avec `${...}` | Interpolation `{{ }}` des templates Angular | Concaténations `"..." + x + "..."` |
 | **Création du DOM** | `gallery.js` : 20-21 | `const article = document.createElement("article");` | Construit les éléments un par un ; le texte passe par `textContent` | Le template d'un composant Angular | `innerHTML` avec des données : risque d'injection de script |
@@ -2515,7 +2530,7 @@ flowchart LR
 | **Routage par `#`** | `router.js` : 42, 173 | `window.addEventListener("hashchange", renderRoute);` | Change de page sans recharger ; le serveur ne sert que `index.html` | `RouterModule` avec `useHash: true` | Un rechargement complet à chaque clic |
 | **Web Component** | `widget.js` : 10, 45 | `class Forma3DViewer extends HTMLElement { connectedCallback() {...} }` | Crée une vraie balise HTML `<forma3d-viewer>` | Angular Elements | Le client devrait copier une iframe et calculer l'adresse lui-même |
 | **Shadow DOM** | `widget.js` : 12 | `this.attachShadow({ mode: "open" })` | Isole le style du widget de celui du site | `ViewEncapsulation.ShadowDom` | Les styles de la boutique déformeraient le widget |
-| **Clés de cache `?v=`** | tous les imports | `"./api.js?v=20261112-d1"` | Changer la valeur force le navigateur à recharger le fichier | Empreinte dans le nom des fichiers d'un build Angular (`main.3f2a.js`) | L'ancienne version reste en cache (vécu : bouton « Supprimer » invisible avant Ctrl+F5, car la valeur n'avait pas changé) |
+| **Clés de cache `?v=`** | tous les imports | `"./api.js?v=20261115-e1"` | Changer la valeur force le navigateur à recharger le fichier | Empreinte dans le nom des fichiers d'un build Angular (`main.3f2a.js`) | L'ancienne version reste en cache (vécu : bouton « Supprimer » invisible avant Ctrl+F5, car la valeur n'avait pas changé) |
 | **Fonction immédiatement exécutée** | `widget.js` : 5 | `(() => { ... })();` | Aucune variable globale sur le site client | Portée d'un module | Conflit possible avec les variables de la boutique |
 
 ### 22.4 CSS

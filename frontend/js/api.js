@@ -16,7 +16,14 @@ async function readResponse(response, fallbackMessage) {
   }
   if (!response.ok) {
     const detail = typeof data.detail === "string" ? data.detail : fallbackMessage;
-    throw new Error(detail);
+    // Le message reste celui d'avant ; status, serverDetail et retryAfterSeconds permettent à une page
+    // (par exemple Créer) d'expliquer la cause exacte et l'action à faire.
+    const error = new Error(detail);
+    error.status = response.status;
+    error.serverDetail = typeof data.detail === "string" ? data.detail : null;
+    const retryAfter = Number.parseInt(response.headers.get("Retry-After") ?? "", 10);
+    error.retryAfterSeconds = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : null;
+    throw error;
   }
   return data;
 }

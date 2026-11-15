@@ -3,7 +3,7 @@
  * Exécution : router.js monte cette page sur #/login et y redirige toute visite non connectée.
  * Étape 5f : le mot de passe est envoyé à POST /auth/login et vérifié par le serveur.
  */
-import { consumeNextRoute, isPasswordConfigured, login } from "../auth.js?v=20261112-d1";
+import { consumeNextRoute, consumeSessionExpired, isPasswordConfigured, login } from "../auth.js?v=20261115-e1";
 
 export const title = "Connexion";
 
@@ -74,6 +74,10 @@ export function mount() {
     }
   });
 
+  if (consumeSessionExpired()) {
+    error.textContent = "Votre session a expiré. Reconnectez-vous pour continuer.";
+    error.hidden = false;
+  }
   if (!isPasswordConfigured()) {
     error.textContent = "Connexion impossible : définissez FORMA3D_OWNER_PASSWORD dans backend/.env, puis redémarrez le serveur.";
     error.hidden = false;
