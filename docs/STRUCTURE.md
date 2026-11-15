@@ -217,6 +217,7 @@ Le registre des métadonnées, les empreintes de clés, les quotas journaliers e
 | Chemin | À quoi ça sert | Pourquoi ce choix | Quand on l'utilise |
 |---|---|---|---|
 | `docs/INTEGRATION.md` | Guide la création d'une clé et les requêtes d'intégration, les erreurs, quotas, CORS et CSP | Donne à une personne externe un parcours basé sur les routes réellement existantes | Lors du branchement d'une boutique |
+| `docs/ARCHITECTURE-CIBLE.md` | Architecture cible SaaS multi-clients (rôles, `owner_id`, options Supabase/PostgreSQL/statu quo, schéma, goulot GPU, RGPD, plan) — rien n'est codé | Option C choisie : le produit reste mono-propriétaire, la suite est conçue et documentée | Pour préparer la soutenance ou une suite du projet |
 | `examples/integration.html` | Page de démonstration pour saisir une origine serveur et un UUID public puis charger le widget | Montre le composant avec un modèle réel activé, sans intégrer de faux GLB ni clé | Pour un test local d'intégration |
 | `docs/QUALITE-3D.md` | Grille de qualité 3D, contrats observés, résultats d'essais et licences | Juge les fournisseurs sur des critères écrits avant les essais | Avant tout changement de fournisseur |
 | `docs/etapes/etape-22.md` | Sous-étape C3 : branchement de TRELLIS, activation, sécurité et vérification réelle | Explique comment changer de fournisseur sans casser TripoSR | Pour activer ou présenter TRELLIS |
