@@ -7,10 +7,26 @@ import struct
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+import pytest
 
 from app.main import app
-from app.routers.models import get_demo_gallery
+from app.routers.models import get_demo_gallery, get_generation_service
 from app.services.demo_gallery import DemoGallery
+
+
+class _NoGenerations:
+    """Remplace le service réel : la base SQLite locale de la développeuse n'entre pas dans ces tests."""
+
+    def list_completed_generations(self) -> list:
+        return []
+
+
+@pytest.fixture(autouse=True)
+def isolate_from_local_generations():
+    """Sans cela, un modèle réellement généré dans backend/data/ apparaît dans la galerie testée."""
+    app.dependency_overrides[get_generation_service] = _NoGenerations
+    yield
+    app.dependency_overrides.pop(get_generation_service, None)
 
 
 def _minimal_glb_20() -> bytes:
