@@ -43,6 +43,10 @@ GENERATION_SETTINGS = {
     "texture_size": 1024,
 }
 _HEALTH_TIMEOUT_SECONDS = 5.0
+# gradio_client utilise sinon le délai httpx par défaut (5 s par requête) : quand le Space gratuit
+# est chargé, la connexion seule a pris 26 s le 15 novembre 2026 et provoquait un ReadTimeout.
+# Le délai global de la génération reste hf_timeout_seconds.
+_HTTP_REQUEST_TIMEOUT_SECONDS = 120.0
 
 
 def output_file_path(value: Any) -> Path | None:
@@ -84,6 +88,7 @@ class TrellisSpaceProvider:
                     verbose=False,
                     analytics_enabled=False,
                     download_files=download_dir,
+                    httpx_kwargs={"timeout": _HTTP_REQUEST_TIMEOUT_SECONDS},
                 )
                 self._check_contract(client)
                 self._call(client, deadline, api_name="/start_session")
