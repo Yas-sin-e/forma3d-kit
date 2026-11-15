@@ -27,6 +27,9 @@ def test_health_endpoint_returns_ok_status() -> None:
 
 @pytest.mark.parametrize("status", ["ONLINE", "OFFLINE", "UNCONFIGURED"])
 def test_provider_health_endpoint_exposes_only_the_status(status: str, monkeypatch) -> None:
+    # La route lit app.state.generation_provider (TripoSR ou TRELLIS selon IMAGE3D_PROVIDER) :
+    # on remplace cet objet-là pour que le test ne dépende pas du .env de la développeuse.
+    monkeypatch.setattr(main_module.app.state, "generation_provider", main_module.provider)
     monkeypatch.setattr(main_module.provider, "health_status", lambda: status)
 
     response = client.get("/health/provider")
