@@ -2306,6 +2306,295 @@ Le fichier `.github/workflows/ci.yml` est expliqué ligne par ligne en section 1
 
 ---
 
+## 22. Comment le code est écrit
+
+**En une phrase :** cette section explique les **techniques d'écriture** utilisées partout dans le projet : pour chacune, où elle apparaît, un extrait réel, ce qu'elle fait, pourquoi on l'écrit ainsi, son équivalent Java/Spring/Angular, et ce qui se passerait sans elle.
+
+### 22.1 Python
+
+#### a) Annotations de types
+
+```python
+# backend/app/services/api_key_service.py, ligne 31
+def create(self, name: str) -> tuple[APIKeyRecord, str]:
+```
+- **Ce que ça fait :** indique le type attendu de chaque paramètre (`name: str`) et du résultat (`-> tuple[...]`). `str | None` veut dire « chaîne ou rien ».
+- **Pourquoi :** l'éditeur détecte les erreurs, et **FastAPI lit ces annotations** pour valider les requêtes.
+- 🔁 **Java :** `public Pair<ApiKeyRecord, String> create(String name)` ; la différence : Python ne les vérifie pas à l'exécution (sauf FastAPI/Pydantic).
+- **Sans :** le code marche, mais FastAPI ne saurait plus valider les paramètres, et les erreurs de type n'apparaîtraient qu'à l'exécution.
+
+#### b) `@dataclass(frozen=True, slots=True)`
+
+```python
+# backend/app/models.py, lignes 68-77
+@dataclass(frozen=True, slots=True)
+class APIKeyRecord:
+    id: str
+    name: str
+    prefix: str
+    fingerprint: str
+    created_at: datetime
+    revoked: bool = False
+```
+- **Ce que ça fait :** génère le constructeur, l'affichage et la comparaison. `frozen` interdit toute modification ; `slots` interdit d'ajouter un attribut non déclaré.
+- **Pourquoi :** un enregistrement lu en base ne doit pas changer par accident. Pour « modifier », on crée une copie : `replace(record, status=GenerationStatus.RUNNING)` (`generation_service.py`, méthode `run`).
+- 🔁 **Java :** un `record` Java 16+ (immuable, constructeur généré) ; avec Lombok : `@Value`.
+- **Sans :** il faudrait écrire `__init__` à la main, et un service pourrait modifier un objet partagé par erreur.
+
+#### c) Pydantic : `BaseModel` et `Field`
+
+```python
+# backend/app/schemas.py, lignes 110-113
+class APIKeyCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+```
+- **Ce que ça fait :** quand une requête arrive, FastAPI construit cet objet depuis le JSON. Si `name` manque ou dépasse 80 caractères, la réponse est **422** automatiquement.
+- **Pourquoi :** validation et documentation `/docs` sans code supplémentaire.
+- 🔁 **Spring :** un DTO avec `@NotBlank @Size(max = 80)` et `@Valid @RequestBody`.
+- **Sans :** il faudrait lire le JSON et tester chaque champ à la main dans chaque route.
+
+#### d) Décorateurs de routes
+
+```python
+# backend/app/routers/api_keys.py, lignes 69-70
+@router.delete("/{key_id}/permanent", status_code=status.HTTP_204_NO_CONTENT)
+def delete_revoked_api_key(key_id: str, ...) -> Response:
+```
+- **Ce que ça fait :** un **décorateur** (`@...`) enveloppe la fonction. Ici, il l'enregistre comme route `DELETE`. `{key_id}` dans le chemin devient le paramètre `key_id`.
+- 🔁 **Spring :** `@DeleteMapping("/{keyId}/permanent")` avec `@PathVariable`.
+- **Sans :** il faudrait une table de routage écrite à la main.
+
+#### e) `Depends` et `Annotated` — l'injection de dépendances
+
+```python
+# backend/app/routers/api_keys.py, lignes 17-19 et 33-38
+def get_api_key_service(request: Request) -> APIKeyService:
+    return request.app.state.api_key_service
+
+@router.get("", response_model=APIKeyListResponse)
+def list_api_keys(
+    service: Annotated[APIKeyService, Depends(get_api_key_service)],
+) -> APIKeyListResponse:
+```
+- **Ce que ça fait :** `Annotated[Type, Depends(fonction)]` dit à FastAPI : « avant d'appeler la route, appelle `get_api_key_service` et passe-moi le résultat ». Une dépendance peut elle-même dépendre d'autres (`require_api_key` dépend du service).
+- **Pourquoi :** la route ne crée rien elle-même ; un test peut remplacer la dépendance (`app.dependency_overrides`).
+- 🔁 **Spring :** injection par constructeur ou `@Autowired` ; dans un test, `@MockBean`. **Angular :** `constructor(private service: ApiKeyService)`.
+- **Sans :** chaque route irait chercher ses objets globaux, et les tests ne pourraient pas les remplacer.
+
+#### f) Gestionnaires de contexte (`with`)
+
+```python
+# backend/app/services/image_preparer.py, dans prepare()
+with Image.open(source_path) as opened:
+    image = ImageOps.exif_transpose(opened)
+    image.load()
+```
+- **Ce que ça fait :** `with` garantit qu'une ressource est **libérée** à la fin du bloc, même en cas d'erreur (ici, le fichier image). Le projet en écrit un lui-même : `_connection()` du dépôt SQLite (section 20.8), et `lifespan` dans `main.py`.
+- 🔁 **Java :** `try (var in = new FileInputStream(...)) { ... }` (try-with-resources).
+- **Sans :** un fichier ou une connexion pourrait rester ouvert après une erreur.
+
+#### g) `pathlib`
+
+```python
+# backend/app/main.py, ligne 38 et lignes 47-49
+_PROJECT_ROOT = Path(__file__).resolve().parents[2]
+generation_repository = SQLiteGenerationRepository(
+    _PROJECT_ROOT / "backend" / "data" / "forma3d.sqlite3"
+)
+```
+- **Ce que ça fait :** `Path` représente un chemin ; l'opérateur `/` assemble des morceaux ; `parents[2]` remonte de deux dossiers depuis ce fichier.
+- **Pourquoi :** fonctionne sur Windows (`\`) comme sur Linux (`/`), et ne dépend pas du dossier d'où l'on lance la commande.
+- 🔁 **Java :** `Path.of(...).resolve("backend")` de `java.nio.file`.
+- **Sans :** des chaînes `"..\\data\\"` fragiles, différentes selon le système.
+
+#### h) f-strings
+
+```python
+# backend/app/services/owner_auth.py, ligne 77
+f"{SESSION_SECRET_ENV} doit contenir au moins {SESSION_SECRET_MIN_LENGTH} caractères "
+```
+- **Ce que ça fait :** une chaîne préfixée par `f` remplace `{expression}` par sa valeur.
+- 🔁 **Java :** `String.format("%s doit contenir...", ...)` ; **JavaScript :** littéral de gabarit `` `${x}` ``.
+
+#### i) Exceptions personnalisées
+
+```python
+# backend/app/services/upload_validator.py, lignes 25-32
+class UploadValidationError(ValueError):
+    def __init__(self, detail: str, status_code: int = 415) -> None:
+        super().__init__(detail)
+        self.detail = detail
+        self.status_code = status_code
+```
+- **Ce que ça fait :** une erreur **métier** qui transporte son message et le code HTTP à renvoyer. La route la transforme en `HTTPException` (`raise ... from error` garde la cause d'origine pour le diagnostic).
+- Autres exemples : `ProviderError` (`providers/base.py`), `CategoryInUseError`, `LoginRateLimitedError`, `APIKeyValidationError`.
+- **Pourquoi :** les services ne connaissent pas HTTP ; les routes traduisent.
+- 🔁 **Spring :** une `RuntimeException` métier + un `@ExceptionHandler` ou `@ResponseStatus`.
+- **Sans :** les services renverraient des codes d'erreur mélangés aux résultats.
+
+#### j) Compréhensions de listes
+
+```python
+# backend/app/services/glb_finisher.py, lignes 160-161
+primitives = [p for mesh in document.get("meshes", []) for p in mesh.get("primitives", [])]
+needs_normals = [p for p in primitives if "NORMAL" not in p.get("attributes", {})]
+```
+- **Ce que ça fait :** construit une liste en une ligne : « pour chaque maillage, pour chaque primitive » (double boucle), puis « garde celles sans normales » (filtre).
+- 🔁 **Java :** `meshes.stream().flatMap(m -> m.primitives().stream()).filter(...).toList()`.
+- **Sans :** une boucle `for` de quatre lignes avec `append`.
+
+#### k) `from __future__ import annotations`
+
+```python
+# backend/app/services/generation_service.py, ligne 5
+from __future__ import annotations
+```
+- **Ce que ça fait :** les annotations de types ne sont plus évaluées au chargement du fichier ; on peut donc citer une classe définie plus bas ou éviter des imports circulaires.
+- **Sans :** certaines annotations provoqueraient une erreur `NameError` au démarrage.
+
+#### l) `hmac.compare_digest`
+
+```python
+# backend/app/services/api_key_service.py, lignes 88-91
+for record in matches:
+    is_match = hmac.compare_digest(fingerprint, record.fingerprint)
+    if is_match:
+        accepted = record
+```
+- **Ce que ça fait :** compare deux chaînes en un temps **qui ne dépend pas** du nombre de caractères identiques.
+- **Pourquoi :** avec `==`, la comparaison s'arrête au premier caractère différent ; en mesurant le temps, un attaquant pourrait deviner un secret caractère par caractère (**attaque temporelle**).
+- 🔁 **Java :** `MessageDigest.isEqual(a, b)`.
+- Utilisé aussi pour le mot de passe et la signature des sessions (`owner_auth.py`).
+
+#### m) Tâches de fond
+
+```python
+# backend/app/routers/models.py, ligne 90
+background_tasks.add_task(service.run, record.id)
+```
+- **Ce que ça fait :** FastAPI envoie la réponse **202**, puis exécute `service.run(record.id)`.
+- **Pourquoi :** une génération dure 1 à 2 minutes ; on ne bloque pas le navigateur.
+- 🔁 **Spring :** une méthode `@Async`. ⚠️ Ce n'est pas une file de tâches durable : si le serveur s'arrête, la génération est marquée `FAILED` au redémarrage (section 6.5).
+
+### 22.2 Architecture
+
+```mermaid
+flowchart LR
+    R["routers/<br/>HTTP, validation, codes"] --> S["services/<br/>règles métier"]
+    S --> D["repositories/<br/>SQL"]
+    S --> ST["storage/<br/>fichiers"]
+    S --> P["providers/<br/>IA externe"]
+    D -.contrat.-> DI["GenerationRepository<br/>(Protocol)"]
+    ST -.contrat.-> SI["Storage (Protocol)"]
+    P -.contrat.-> PI["Image3DProvider (Protocol)"]
+```
+
+| Technique | Où | Ce que ça fait | 🔁 Équivalent | Sans elle |
+|---|---|---|---|---|
+| **Couches** routers / services / dépôts / stockage / fournisseurs | `backend/app/*/` | Chaque couche a un seul rôle ; une route ne fait jamais de SQL | `@RestController` / `@Service` / `@Repository` | Une route de 200 lignes mélangeant HTTP, SQL et appels réseau |
+| **Patron Repository** | `repositories/sqlite_repository.py` | Tout le SQL est rangé dans une classe | Spring Data `JpaRepository` | Du SQL dispersé dans les services |
+| **Interface `Protocol`** | `repositories/base.py`, `storage/base.py`, `providers/base.py` | Décrit les méthodes attendues ; toute classe qui les possède convient (**typage structurel**, sans `implements`) | `interface` Java | Le service dépendrait de SQLite ou de TRELLIS directement |
+| **Fournisseur interchangeable** (patron Stratégie) | `main.py` lignes 42-46 | TripoSR ou TRELLIS choisi par une variable | `@ConditionalOnProperty` | Des `if fournisseur == ...` dans tout le service |
+| **Machine à états** | `GenerationStatus` + `generation_service.run()` | `PENDING → RUNNING → DONE/FAILED`, chaque transition enregistrée | `enum` + statut d'une entité | Des états incohérents (un GLB sans statut DONE) |
+| **Schémas Pydantic comme DTO** | `schemas.py` + `_to_response()` | Le JSON public ne contient jamais de chemin disque | DTO + mapper (MapStruct) | Fuite de chemins locaux ou de champs internes |
+| **Verrou** `RLock` | `generation_service.py` (`with self._lock:`) | Une seule lecture-écriture à la fois entre requêtes et tâche de fond | `synchronized` | Deux écritures simultanées pourraient s'écraser |
+
+### 22.3 JavaScript
+
+| Technique | Où (fichier : ligne) | Extrait réel | Ce que ça fait | 🔁 Équivalent | Sans elle |
+|---|---|---|---|---|---|
+| **Modules ES** (`import` / `export`) | `router.js` : 8-17 | `import * as createPage from "./pages/create.js?v=20261112-d1";` | Chaque fichier exporte ce qu'il partage ; le navigateur charge les dépendances | `import { X } from './x'` en TypeScript/Angular | Un seul gros fichier, ou des variables globales |
+| **`async` / `await` et `fetch`** | `api.js` : 24-34 | `const response = await fetch("/models", { method: "POST", body, ... });` | Écrit du code asynchrone comme du code séquentiel | `Observable` + `subscribe` d'Angular `HttpClient` | Des chaînes de `.then()` imbriquées |
+| **Littéraux de gabarit** | `model-detail.js` (fonction `integrationSnippet`) | `` `<iframe src="${baseUrl}/embed/${encodeURIComponent(publicId)}" ...>` `` | Chaîne multiligne avec `${...}` | Interpolation `{{ }}` des templates Angular | Concaténations `"..." + x + "..."` |
+| **Création du DOM** | `gallery.js` : 20-21 | `const article = document.createElement("article");` | Construit les éléments un par un ; le texte passe par `textContent` | Le template d'un composant Angular | `innerHTML` avec des données : risque d'injection de script |
+| **Écouteurs d'événements** | `main.js` : 40 | `logoutButton.addEventListener("click", () => void logout());` | Réagit à un clic, une saisie, un changement d'adresse | `(click)="logout()"` | Attributs `onclick` dans le HTML |
+| **Événements personnalisés** | `api.js` : 9 ; `auth.js` : 69 | `window.dispatchEvent(new CustomEvent("forma3d:unauthorized"));` | Deux modules communiquent sans s'importer | `EventEmitter` / `Subject` RxJS | Dépendances croisées entre modules |
+| **Chaînage optionnel `?.` et `??`** | `model-appearance.js` : 16 ; `gallery.js` : 19 | `material?.pbrMetallicRoughness` ; `options.categories ?? []` | `?.` : pas d'erreur si l'objet est absent ; `??` : valeur par défaut si `null`/`undefined` | Opérateurs identiques en TypeScript | Des `if (a && a.b && a.b.c)` en cascade |
+| **Destructuration** | `router.js` : 44-45 | `const [rawPath, rawQuery = ""] = beforeAnchor.split("?");` | Range les morceaux dans des variables, avec valeur par défaut | Identique en TypeScript | `const parts = ...; const rawPath = parts[0];` |
+| **Décomposition `...`** | `router.js` : 52 | `return { ...base, key: "dashboard", ... };` | Copie les propriétés d'un objet dans un autre | Identique en TypeScript | Recopier chaque propriété à la main |
+| **Routage par `#`** | `router.js` : 42, 173 | `window.addEventListener("hashchange", renderRoute);` | Change de page sans recharger ; le serveur ne sert que `index.html` | `RouterModule` avec `useHash: true` | Un rechargement complet à chaque clic |
+| **Web Component** | `widget.js` : 10, 45 | `class Forma3DViewer extends HTMLElement { connectedCallback() {...} }` | Crée une vraie balise HTML `<forma3d-viewer>` | Angular Elements | Le client devrait copier une iframe et calculer l'adresse lui-même |
+| **Shadow DOM** | `widget.js` : 12 | `this.attachShadow({ mode: "open" })` | Isole le style du widget de celui du site | `ViewEncapsulation.ShadowDom` | Les styles de la boutique déformeraient le widget |
+| **Clés de cache `?v=`** | tous les imports | `"./api.js?v=20261112-d1"` | Changer la valeur force le navigateur à recharger le fichier | Empreinte dans le nom des fichiers d'un build Angular (`main.3f2a.js`) | L'ancienne version reste en cache (vécu : bouton « Supprimer » invisible avant Ctrl+F5, car la valeur n'avait pas changé) |
+| **Fonction immédiatement exécutée** | `widget.js` : 5 | `(() => { ... })();` | Aucune variable globale sur le site client | Portée d'un module | Conflit possible avec les variables de la boutique |
+
+### 22.4 CSS
+
+| Technique | Où | Extrait réel | Ce que ça fait | Sans elle |
+|---|---|---|---|---|
+| **Variables personnalisées** | `theme.css` : 8-40 | `--accent: #2DD4BF;` puis `background: var(--accent);` (`components.css` : 34) | Une couleur définie une fois, utilisée partout ; on change le thème en un endroit | Couleur recopiée dans des dizaines de règles |
+| **Flexbox** | `components.css` : 43-47 (`.site-header`) | `display: flex;` | Aligne des éléments sur une ligne (menu, boutons) ; 40 règles l'utilisent | Positionnements flottants fragiles |
+| **Grid** | `components.css` : 2079-2083 (`.detail-layout`) | `grid-template-columns: minmax(0, 1.7fr) minmax(320px, 1fr);` | Grille en colonnes : viewer large à gauche, informations à droite ; 44 règles l'utilisent | Tableaux HTML détournés pour la mise en page |
+| **Media queries** | `components.css` : 2828, 2846, 2862, 2965 | `@media (max-width: 640px) { ... }` | Adapte la mise en page aux petits écrans (menu ☰, colonnes empilées) | Site illisible sur téléphone |
+| **Animations** | `theme.css` : 169-187 | `@keyframes elegant-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }` | Roue de chargement, apparition des pages, reflet des squelettes | Interface figée, sans retour visuel |
+| **Mouvement réduit** | `theme.css` : 189-198 | `@media (prefers-reduced-motion: reduce) { ... }` | Coupe les animations si l'utilisateur l'a demandé dans son système (accessibilité) | Gêne pour les personnes sensibles au mouvement |
+| **Couleurs transparentes** | `theme.css` (`--accent-soft`) | `--accent-soft: rgb(45 212 191 / 8%);` | Teinte claire dérivée de l'accent | — |
+
+⚠️ **`color-mix()`** n'est **pas** utilisé dans le projet : les teintes dérivées sont écrites directement avec `rgb(... / 8%)`. Si on vous pose la question, c'est la réponse exacte.
+
+🔁 Ces fichiers CSS jouent le rôle d'un thème Angular Material ou d'un fichier de variables SCSS, sans préprocesseur.
+
+### 22.5 Tests
+
+| Technique | Où | Extrait réel | Ce que ça fait | 🔁 JUnit / Spring |
+|---|---|---|---|---|
+| **Fixture** | `test_model_deletion.py` : 34-43 | `@pytest.fixture` puis `def setup(tmp_path: Path): ... yield ...` | Prépare un contexte avant le test, nettoie après le `yield` | `@BeforeEach` / `@AfterEach` |
+| **Fixture automatique** | `conftest.py` : 15-16 | `@pytest.fixture(autouse=True)` | S'applique à tous les tests sans être demandée (ici : session ouverte) | `@BeforeEach` dans une classe parente |
+| **Marqueur** | `test_auth.py` | `pytestmark = pytest.mark.real_auth` | Ces tests gardent la vraie vérification de session | `@Tag` |
+| **monkeypatch** | `test_health.py` : 32-33 | `monkeypatch.setattr(main_module.provider, "health_status", lambda: status)` | Remplace un attribut le temps d'un test, puis le restaure | `Mockito.when(...)` |
+| **parametrize** | `test_health.py` : 28 | `@pytest.mark.parametrize("status", ["ONLINE", "OFFLINE", "UNCONFIGURED"])` | Lance le même test avec plusieurs valeurs | `@ParameterizedTest @ValueSource` |
+| **Base temporaire** | `test_model_deletion.py` : 37 | `SQLiteGenerationRepository(tmp_path / "history.sqlite3")` | Chaque test a sa propre base, effacée ensuite | H2 en mémoire, `@DataJpaTest` |
+| **Surcharge de dépendances** | `test_model_deletion.py` : 41 | `app.dependency_overrides[get_generation_service] = lambda: service` | La route reçoit le service du test au lieu du vrai | `@MockBean` |
+| **TestClient** | partout | `client.delete(f"/models/{generation_id}")` | Appelle l'application en mémoire, sans serveur ni réseau | `MockMvc` |
+| **Faux objets** | `test_trellis_provider.py` (`FakeClient`), `test_models_api.py` (`SuccessfulProvider`) | `class SuccessfulProvider: def generate(...)` | Remplace le service d'IA ; ce n'est jamais une vraie génération | Mock Mockito |
+
+### 22.6 Conventions du projet
+
+| Convention | Exemple réel | Pourquoi |
+|---|---|---|
+| **En-tête « Rôle / Exécution » en français** dans chaque fichier de code | `# Rôle : sert une page isolée…` / `# Exécution : une iframe ou le widget Forma3D ouvre /embed/{public_id}.` (`routers/embed.py`, lignes 1-2) ; en JavaScript : `/* * Rôle : … * Exécution : … */` | Règle d'AGENTS.md : chaque fichier doit être compréhensible pour la soutenance |
+| **Docstring** sous chaque classe et fonction Python | `"""Vérifie une clé active avec comparaison d'empreintes à temps constant."""` | Explique le **pourquoi** en une phrase |
+| Code, noms de fichiers et commandes **en anglais**, explications **en français** | `generation_service.py`, `delete_generation()` | Règle du projet |
+| Fichiers Python en `snake_case`, classes en `PascalCase`, constantes en `MAJUSCULES` | `image_preparer.py`, `ImagePreparer`, `MAX_UPLOAD_BYTES` | Conventions PEP 8 de Python |
+| Nom « privé » commençant par `_` | `_to_response`, `_connection`, `_KEY_PREFIX` | Signale « usage interne au fichier » (pas d'accès réellement interdit en Python) |
+| Fichiers JavaScript en `kebab-case`, fonctions en `camelCase` | `model-detail.js`, `startGeneration()` | Conventions web habituelles |
+| Classes CSS en `kebab-case` par composant | `.model-card`, `.model-card-preview`, `.detail-layout`, `.button-danger` | Nom du composant, puis de la partie, puis de la variante |
+| Attributs `data-*` pour l'état | `data-status="online"`, `data-view="compare"`, `data-locked` | Le CSS réagit à l'état sans classes ajoutées en JavaScript |
+| Accessibilité | `aria-label`, `aria-pressed`, `role="status"`, `aria-live="polite"` | Lecteurs d'écran et navigation au clavier |
+| Messages d'erreur clairs, sans secret | « Clé API absente, invalide ou révoquée. » ; jeton remplacé par `[jeton masqué]` | Compréhensible pour l'utilisateur, sûr pour la sécurité |
+
+### 22.7 Si le jury me demande : quelle technique, où, pourquoi
+
+| Question | Technique | Où | Pourquoi |
+|---|---|---|---|
+| Comment validez-vous les données reçues ? | Pydantic `BaseModel` + `Field` | `schemas.py`, `routers/auth.py` | Erreur 422 automatique, pas de code répétitif |
+| Comment injectez-vous les services ? | `Depends` + `Annotated` | tous les routeurs | Routes simples, services remplaçables dans les tests |
+| Comment protégez-vous toutes les routes du Studio d'un coup ? | `dependencies=[Depends(require_owner)]` | `main.py` : 91-95 | Une seule règle, impossible d'oublier une route |
+| Pourquoi des objets immuables ? | `@dataclass(frozen=True, slots=True)` | `models.py` | Pas de modification accidentelle d'un objet partagé |
+| Comment changez-vous de base de données ? | Patron Repository + `Protocol` | `repositories/base.py` | Le service dépend d'un contrat, pas de SQLite |
+| Comment changez-vous de fournisseur 3D ? | Stratégie + `Protocol` | `providers/base.py`, `main.py` : 42-46 | Une variable d'environnement suffit |
+| Comment garantissez-vous la cohérence de la base ? | Gestionnaire de contexte + transaction | `sqlite_repository.py` : 31-44 | `commit` ou `rollback` garanti |
+| Comment évitez-vous les dépassements de quota simultanés ? | `BEGIN IMMEDIATE` | `sqlite_repository.py` : 292 | Réservation atomique |
+| Pourquoi la génération ne bloque-t-elle pas ? | `BackgroundTasks` + réponse 202 | `routers/models.py` : 90 | 1 à 2 minutes de calcul |
+| Comment suivez-vous l'avancement ? | Machine à états + interrogation toutes les 1,5 s | `models.py`, `create.js` : 201 | États réels, aucun pourcentage inventé |
+| Comment comparez-vous un secret ? | `hmac.compare_digest` | `api_key_service.py`, `owner_auth.py` | Protection contre les attaques temporelles |
+| Comment stockez-vous les clés API ? | Empreinte SHA-256 + préfixe | `api_key_service.py` | La base ne permet pas de retrouver une clé |
+| Pourquoi un cookie HttpOnly ? | `set_cookie(httponly=True, samesite="lax")` | `routers/auth.py` : 55-63 | Illisible par un script injecté |
+| Comment limitez-vous l'affichage en iframe ? | En-tête CSP `frame-ancestors` | `routers/embed.py` : 19-22 | Le navigateur bloque les sites non autorisés |
+| Comment empêchez-vous l'injection de script dans la page embed ? | `html.escape` ; `textContent` côté JavaScript | `routers/embed.py`, `gallery.js` | Un nom de fichier ne peut pas devenir du code |
+| Comment le frontend change-t-il de page ? | Routage par `#` + `hashchange` | `router.js` : 42, 173 | Pas de rechargement, pas de framework |
+| Comment les modules se parlent-ils sans s'importer ? | `CustomEvent` | `api.js` : 9, `auth.js` : 69 | Faible couplage |
+| Comment le widget s'intègre-t-il à n'importe quel site ? | Web Component + Shadow DOM | `widget.js` : 10-12 | Une balise suffit, styles isolés |
+| Pourquoi `?v=` dans les imports ? | Clé de cache | tous les imports JavaScript | Forcer le rechargement après une mise à jour |
+| Comment le design reste-t-il cohérent ? | Variables CSS | `theme.css` : 8-40 | Une couleur définie une seule fois |
+| Comment le site s'adapte-t-il au téléphone ? | Media queries + grid/flex | `components.css` : 2828-2985 | Colonnes empilées, menu ☰ |
+| Comment testez-vous sans appeler l'IA ? | Faux fournisseurs + `dependency_overrides` | `test_models_api.py`, `test_trellis_provider.py` | Tests rapides, reproductibles, sans quota |
+| Comment testez-vous plusieurs cas d'un coup ? | `@pytest.mark.parametrize` | `test_health.py` : 28 | Un test, trois statuts |
+| Comment vos tests évitent-ils votre vraie base ? | `tmp_path` + base temporaire | `test_model_deletion.py` : 37 | Chaque test est isolé |
+| Pourquoi un en-tête « Rôle / Exécution » partout ? | Convention de documentation | tous les fichiers | Chaque fichier explicable en soutenance |
+
+---
+
 ## 23. Glossaire A–Z
 
 | Terme | Définition |
