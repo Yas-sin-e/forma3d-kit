@@ -22,6 +22,7 @@ class SuccessfulProvider:
     """Fournisseur simulé : renvoie un GLB 2.0 minimal, ce n'est pas une vraie génération."""
 
     def generate(self, image_path: Path) -> bytes:
+        """Faux fournisseur : remplace l'appel au service d'IA (aucun réseau, aucune vraie génération)."""
         document = json.dumps({"asset": {"version": "2.0"}}, separators=(",", ":")).encode()
         document += b" " * (-len(document) % 4)
         json_chunk = struct.pack("<I4s", len(document), b"JSON") + document
@@ -34,6 +35,8 @@ PNG_BYTES = b"\x89PNG\r\n\x1a\nsample"
 @pytest.fixture
 def setup(tmp_path: Path):
     """Service réel sur un dépôt SQLite et un dossier de stockage temporaires."""
+    # tmp_path (fixture pytest) : dossier temporaire propre à ce test, effacé ensuite.
+    # La vraie base backend/data/ n'est jamais touchée.
     repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
     repository.initialize()
     storage = LocalStorage(tmp_path / "storage")
@@ -44,6 +47,7 @@ def setup(tmp_path: Path):
 
 
 def _create_done_model(client: TestClient) -> str:
+    """Crée par l'API un modèle terminé (fournisseur simulé) et renvoie son identifiant."""
     response = client.post(
         "/models",
         files={"file": ("chair.png", PNG_BYTES, "image/png")},
@@ -56,6 +60,7 @@ def _create_done_model(client: TestClient) -> str:
 
 
 def test_delete_removes_row_glb_and_source_photo(setup) -> None:
+    """Prouve que la suppression efface la ligne SQLite, le GLB et la photo source."""
     client, _service, storage = setup
     generation_id = _create_done_model(client)
     glb_path = storage.models_dir / f"{generation_id}.glb"
@@ -73,6 +78,7 @@ def test_delete_removes_row_glb_and_source_photo(setup) -> None:
 
 
 def test_deleted_model_is_no_longer_public_even_if_integration_was_enabled(setup) -> None:
+    """Prouve qu'un modèle supprimé n'est plus visible publiquement, même s'il était intégré."""
     client, _service, _storage = setup
     generation_id = _create_done_model(client)
     enabled = client.patch(f"/models/{generation_id}/integration", json={"enabled": True}).json()
@@ -85,6 +91,7 @@ def test_deleted_model_is_no_longer_public_even_if_integration_was_enabled(setup
 
 
 def test_delete_unknown_or_demo_model_returns_404(setup) -> None:
+    """Prouve qu'un identifiant inconnu ou un exemple de démonstration donne 404."""
     client, _service, _storage = setup
 
     assert client.delete(f"/models/{uuid4()}").status_code == 404
@@ -93,6 +100,7 @@ def test_delete_unknown_or_demo_model_returns_404(setup) -> None:
 
 
 def test_delete_refuses_a_generation_still_in_progress(setup) -> None:
+    """Prouve qu'une génération en cours ne peut pas être supprimée (409)."""
     client, service, storage = setup
     upload = ValidatedUpload(filename="chair.png", content_type="image/png", size_bytes=len(PNG_BYTES))
     record = service.create_generation(upload, PNG_BYTES, "chair")  # reste PENDING : run() n'est pas appelé
@@ -106,6 +114,7 @@ def test_delete_refuses_a_generation_still_in_progress(setup) -> None:
 
 
 def test_repository_delete_reports_whether_a_row_existed(tmp_path: Path) -> None:
+    """Prouve que le dépôt indique si une ligne a réellement été supprimée."""
     repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
     repository.initialize()
 
@@ -113,6 +122,7 @@ def test_repository_delete_reports_whether_a_row_existed(tmp_path: Path) -> None
 
 
 def test_storage_delete_files_refuses_a_non_uuid_identifier(tmp_path: Path) -> None:
+    """Prouve que la suppression de fichiers refuse un identifiant qui n'est pas un UUID."""
     storage = LocalStorage(tmp_path)
     outside = tmp_path / "secret.glb"
     outside.write_bytes(b"keep")
@@ -123,4 +133,5 @@ def test_storage_delete_files_refuses_a_non_uuid_identifier(tmp_path: Path) -> N
 
 
 def test_storage_delete_files_ignores_missing_files(tmp_path: Path) -> None:
+    """Prouve que la suppression ne plante pas si les fichiers sont déjà absents."""
     LocalStorage(tmp_path).delete_files(str(uuid4()))

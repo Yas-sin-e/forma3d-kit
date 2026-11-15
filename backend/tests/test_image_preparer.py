@@ -20,6 +20,7 @@ def _save_sharp_photo(path: Path, size: tuple[int, int]) -> None:
 
 
 def test_preparer_square_resizes_small_image_and_keeps_original(tmp_path: Path) -> None:
+    """Prouve qu'une petite image devient un carré d'au moins 512 px et que l'original n'est pas modifié."""
     source = tmp_path / "source.png"
     _save_sharp_photo(source, (256, 192))
     original_bytes = source.read_bytes()
@@ -34,6 +35,7 @@ def test_preparer_square_resizes_small_image_and_keeps_original(tmp_path: Path) 
 
 
 def test_preparer_warns_for_blurry_image_without_blocking(tmp_path: Path) -> None:
+    """Prouve qu'une image floue donne un avertissement, sans bloquer la préparation."""
     source = tmp_path / "blurred.png"
     _save_sharp_photo(source, (640, 640))
     with Image.open(source) as image:
@@ -47,6 +49,7 @@ def test_preparer_warns_for_blurry_image_without_blocking(tmp_path: Path) -> Non
 
 
 def test_preparer_does_not_warn_for_detailed_large_image(tmp_path: Path) -> None:
+    """Prouve qu'une image grande et détaillée ne donne aucun avertissement."""
     source = tmp_path / "sharp.png"
     _save_sharp_photo(source, (640, 640))
 
@@ -58,6 +61,7 @@ def test_preparer_does_not_warn_for_detailed_large_image(tmp_path: Path) -> None
 
 
 def test_preparer_rejects_undecodable_source(tmp_path: Path) -> None:
+    """Prouve qu'un fichier illisible lève ImagePreparationError."""
     source = tmp_path / "not-an-image.png"
     source.write_bytes(b"not an image")
 

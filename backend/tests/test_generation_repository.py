@@ -31,11 +31,13 @@ class SuccessfulProvider:
     """Fournisseur de test local dont la sortie n'est pas un résultat du produit."""
 
     def generate(self, image_path: Path) -> bytes:
+        """Faux fournisseur : remplace l'appel au service d'IA (aucun réseau, aucune vraie génération)."""
         assert image_path.is_file()
         return _minimal_glb()
 
 
 def test_initialize_creates_categories_table_and_seeds_defaults(tmp_path: Path) -> None:
+    """Prouve que initialize() crée les tables et les trois catégories de départ."""
     database_path = tmp_path / "data" / "history.sqlite3"
     repository = SQLiteGenerationRepository(database_path)
 
@@ -59,6 +61,7 @@ def test_initialize_creates_categories_table_and_seeds_defaults(tmp_path: Path) 
 
 
 def test_completed_generation_survives_repository_and_service_restart(tmp_path: Path) -> None:
+    """Prouve qu'un modèle terminé est toujours visible après un redémarrage (persistance SQLite)."""
     database_path = tmp_path / "data" / "history.sqlite3"
     storage_root = tmp_path / "storage"
     first_repository = SQLiteGenerationRepository(database_path)
@@ -102,6 +105,7 @@ def test_completed_generation_survives_repository_and_service_restart(tmp_path: 
 
 
 def test_initialize_fails_pending_and_running_generations_after_restart(tmp_path: Path) -> None:
+    """Prouve qu'au redémarrage, les générations PENDING ou RUNNING passent en FAILED."""
     database_path = tmp_path / "data" / "history.sqlite3"
     storage_root = tmp_path / "storage"
     repository = SQLiteGenerationRepository(database_path)
@@ -134,12 +138,14 @@ def test_repository_opens_a_fresh_connection_for_each_operation(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
+    """Prouve que le dépôt ouvre une connexion neuve par opération (aucune connexion partagée)."""
     import app.repositories.sqlite_repository as sqlite_repository_module
 
     opened_connections: list[sqlite3.Connection] = []
     original_connect = sqlite_repository_module.sqlite3.connect
 
     def track_connect(*args, **kwargs) -> sqlite3.Connection:
+        """Espion : compte les ouvertures de connexion SQLite puis appelle la vraie fonction."""
         connection = original_connect(*args, **kwargs)
         opened_connections.append(connection)
         return connection
@@ -155,6 +161,7 @@ def test_repository_opens_a_fresh_connection_for_each_operation(
 
 
 def test_initialize_migrates_preparation_warning_column(tmp_path: Path) -> None:
+    """Prouve la migration : la colonne image_warning est ajoutée à une ancienne base sans perte de données."""
     database_path = tmp_path / "history.sqlite3"
     with sqlite3.connect(database_path) as connection:
         connection.execute(

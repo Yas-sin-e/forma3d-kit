@@ -8,6 +8,7 @@ from app.config import Settings, get_settings, parse_api_cors_origins, parse_emb
 
 
 def test_api_limits_have_safe_free_defaults_and_cors_is_closed() -> None:
+    """Prouve que les quotas ont des valeurs par défaut sûres et que CORS est fermé par défaut."""
     settings = Settings()
     assert settings.api_daily_generation_limit == 20
     assert settings.api_rate_limit_per_minute == 10
@@ -15,6 +16,7 @@ def test_api_limits_have_safe_free_defaults_and_cors_is_closed() -> None:
 
 
 def test_cors_origin_parser_deduplicates_exact_origins_without_open_wildcard() -> None:
+    """Prouve que la liste d'origines est dédoublonnée et que « * » est refusé."""
     assert parse_api_cors_origins("https://shop.example, https://shop.example/, http://localhost:3000") == (
         "https://shop.example",
         "http://localhost:3000",
@@ -29,6 +31,7 @@ def test_cors_origin_parser_deduplicates_exact_origins_without_open_wildcard() -
 
 
 def test_api_settings_read_limits_and_cors_from_process_environment(monkeypatch) -> None:
+    """Prouve que les quotas et les origines sont lus depuis les variables d'environnement."""
     monkeypatch.setenv("PYTHON_DOTENV_DISABLED", "true")
     monkeypatch.setenv("API_DAILY_GENERATION_LIMIT", "7")
     monkeypatch.setenv("API_RATE_LIMIT_PER_MINUTE", "3")

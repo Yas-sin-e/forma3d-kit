@@ -23,6 +23,7 @@ def test_validator_accepts_supported_image_signatures(
     content_type: str,
     content: bytes,
 ) -> None:
+    """Prouve que les vraies signatures JPEG, PNG et WebP sont acceptées."""
     result = UploadValidator.validate(filename, content_type, content)
 
     assert result.filename == filename
@@ -31,6 +32,7 @@ def test_validator_accepts_supported_image_signatures(
 
 
 def test_validator_removes_client_path_from_filename() -> None:
+    """Prouve que le chemin envoyé par le client est retiré du nom de fichier."""
     result = UploadValidator.validate(
         r"C:\fakepath\chair.png",
         "image/png",
@@ -41,6 +43,7 @@ def test_validator_removes_client_path_from_filename() -> None:
 
 
 def test_validator_rejects_an_empty_file() -> None:
+    """Prouve qu'un fichier vide est refusé (400)."""
     with pytest.raises(UploadValidationError) as error:
         UploadValidator.validate("chair.png", "image/png", b"")
 
@@ -48,6 +51,7 @@ def test_validator_rejects_an_empty_file() -> None:
 
 
 def test_validator_rejects_an_unsupported_extension() -> None:
+    """Prouve qu'une extension non prise en charge est refusée (415)."""
     with pytest.raises(UploadValidationError) as error:
         UploadValidator.validate("chair.gif", "image/gif", b"GIF89a")
 
@@ -55,6 +59,7 @@ def test_validator_rejects_an_unsupported_extension() -> None:
 
 
 def test_validator_rejects_a_mismatched_mime_type() -> None:
+    """Prouve qu'un type MIME qui ne correspond pas à l'extension est refusé (415)."""
     with pytest.raises(UploadValidationError) as error:
         UploadValidator.validate("chair.png", "image/jpeg", b"\x89PNG\r\n\x1a\nsample")
 
@@ -62,6 +67,7 @@ def test_validator_rejects_a_mismatched_mime_type() -> None:
 
 
 def test_validator_rejects_a_mismatched_file_signature() -> None:
+    """Prouve qu'un contenu déguisé (signature différente du format annoncé) est refusé (415)."""
     with pytest.raises(UploadValidationError) as error:
         UploadValidator.validate("chair.png", "image/png", b"not-an-image")
 
@@ -69,6 +75,7 @@ def test_validator_rejects_a_mismatched_file_signature() -> None:
 
 
 def test_validator_rejects_files_larger_than_ten_megabytes() -> None:
+    """Prouve qu'un fichier de plus de 10 Mo est refusé (413)."""
     content = b"\x89PNG\r\n\x1a\n" + (b"x" * MAX_UPLOAD_BYTES)
     with pytest.raises(UploadValidationError) as error:
         UploadValidator.validate("chair.png", "image/png", content)

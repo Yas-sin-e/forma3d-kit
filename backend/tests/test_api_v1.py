@@ -23,6 +23,7 @@ class StaticProvider:
     """Retourne une fixture GLB déterministe au lieu d’appeler un fournisseur distant."""
 
     def generate(self, image_path: Path) -> bytes:
+        """Faux fournisseur : remplace l'appel au service d'IA (aucun réseau, aucune vraie génération)."""
         assert image_path.is_file()
         payload = json.dumps({"asset": {"version": "2.0"}}, separators=(",", ":")).encode()
         padding = (-len(payload)) % 4
@@ -32,6 +33,7 @@ class StaticProvider:
 
 
 def test_api_v1_creates_tracks_downloads_and_returns_embed_code(tmp_path: Path) -> None:
+    """Prouve le parcours complet de l'API externe : création, suivi, téléchargement du GLB, code d'intégration."""
     repository = SQLiteGenerationRepository(tmp_path / "api.sqlite3")
     repository.initialize()
     key_service = APIKeyService(repository)
@@ -99,6 +101,7 @@ def test_api_v1_creates_tracks_downloads_and_returns_embed_code(tmp_path: Path) 
 
 
 def test_api_v1_rate_limit_has_consistent_json_and_retry_after(tmp_path: Path) -> None:
+    """Prouve qu'un dépassement de débit renvoie 429, le format d'erreur {error:{code,message}} et Retry-After."""
     repository = SQLiteGenerationRepository(tmp_path / "rate.sqlite3")
     repository.initialize()
     key_service = APIKeyService(repository)
@@ -122,6 +125,7 @@ def test_api_v1_rate_limit_has_consistent_json_and_retry_after(tmp_path: Path) -
 
 
 def test_cors_does_not_reflect_an_unconfigured_external_origin() -> None:
+    """Prouve que le serveur n'autorise pas une origine externe non configurée (CORS fermé)."""
     with TestClient(app) as client:
         response = client.options(
             "/api/v1/models",

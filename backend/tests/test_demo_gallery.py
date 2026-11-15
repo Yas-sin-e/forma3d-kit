@@ -18,6 +18,7 @@ class _NoGenerations:
     """Remplace le service réel : la base SQLite locale de la développeuse n'entre pas dans ces tests."""
 
     def list_completed_generations(self) -> list:
+        """Aucune génération enregistrée : la galerie testée ne contient que les exemples."""
         return []
 
 
@@ -38,6 +39,7 @@ def _minimal_glb_20() -> bytes:
 
 
 def test_gallery_lists_only_existing_valid_allowlisted_glb_files(tmp_path: Path) -> None:
+    """Prouve que la galerie ne liste que les GLB autorisés, présents et valides."""
     valid_glb = _minimal_glb_20()
     (tmp_path / "chair-bentwood.glb").write_bytes(valid_glb)
     (tmp_path / "chair-met-01.glb").write_bytes(b"not a GLB")
@@ -70,6 +72,7 @@ def test_gallery_lists_only_existing_valid_allowlisted_glb_files(tmp_path: Path)
 
 
 def test_gallery_download_serves_the_real_allowlisted_glb(tmp_path: Path) -> None:
+    """Prouve que le téléchargement d'un exemple renvoie le vrai fichier GLB autorisé."""
     valid_glb = _minimal_glb_20()
     (tmp_path / "stool-met-01.glb").write_bytes(valid_glb)
     app.dependency_overrides[get_demo_gallery] = lambda: DemoGallery(tmp_path)
@@ -84,6 +87,7 @@ def test_gallery_download_serves_the_real_allowlisted_glb(tmp_path: Path) -> Non
 
 
 def test_gallery_lists_and_serves_source_photo_only_when_present(tmp_path: Path) -> None:
+    """Prouve que la photo source d'un exemple n'est proposée que si elle existe."""
     valid_glb = _minimal_glb_20()
     (tmp_path / "chair-met-01.glb").write_bytes(valid_glb)
     source_dir = tmp_path.parent / "feasibility-inputs"
@@ -106,6 +110,7 @@ def test_gallery_lists_and_serves_source_photo_only_when_present(tmp_path: Path)
 
 
 def test_gallery_refuses_unknown_or_invalid_models(tmp_path: Path) -> None:
+    """Prouve qu'un exemple inconnu, un chemin piège ou un GLB invalide donne 404."""
     (tmp_path / "chair-bentwood.glb").write_bytes(b"not a GLB")
     app.dependency_overrides[get_demo_gallery] = lambda: DemoGallery(tmp_path)
     try:

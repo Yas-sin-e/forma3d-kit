@@ -19,6 +19,7 @@ from app.storage.local_storage import LocalStorage
 
 
 def _glb(document: dict, binary: bytes) -> bytes:
+    """Fabrique en mémoire un petit GLB de test (document JSON + données binaires)."""
     json_bytes = json.dumps(document).encode("utf-8")
     json_bytes += b" " * (-len(json_bytes) % 4)
     binary += b"\x00" * (-len(binary) % 4)
@@ -64,6 +65,7 @@ def _raw_triangle_glb(with_material: bool = False, with_normals: bool = False) -
 
 
 def _parse(content: bytes) -> tuple[dict, bytes]:
+    """Relit un GLB produit par le test et renvoie son document JSON et ses données binaires."""
     json_length = struct.unpack_from("<I", content, 12)[0]
     document = json.loads(content[20:20 + json_length])
     bin_offset = 20 + json_length
@@ -72,6 +74,7 @@ def _parse(content: bytes) -> tuple[dict, bytes]:
 
 
 def test_raw_glb_receives_matte_material_and_unit_normals_without_touching_geometry() -> None:
+    """Prouve qu'un GLB brut reçoit un matériau mat et des normales unitaires, sans changer la géométrie."""
     raw = _raw_triangle_glb()
     finished, report = finish_glb(raw)
 
@@ -95,6 +98,7 @@ def test_raw_glb_receives_matte_material_and_unit_normals_without_touching_geome
 
 
 def test_complete_glb_is_returned_unchanged() -> None:
+    """Prouve qu'un GLB déjà complet est renvoyé tel quel."""
     complete = _raw_triangle_glb(with_material=True, with_normals=True)
     finished, report = finish_glb(complete)
     assert finished == complete
@@ -102,6 +106,7 @@ def test_complete_glb_is_returned_unchanged() -> None:
 
 
 def test_existing_author_material_is_kept_and_only_normals_are_added() -> None:
+    """Prouve qu'un matériau existant est conservé et que seules les normales manquantes sont ajoutées."""
     finished, report = finish_glb(_raw_triangle_glb(with_material=True))
     document, _ = _parse(finished)
     assert report.materials_added == 0 and report.normals_added == 1
@@ -109,12 +114,14 @@ def test_existing_author_material_is_kept_and_only_normals_are_added() -> None:
 
 
 def test_invalid_or_unsupported_files_are_returned_unchanged() -> None:
+    """Prouve qu'un fichier invalide ou non géré est renvoyé inchangé (la finition ne fait jamais échouer une génération)."""
     for content in (b"", b"not a glb at all", b"glTF" + b"\x00" * 30):
         finished, report = finish_glb(content)
         assert finished == content and not report.changed
 
 
 def test_normals_are_area_weighted_and_degenerate_vertices_point_up() -> None:
+    """Prouve que les normales sont pondérées par l'aire et qu'un sommet isolé pointe vers le haut."""
     positions = [(0, 0, 0), (1, 0, 0), (0, 1, 0), (5, 5, 5)]
     normals = compute_vertex_normals(positions, [0, 1, 2])
     assert normals[0] == (0.0, 0.0, 1.0)
@@ -122,10 +129,13 @@ def test_normals_are_area_weighted_and_degenerate_vertices_point_up() -> None:
 
 
 def test_generation_service_stores_the_finished_glb(tmp_path: Path) -> None:
+    """Prouve que le service enregistre bien le GLB fini, et non le GLB brut."""
     raw = _raw_triangle_glb()
 
     class RawGlbProvider:
+        """Faux fournisseur qui renvoie un GLB brut, sans matériau ni normales."""
         def generate(self, image_path: Path) -> bytes:
+            """Faux fournisseur : remplace l'appel au service d'IA (aucun réseau, aucune vraie génération)."""
             return raw
 
     repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")

@@ -11,6 +11,7 @@ from app.main import app
 
 
 def test_home_serves_the_studio_shell_and_separate_navigation() -> None:
+    """Prouve que « / » sert la coque du Studio avec son menu et son point de montage."""
     client = TestClient(app)
     response = client.get("/")
     html = response.content.decode("utf-8")
@@ -53,6 +54,7 @@ def test_home_serves_the_studio_shell_and_separate_navigation() -> None:
 
 
 def test_static_frontend_assets_are_served_and_only_api_module_calls_fetch() -> None:
+    """Prouve que les fichiers du frontend sont servis et que seul api.js appelle fetch (règle d'architecture)."""
     client = TestClient(app)
     api_response = client.get("/static/js/api.js")
     css_response = client.get("/static/css/components.css")
@@ -92,6 +94,7 @@ def test_static_frontend_assets_are_served_and_only_api_module_calls_fetch() -> 
 
 
 def test_provider_health_polling_and_offline_demo_fallback_are_in_api_modules() -> None:
+    """Prouve la surveillance du serveur 3D et le repli vers les exemples quand il est hors ligne."""
     client = TestClient(app)
     api = client.get("/static/js/api.js").text
     main = client.get("/static/js/main.js").text
@@ -115,6 +118,7 @@ def test_provider_health_polling_and_offline_demo_fallback_are_in_api_modules() 
 
 
 def test_hash_router_and_pages_cover_accessible_seller_routes() -> None:
+    """Prouve que le routeur par # couvre toutes les pages et gère titre, lien actif et focus."""
     client = TestClient(app)
     router = client.get("/static/js/router.js").text
     models = client.get("/static/js/pages/models.js").text
@@ -149,6 +153,7 @@ def test_hash_router_and_pages_cover_accessible_seller_routes() -> None:
 
 
 def test_model_detail_has_an_opt_in_integration_control() -> None:
+    """Prouve que l'intégration d'un modèle est désactivée par défaut et s'active volontairement."""
     client = TestClient(app)
     detail = client.get("/static/js/pages/model-detail.js").text
     api = client.get("/static/js/api.js").text
@@ -168,6 +173,7 @@ def test_model_detail_has_an_opt_in_integration_control() -> None:
 
 
 def test_local_model_controls_do_not_send_files_to_the_backend() -> None:
+    """Prouve que l'aperçu d'un GLB local reste dans le navigateur (aucun envoi au serveur)."""
     client = TestClient(app)
     viewer = client.get("/static/js/views/viewer.js").text
 
@@ -182,6 +188,7 @@ def test_local_model_controls_do_not_send_files_to_the_backend() -> None:
 
 
 def test_create_page_keeps_workspace_then_progress_layout() -> None:
+    """Prouve la mise en page de Créer : deux colonnes, puis le suivi en dessous."""
     client = TestClient(app)
     shell = client.get("/").text
     create_page = client.get("/static/js/pages/create.js").text
@@ -206,6 +213,7 @@ def test_create_page_keeps_workspace_then_progress_layout() -> None:
 
 
 def test_widget_script_defines_the_integrator_tag_and_uses_embed_iframe() -> None:
+    """Prouve que widget.js définit <forma3d-viewer> et affiche /embed dans une iframe."""
     client = TestClient(app)
     response = client.get("/static/widget.js")
     assert response.status_code == 200
@@ -244,6 +252,7 @@ def test_integrator_guide_documents_the_real_contract_and_security_limits() -> N
 
 
 def test_login_screen_guards_every_studio_route() -> None:
+    """Prouve que l'écran de connexion protège toutes les pages du Studio."""
     client = TestClient(app)
     shell = client.get("/").text
     router = client.get("/static/js/router.js").text
@@ -271,6 +280,7 @@ def test_login_screen_guards_every_studio_route() -> None:
 
 
 def test_redesigned_pages_offer_guides_counts_and_honest_examples() -> None:
+    """Prouve que les pages affichent guides, compteurs et exemples présentés honnêtement (durées mesurées)."""
     client = TestClient(app)
     api_keys = client.get("/static/js/pages/api-keys.js").text
     detail = client.get("/static/js/pages/model-detail.js").text
@@ -289,6 +299,7 @@ def test_redesigned_pages_offer_guides_counts_and_honest_examples() -> None:
 
 
 def test_integration_guide_page_is_reachable_from_the_studio() -> None:
+    """Prouve que le guide d'intégration est accessible depuis le Studio."""
     client = TestClient(app)
     shell = client.get("/").text
     router = client.get("/static/js/router.js").text
@@ -356,6 +367,7 @@ def test_gallery_model_urls_change_when_the_file_changes() -> None:
 
 
 def test_revoked_api_keys_offer_a_confirmed_permanent_delete() -> None:
+    """Prouve que la suppression définitive d'une clé révoquée demande une confirmation."""
     client = TestClient(app)
     page = client.get("/static/js/pages/api-keys.js").text
     api = client.get("/static/js/api.js").text
@@ -375,6 +387,7 @@ def test_confirm_dialog_settles_without_relying_on_the_close_event() -> None:
 
 
 def test_model_detail_offers_a_confirmed_permanent_delete() -> None:
+    """Prouve que la fiche propose une suppression confirmée, cachée pour les exemples et pendant la création."""
     client = TestClient(app)
     detail = client.get("/static/js/pages/model-detail.js").text
     api = client.get("/static/js/api.js").text
@@ -387,6 +400,7 @@ def test_model_detail_offers_a_confirmed_permanent_delete() -> None:
 
 
 def test_create_page_explains_each_upload_failure_with_cause_and_action() -> None:
+    """Prouve que chaque échec d'envoi (réseau, 400, 413, 415, 422, 401, 429, 5xx) a un message avec cause et action."""
     client = TestClient(app)
     create = client.get("/static/js/pages/create.js").text
     api = client.get("/static/js/api.js").text
@@ -408,6 +422,7 @@ def test_create_page_explains_each_upload_failure_with_cause_and_action() -> Non
 
 
 def test_expired_session_is_announced_on_the_login_page() -> None:
+    """Prouve qu'une session expirée est annoncée sur la page de connexion."""
     client = TestClient(app)
     auth = client.get("/static/js/auth.js").text
     login = client.get("/static/js/pages/login.js").text

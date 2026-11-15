@@ -50,6 +50,7 @@ def library_client(tmp_path: Path):
 
 
 def test_import_glb_is_saved_with_random_name_and_appears_in_library(library_client) -> None:
+    """Prouve qu'un GLB importé est enregistré sous un nom aléatoire et apparaît dans la bibliothèque."""
     client, repository, storage, _ = library_client
     response = client.post(
         "/models/import",
@@ -94,6 +95,7 @@ def test_import_glb_is_saved_with_random_name_and_appears_in_library(library_cli
     [("model.obj", _valid_glb(), 415), ("broken.glb", b"not a GLB", 422)],
 )
 def test_import_rejects_non_glb_files(library_client, filename, content, expected_status) -> None:
+    """Prouve qu'un fichier qui n'est pas un .glb est refusé."""
     client, *_ = library_client
     response = client.post(
         "/models/import",
@@ -105,6 +107,7 @@ def test_import_rejects_non_glb_files(library_client, filename, content, expecte
 
 
 def test_import_rejects_a_file_above_the_configured_size(library_client) -> None:
+    """Prouve qu'un GLB plus gros que MAX_GLB_UPLOAD_MB est refusé."""
     client, *_ = library_client
     app.state.max_glb_upload_bytes = 16
     response = client.post(
@@ -118,6 +121,7 @@ def test_import_rejects_a_file_above_the_configured_size(library_client) -> None
 
 @pytest.mark.parametrize("category", ["unknown", "inactive"])
 def test_import_rejects_unknown_or_inactive_categories(library_client, category) -> None:
+    """Prouve qu'une catégorie inconnue ou désactivée est refusée à l'import."""
     client, repository, *_ = library_client
     if category == "inactive":
         repository.update_category("stool", is_active=False)
@@ -134,6 +138,7 @@ def test_import_rejects_unknown_or_inactive_categories(library_client, category)
 
 
 def test_copy_example_preserves_example_origin_and_uses_separate_file(library_client) -> None:
+    """Prouve que la copie d'un exemple garde l'origine « example » et crée un fichier séparé."""
     client, repository, storage, gallery = library_client
     gallery.root.mkdir(parents=True)
     source = gallery.root / "chair-bentwood.glb"
@@ -155,6 +160,7 @@ def test_copy_example_preserves_example_origin_and_uses_separate_file(library_cl
 
 
 def test_public_model_and_glb_require_explicit_integration_activation(library_client) -> None:
+    """Prouve que l'accès public au modèle et à son GLB exige une activation explicite."""
     client, repository, _, _ = library_client
     imported = client.post(
         "/models/import",
@@ -203,6 +209,7 @@ def test_public_model_and_glb_require_explicit_integration_activation(library_cl
 
 
 def test_initialize_migrates_origin_without_losing_existing_generation(tmp_path: Path) -> None:
+    """Prouve la migration de la colonne origin sans perte des générations existantes."""
     database_path = tmp_path / "legacy.sqlite3"
     with sqlite3.connect(database_path) as connection:
         connection.executescript(

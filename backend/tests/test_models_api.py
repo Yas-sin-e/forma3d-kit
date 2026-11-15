@@ -22,6 +22,7 @@ class UnavailableProvider:
     """Fournisseur de test qui échoue sans produire de données de modèle."""
 
     def generate(self, image_path: Path) -> bytes:
+        """Faux fournisseur : remplace l'appel au service d'IA (aucun réseau, aucune vraie génération)."""
         raise ProviderError("Space public indisponible pour ce test.")
 
 
@@ -29,6 +30,7 @@ class SuccessfulProvider:
     """Fournisseur local simulé qui renvoie un conteneur GLB 2.0 minimal."""
 
     def generate(self, image_path: Path) -> bytes:
+        """Faux fournisseur : remplace l'appel au service d'IA (aucun réseau, aucune vraie génération)."""
         document = json.dumps({"asset": {"version": "2.0"}}, separators=(",", ":")).encode()
         document += b" " * (-len(document) % 4)
         json_chunk = struct.pack("<I4s", len(document), b"JSON") + document
@@ -36,6 +38,7 @@ class SuccessfulProvider:
 
 
 def test_upload_returns_job_and_status_records_provider_failure(tmp_path: Path) -> None:
+    """Prouve que l'envoi répond 202 PENDING puis que l'état final enregistre l'échec du fournisseur."""
     repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
     repository.initialize()
     service = GenerationService(UnavailableProvider(), LocalStorage(tmp_path), repository)
@@ -69,6 +72,7 @@ def test_upload_returns_job_and_status_records_provider_failure(tmp_path: Path) 
 
 
 def test_upload_rejects_invalid_image_before_scheduling_generation(tmp_path: Path) -> None:
+    """Prouve qu'une image invalide est refusée avant de lancer la moindre génération."""
     repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
     repository.initialize()
     service = GenerationService(UnavailableProvider(), LocalStorage(tmp_path), repository)
@@ -90,6 +94,7 @@ def test_upload_rejects_invalid_image_before_scheduling_generation(tmp_path: Pat
 
 
 def test_upload_requires_a_supported_category() -> None:
+    """Prouve qu'une catégorie inconnue est refusée (422)."""
     client = TestClient(app)
     file = {"file": ("chair.png", b"\x89PNG\r\n\x1a\nsample", "image/png")}
     try:
@@ -103,6 +108,7 @@ def test_upload_requires_a_supported_category() -> None:
 
 
 def test_completed_upload_appears_in_its_category_with_source_and_glb(tmp_path: Path) -> None:
+    """Prouve qu'un modèle terminé apparaît dans sa catégorie avec sa photo source et son GLB."""
     repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
     repository.initialize()
     service = GenerationService(
@@ -141,6 +147,7 @@ def test_completed_upload_appears_in_its_category_with_source_and_glb(tmp_path: 
 
 
 def test_status_route_returns_not_found_for_unknown_id(tmp_path: Path) -> None:
+    """Prouve qu'un identifiant inconnu donne 404 sur la route de suivi."""
     repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
     repository.initialize()
     service = GenerationService(UnavailableProvider(), LocalStorage(tmp_path), repository)
