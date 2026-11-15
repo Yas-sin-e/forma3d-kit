@@ -2031,6 +2031,281 @@ def _client_token(self) -> str | bool:
 
 ---
 
+## 21. Le frontend, les tests et la CI en détail
+
+**En une phrase :** le frontend est du JavaScript sans framework, découpé en modules ; cette section montre comment les modules démarrent, se parlent, appellent le serveur, et comment les tests et GitHub Actions vérifient le tout.
+
+### 21.1 Le démarrage de la page, dans l'ordre
+
+```mermaid
+sequenceDiagram
+    participant H as index.html
+    participant M as main.js
+    participant A as auth.js
+    participant API as api.js
+    participant R as router.js
+    participant P as pages/*.js
+    H->>M: <script type="module">
+    M->>A: await refreshSession()
+    A->>API: getSession() → GET /auth/me
+    API-->>A: {authenticated, configured}
+    M->>R: startRouter()
+    R->>R: parseRoute(location.hash)
+    R->>P: render() puis mount()
+    M->>API: getProviderHealth() toutes les 30 s
+```
+
+```javascript
+// frontend/js/main.js, lignes 40-47
+logoutButton.addEventListener("click", () => void logout());
+
+// Le routeur démarre après la réponse du serveur, pour éviter d'afficher une page puis de rediriger.
+await refreshSession();
+startRouter();
+void refreshProviderHealth();
+const providerHealthTimer = window.setInterval(() => void refreshProviderHealth(), 30_000);
+window.addEventListener("pagehide", () => window.clearInterval(providerHealthTimer), { once: true });
+```
+
+**Ligne par ligne :**
+- `await` **au niveau du module** (hors de toute fonction) : autorisé dans un module ES ; la suite attend la réponse de `/auth/me`.
+- `void promesse` : on lance la fonction asynchrone sans attendre son résultat, et on le dit explicitement.
+- `30_000` : le tiret bas sépare les milliers pour la lisibilité (30 000 ms = 30 s).
+- `pagehide` avec `{ once: true }` : arrête le minuteur quand on quitte la page.
+- `publishHealth()` (lignes 17-24) met à jour le badge et **diffuse** un événement `forma3d:health` que la page Créer écoute pour activer ou non son bouton.
+
+### 21.2 `auth.js` — l'état de connexion côté navigateur
+
+| Fonction | Ce qu'elle fait | Appel serveur |
+|---|---|---|
+| `refreshSession()` | Lit la session ; mémorise aussi si un mot de passe est configuré | `GET /auth/me` |
+| `login(password)` | Connexion, puis `setAuthenticated(true)` | `POST /auth/login` |
+| `logout()` | Déconnexion, puis retour à `#/login` (même si le serveur ne répond pas : bloc `finally`) | `POST /auth/logout` |
+| `rememberNextRoute(hash)` / `consumeNextRoute()` | Garde dans `sessionStorage` la page demandée avant la connexion, pour y revenir après | — |
+
+```javascript
+// frontend/js/auth.js, lignes 68-74
+window.addEventListener("forma3d:unauthorized", () => {
+  if (!authenticated) return;
+  setAuthenticated(false);
+  rememberNextRoute(window.location.hash);
+  window.location.hash = "#/login";
+});
+```
+
+- `api.js` émet `forma3d:unauthorized` dès qu'une route du Studio répond 401 (session expirée, serveur redémarré). `auth.js` l'écoute et renvoie vers la connexion. Les deux modules ne s'importent pas pour cela : ils communiquent par **événement personnalisé** (`CustomEvent`).
+- ⚠️ Le navigateur ne connaît **pas** le mot de passe ni le jeton (cookie HttpOnly) : il garde seulement un booléen.
+
+### 21.3 `router.js` — le routage par `#`
+
+```javascript
+// frontend/js/router.js, lignes 42-49 et 114-119 (extrait)
+function parseRoute(hash) {
+  const withoutHash = hash.replace(/^#/, "");
+  const [beforeAnchor, anchor = ""] = withoutHash.split("#");
+  const [rawPath, rawQuery = ""] = beforeAnchor.split("?");
+  const raw = rawPath || "/accueil";
+  const query = new URLSearchParams(rawQuery);
+  const parts = raw.split("/").filter(Boolean);
+  const base = { query, anchor, fullPath: withoutHash || "/accueil" };
+  ...
+}
+  if (!authenticated && !route.public) {
+    rememberNextRoute(window.location.hash);
+    window.location.replace(`${window.location.pathname}${window.location.search}#/login`);
+    return;
+  }
+```
+
+- Exemple : `#/modeles?import=1` donne le chemin `/modeles` et le paramètre `import=1`, qui ouvre directement le formulaire d'import.
+- `const [a, b = ""] = ...split(...)` : **destructuration** avec valeur par défaut.
+- Un identifiant de modèle au format UUID est rangé sous « Mes modèles » ; un autre (`chair-bentwood`) sous « Exemples ».
+- Anciennes adresses (`#/studio`, `#/gallery`, `#/category-management`) : redirigées vers les nouvelles.
+- `location.replace(...)` : redirection **sans** ajouter d'entrée dans l'historique (le bouton Retour ne boucle pas).
+- `window.addEventListener("hashchange", renderRoute)` (ligne 173) : chaque changement après `#` réaffiche la bonne page, sans recharger.
+- Chaque page exporte `render()` (le HTML) et `mount()` (les écouteurs) ; `mount()` peut renvoyer une fonction de **nettoyage** appelée en quittant la page (arrêt des minuteurs).
+- ⚠️ La page **Créer** n'est jamais détruite en changeant de page : une génération en cours continue d'être suivie. Elle est détruite à la déconnexion.
+
+🔁 **Angular** : `parseRoute` joue le rôle de la table `Routes`, la redirection vers `#/login` celui d'un `CanActivate` (garde de route), `mount()`/nettoyage ceux de `ngOnInit`/`ngOnDestroy`.
+
+### 21.4 `api.js` — le seul fichier qui parle au serveur
+
+```javascript
+// frontend/js/api.js, lignes 6-22
+async function readResponse(response, fallbackMessage) {
+  if (response.status === 401 && !new URL(response.url, window.location.origin).pathname.startsWith("/auth/")) {
+    window.dispatchEvent(new CustomEvent("forma3d:unauthorized"));
+  }
+  let data = {};
+  try {
+    data = await response.json();
+  } catch {
+    data = {};
+  }
+  if (!response.ok) {
+    const detail = typeof data.detail === "string" ? data.detail : fallbackMessage;
+    throw new Error(detail);
+  }
+  return data;
+}
+```
+
+- Toutes les fonctions (`createGeneration`, `getGenerationStatus`, `deleteModel`, `listApiKeys`…) passent par `readResponse` : une seule façon de lire les erreurs.
+- Si le serveur renvoie un message (`detail`), il est affiché tel quel ; sinon un message de secours.
+- `createGeneration` envoie un `FormData` (fichier + catégorie) ; `getGenerationStatus` refuse une adresse de suivi d'une **autre origine** (protection contre une redirection inattendue) et désactive le cache (`cache: "no-store"`).
+- `withFileVersion(url, size)` ajoute la taille du fichier à l'adresse du GLB : si le fichier change, l'adresse change, et le navigateur ne réutilise pas l'ancienne copie.
+
+🔁 Un **service Angular** unique qui encapsule `HttpClient`, avec un intercepteur pour le 401.
+
+### 21.5 `state.js` et la page Créer — le suivi d'une génération
+
+`state.js` contient un seul objet partagé `appState` (photo choisie, statut, minuteurs) et quatre petites fonctions (`beginGeneration`, `updateGenerationStatus`, `updateElapsedSeconds`, `stopGenerationTimers`).
+
+```javascript
+// frontend/js/pages/create.js, lignes 185-205 (extrait)
+async function startGeneration(photo, category) {
+  if (appState.isGenerating || !photo) return;
+  stopTracking();
+  beginGeneration(photo);
+  uploader.setBusy(true);
+  progress.render("SENDING", { elapsedSeconds: 0 });
+  appState.clockTimer = window.setInterval(() => updateProgress(appState.generationStatus), 1000);
+  try {
+    const data = await createGeneration(photo, category);
+    appState.currentStatusUrl = sameOriginPath(data.status_url);
+    const terminal = await applyStatus(data);
+    if (!terminal && appState.currentStatusUrl)
+      appState.pollingTimer = window.setInterval(() => void refreshStatus(), 1500);
+  } catch (error) {
+    showFailure("Impossible de lancer la création. Vérifiez la photo et réessayez.", "Création indisponible");
+  }
+}
+```
+
+- Deux minuteurs : le **chronomètre** (chaque seconde) et l'**interrogation** du serveur (toutes les 1,5 s).
+- `applyStatus(data)` (ligne 134) : `PENDING`/`RUNNING` → met à jour le suivi ; `FAILED` → affiche `error_message` du serveur ; `DONE` → affiche le modèle, le lien « Ouvrir la fiche du modèle → » et « Votre modèle est prêt ».
+- `appState.pollingInFlight` empêche deux interrogations en même temps.
+- ⚠️ Si l'**envoi** lui-même est refusé (photo refusée par le serveur, par exemple un fichier AVIF renommé en `.jpg`), le message affiché est générique : « Création indisponible — Impossible de lancer la création… ». Le détail exact est dans la réponse du serveur (onglet Réseau, touche F12).
+
+| Étape affichée (`views/progress.js`) | Statut |
+|---|---|
+| ① Photo envoyée | `SENDING` |
+| ② En file | `PENDING` |
+| ③ Création du modèle | `RUNNING` |
+| ④ Validation du GLB, ⑤ Terminé | `DONE` |
+
+### 21.6 Les vues réutilisables (`frontend/js/views/`)
+
+| Fichier | Fonction principale | Comportement à connaître |
+|---|---|---|
+| `uploader.js` | `setupUploader(onSubmit, onStateChange)` | `validatePhoto()` (ligne 12) contrôle **dans le navigateur** extension, type, fichier vide et 10 Mo, avant tout envoi ; glisser-déposer ; `syncState()` explique pourquoi le bouton est désactivé |
+| `viewer.js` | `setupViewer()` | `rotateCamera(±1)` tourne de π/12 = **15°** ; `panCamera(axe, ±1)` déplace de 5 % de la plus grande dimension ; aperçu d'un GLB local par une adresse `blob:` (rien n'est envoyé) libérée ensuite (`URL.revokeObjectURL`) |
+| `progress.js` | `createProgressView()` | Associe chaque statut à une étape, un titre et un texte |
+| `gallery.js` | `createModelCard()`, `setupGallery()` | Construit chaque carte avec `document.createElement` (mini `<model-viewer>`, badge « Généré / Importé / Exemple ») ; filtres par catégorie sans appel serveur |
+| `categories.js` | `setupCategoryManager()` | Ligne par catégorie : renommer, désactiver/réactiver, supprimer (grisé si utilisée) avec confirmation |
+| `confirm-dialog.js` | `confirmDialog({...})` | Fenêtre modale `<dialog>` qui renvoie une promesse `true`/`false` ; remplace `window.confirm` |
+| `model-appearance.js` | `watchProductAppearance()`, `refitCamera()` | Rend mats les matériaux « défaut glTF » à l'affichage ; recadre la caméra |
+| `illustrations.js` | dessin SVG | Le cube des états vides |
+
+```javascript
+// frontend/js/views/model-appearance.js, lignes 15-21
+export function isDefaultGltfMaterial(material) {
+  const pbr = material?.pbrMetallicRoughness;
+  if (!pbr) return false;
+  const hasBaseTexture = Boolean(pbr.baseColorTexture?.texture);
+  const hasMetalTexture = Boolean(pbr.metallicRoughnessTexture?.texture);
+  return !hasBaseTexture && !hasMetalTexture && pbr.metallicFactor === 1 && pbr.roughnessFactor === 1;
+}
+```
+
+- `material?.pbrMetallicRoughness` : si `material` est absent, le résultat est `undefined` au lieu d'une erreur (**chaînage optionnel**).
+- Un matériau texturé, ou créé volontairement, n'est jamais modifié.
+
+### 21.7 Les modules restants
+
+| Fichier | Rôle précis |
+|---|---|
+| `format.js` | `formatMegabytes`, `formatDuration` (« 1 min 33 s »), `formatRelativeDate` (« il y a 2 heures »), `formatLongDate`, `pluralize`, `exampleDescription` ; tables `exampleProviders` et `exampleGenerationSeconds` (fournisseur et durée **mesurés** des 5 exemples) |
+| `pages/viewer-markup.js` | HTML du viewer de la page Créer (boutons ↶ ↷ ← → ↑ ↓ − +, « Rotation auto », « Plein écran », « Réinitialiser ») |
+| `pages/login.js` | Formulaire de connexion, bouton « Afficher / Masquer », messages d'erreur (section 10.1) |
+| `pages/dashboard.js` | Compteurs et derniers modèles (section 10.2) |
+| `pages/guide.js` | Guide d'intégration ; les exemples utilisent `window.location.origin` (adresse réelle du serveur) |
+| `pages/api-keys.js` | Création, secret affiché une fois, révocation, suppression définitive (section 10.8) |
+
+### 21.8 Le widget `frontend/widget.js`
+
+```javascript
+// frontend/widget.js, lignes 10-30 (extrait)
+class Forma3DViewer extends HTMLElement {
+  connectedCallback() {
+    const root = this.shadowRoot || this.attachShadow({ mode: "open" });
+    root.replaceChildren();
+    const publicId = (this.getAttribute("model") || "").trim();
+    if (!publicIdPattern.test(publicId)) {
+      const message = document.createElement("p");
+      message.textContent = "Le modèle Forma3D demandé n’est pas disponible.";
+      root.append(message);
+      return;
+    }
+    const requestedHeight = (this.getAttribute("height") || "480").trim();
+    const parsedHeight = /^\d{2,4}(?:px)?$/i.test(requestedHeight) ? Number.parseInt(requestedHeight, 10) : 480;
+    const height = Math.min(1200, Math.max(240, parsedHeight));
+    const source = new URL(`/embed/${encodeURIComponent(publicId)}`, widgetOrigin);
+```
+
+- Tout le fichier est entouré de `(() => { ... })();` : une **fonction exécutée immédiatement**, pour ne créer aucune variable globale sur le site de la boutique.
+- `document.currentScript?.src` (ligne 6) : le widget retrouve l'adresse de **son propre** serveur, d'où il a été chargé.
+- `attachShadow` crée un **Shadow DOM** : les styles du widget et ceux de la boutique ne se mélangent pas.
+- `connectedCallback` est appelée quand la balise est ajoutée à la page.
+- Le `public_id` doit être un UUID ; la hauteur est bornée entre 240 et 1200 px ; `customElements.define` (ligne 45) n'est appelé qu'une fois.
+
+### 21.9 Les fichiers CSS
+
+| Fichier | Contenu |
+|---|---|
+| `css/theme.css` | **Jetons** de design dans `:root` (couleurs `--page`, `--surface`, `--accent`…, espacements `--space-*`, rayons, ombres), animations `page-enter`, `elegant-spin`, `shimmer`, `pulse-dot`, et respect de `prefers-reduced-motion` |
+| `css/components.css` | 14 sections numérotées : 1 Coque, 2 Mise en page, 3 Boutons et champs, 4 Connexion, 5 Accueil, 6 Cartes et filtres, 7 Page Créer, 8 Viewer 3D, 9 Suivi de création, 10 Fiche et intégration, 11 Clés API, 12 Catégories, 13 Fenêtres modales, 14 Adaptations écran (4 media queries : 1180 px, 1023 px, 640 px, écrans larges peu hauts) |
+
+Les techniques CSS sont expliquées en section 22.4.
+
+### 21.10 Les tests : ce que chaque famille vérifie
+
+| Famille | Fichiers | Technique principale |
+|---|---|---|
+| Règles métier pures | `test_upload_validator.py`, `test_category_service.py`, `test_image_preparer.py`, `test_glb_finisher.py` | Appel direct des classes avec des données fabriquées en mémoire |
+| Base de données | `test_generation_repository.py`, `test_category_repository.py` | Base SQLite **temporaire** (`tmp_path`), redémarrage simulé en recréant le dépôt |
+| Routes HTTP | `test_models_api.py`, `test_categories_api.py`, `test_api_keys.py`, `test_api_v1.py`, `test_embed.py`, `test_model_deletion.py`, `test_model_library.py`, `test_health.py`, `test_demo_gallery.py` | `TestClient` + `app.dependency_overrides` pour injecter un service sur base temporaire |
+| Sécurité | `test_auth.py` (marqué `real_auth`), `test_api_settings.py` | Vraie vérification de session, configuration invalide refusée |
+| Fournisseurs | `test_huggingface_provider.py`, `test_trellis_provider.py` | Faux client Gradio (`FakeClient`) : aucun appel réseau |
+| Frontend | `test_frontend.py` | Lit les fichiers servis et vérifie la présence d'éléments, de textes et de règles (par exemple : `fetch(` seulement dans `api.js`) |
+| Outils | `test_trial_tools.py` | Fonctions des scripts d'essai |
+
+Extrait représentatif (les techniques sont détaillées en section 22.5) :
+
+```python
+# backend/tests/test_model_deletion.py, lignes 34-43
+@pytest.fixture
+def setup(tmp_path: Path):
+    """Service réel sur un dépôt SQLite et un dossier de stockage temporaires."""
+    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    repository.initialize()
+    storage = LocalStorage(tmp_path / "storage")
+    service = GenerationService(SuccessfulProvider(), storage, repository)
+    app.dependency_overrides[get_generation_service] = lambda: service
+    yield TestClient(app), service, storage
+    app.dependency_overrides.pop(get_generation_service, None)
+```
+
+**Question du jury :** « Vos tests de frontend testent-ils l'affichage ? » → « Non : ils vérifient le contenu des fichiers servis (éléments, textes, règles d'architecture). Le rendu réel a été vérifié à la main dans le navigateur. »
+
+### 21.11 GitHub Actions et `scripts/dev.ps1`
+
+Le fichier `.github/workflows/ci.yml` est expliqué ligne par ligne en section 14.3. À retenir en plus :
+- la CI tourne sur une machine **neuve** : elle n'a ni `backend/.env`, ni base, ni GLB ; c'est une preuve supplémentaire que les tests sont indépendants de la machine de la développeuse ;
+- `scripts/dev.ps1` fait localement la même chose avant de démarrer le serveur : venv, dépendances, tests isolés (`PYTHON_DOTENV_DISABLED=true`, `HF_SPACE_ID` vide), puis démarrage d'uvicorn **caché** en arrière-plan, attente de `/health` pendant 30 s, ouverture d'Edge. Journaux : `backend/.dev-server-output.log` et `backend/.dev-server-error.log`.
+
+---
+
 ## 23. Glossaire A–Z
 
 | Terme | Définition |
