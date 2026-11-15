@@ -19,6 +19,7 @@ Les Sprints 3 (comptes publics) et 4 (vitrine/catalogue public) sont retirés du
 - TRELLIS : délai HTTP de 120 s par requête (`trellis.py`) ; le délai httpx par défaut (5 s) provoquait des `ReadTimeout` quand le Space gratuit était chargé. Génération réelle vérifiée : GLB obtenu en 117 s.
 - Exemple d'intégration et guide alignés sur le port 8001 de `dev.ps1`.
 - Étape 23 : suppression confirmée d'un modèle depuis sa fiche (`DELETE /models/{id}`), ligne SQLite, GLB et photo source effacés ; refus pendant la création et pour les exemples. Détails : `docs/etapes/etape-23.md`. Bouton non vérifié visuellement dans le navigateur par l'assistant.
+- Étape 24 : `FORMA3D_SESSION_SECRET` facultatif (32 caractères minimum) garde la session du Studio après un redémarrage ; vide, rien ne change. Détails : `docs/etapes/etape-24.md`.
 
 ## Sprint 2 — Qualité et fiabilité (terminé)
 

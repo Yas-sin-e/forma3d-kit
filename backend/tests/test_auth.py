@@ -12,6 +12,7 @@ from app.services.owner_auth import (
     LoginAttemptLimiter,
     LoginRateLimitedError,
     OwnerAuthService,
+    session_key_from_environment,
 )
 
 pytestmark = pytest.mark.real_auth
@@ -120,3 +121,36 @@ def test_limiter_window_slides() -> None:
     limiter.register("5.6.7.8")
     now[0] = 61.0
     limiter.register("1.2.3.4")
+
+
+SECRET = "x" * 32
+
+
+def test_session_survives_a_restart_when_a_fixed_secret_is_configured() -> None:
+    """Deux services = deux processus successifs : la même clé fixe valide l'ancien jeton."""
+    reader = {"FORMA3D_SESSION_SECRET": SECRET}.get
+    before_restart = OwnerAuthService(signing_key=session_key_from_environment(reader))
+    token = before_restart.issue_token()
+
+    after_restart = OwnerAuthService(signing_key=session_key_from_environment(reader))
+
+    assert after_restart.validate_token(token)
+
+
+def test_without_secret_a_restart_still_invalidates_the_session() -> None:
+    assert session_key_from_environment({}.get) is None
+    token = OwnerAuthService(signing_key=session_key_from_environment({}.get)).issue_token()
+
+    assert not OwnerAuthService(signing_key=session_key_from_environment({}.get)).validate_token(token)
+
+
+def test_changing_the_secret_disconnects_existing_sessions() -> None:
+    token = OwnerAuthService(signing_key=session_key_from_environment({"FORMA3D_SESSION_SECRET": SECRET}.get)).issue_token()
+    other = OwnerAuthService(signing_key=session_key_from_environment({"FORMA3D_SESSION_SECRET": "y" * 32}.get))
+
+    assert not other.validate_token(token)
+
+
+def test_a_too_short_session_secret_is_refused_at_startup() -> None:
+    with pytest.raises(ValueError, match="au moins 32 caractères"):
+        session_key_from_environment({"FORMA3D_SESSION_SECRET": "trop-court"}.get)

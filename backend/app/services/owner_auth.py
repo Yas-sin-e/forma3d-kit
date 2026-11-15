@@ -15,6 +15,8 @@ from collections import defaultdict, deque
 from typing import Callable
 
 OWNER_PASSWORD_ENV = "FORMA3D_OWNER_PASSWORD"
+SESSION_SECRET_ENV = "FORMA3D_SESSION_SECRET"
+SESSION_SECRET_MIN_LENGTH = 32
 SESSION_COOKIE_NAME = "forma3d_session"
 SESSION_TTL_SECONDS = 8 * 60 * 60
 LOGIN_ATTEMPTS_PER_MINUTE = 5
@@ -61,13 +63,32 @@ class LoginAttemptLimiter:
             self._attempts.clear()
 
 
+def session_key_from_environment(reader: Callable[[str], str | None] = os.getenv) -> bytes | None:
+    """Clé de signature fixe tirée de FORMA3D_SESSION_SECRET, ou None pour une clé aléatoire par processus.
+
+    Remplie, elle garde la session ouverte après un redémarrage du serveur (toujours 8 h au plus).
+    Un secret trop court est refusé au démarrage plutôt que d'affaiblir silencieusement les sessions.
+    """
+    secret = (reader(SESSION_SECRET_ENV) or "").strip()
+    if not secret:
+        return None
+    if len(secret) < SESSION_SECRET_MIN_LENGTH:
+        raise ValueError(
+            f"{SESSION_SECRET_ENV} doit contenir au moins {SESSION_SECRET_MIN_LENGTH} caractères "
+            "(générez-le avec secrets.token_urlsafe(32)) ou rester vide."
+        )
+    # SHA-256 ramène n'importe quel secret assez long à une clé HMAC de 32 octets.
+    return hashlib.sha256(secret.encode("utf-8")).digest()
+
+
 class OwnerAuthService:
     """Vérifie le mot de passe et émet/valide des jetons « owner.<expiration>.<signature> »."""
 
     def __init__(self, signing_key: bytes | None = None, ttl_seconds: int = SESSION_TTL_SECONDS,
                  clock: Callable[[], float] = time.time,
                  password_reader: Callable[[], str | None] | None = None) -> None:
-        # Clé aléatoire par processus : un redémarrage du serveur invalide les sessions ouvertes.
+        # Sans clé fournie : clé aléatoire par processus, un redémarrage invalide les sessions ouvertes.
+        # main.py fournit la clé de FORMA3D_SESSION_SECRET quand elle est configurée.
         self._signing_key = signing_key or secrets.token_bytes(32)
         self.ttl_seconds = ttl_seconds
         self._clock = clock
