@@ -797,3 +797,368 @@ Les exemples de valeurs ci-dessous sont **faux** et servent seulement à montrer
 | `TRELLIS_SPACE_ID` | Space TRELLIS (`propriétaire/nom`, jamais une URL) | `trellis-community/TRELLIS` | `config.py` → `trellis.py` | Space communautaire par défaut | `trellis-community/TRELLIS` |
 
 ⚠️ Une valeur invalide (par exemple `IMAGE3D_PROVIDER=meshy` ou une origine `*`) empêche le serveur de démarrer, avec un message clair. ✅
+
+---
+
+## 10. Le site page par page
+
+**En une phrase :** le Studio est une seule page HTML (`index.html`) dont le contenu change selon l'adresse après le `#` (exemple : `#/creer`), sans recharger la page.
+
+🔁 **Angular** : c'est le principe d'une SPA (Single Page Application, application à page unique) avec un routeur, mais écrit à la main dans `router.js`.
+
+### 10.0 La coque commune (présente sur toutes les pages après connexion)
+
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ [cube] Forma3D Studio  Accueil  Créer  Mes modèles  Exemples  Administration ▾│
+│                                        ● Serveur 3D : hors ligne  ⇥ Déconnexion│
+├──────────────────────────────────────────────────────────────────────────────┤
+│                         (contenu de la page, dans #app)                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│ Forma3D Studio v1.0   Documentation   Guide d'intégration   GitHub           │
+│                                   Prototype de soutenance · Aucun entraînement │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+| Élément | Emplacement | Au clic | Fichier |
+|---|---|---|---|
+| Logo « Forma3D Studio » | En haut à gauche | Va à `#/accueil` | `index.html` |
+| « Accueil », « Créer », « Mes modèles », « Exemples » | Menu | Change la page ; le lien actif a un fond vert pâle | `router.js` → `updateNavigation()` |
+| « Administration » ▾ | Menu | Ouvre un sous-menu : « Catégories », « Clés API », « Guide d'intégration » | `index.html` (élément `<details>`) |
+| Badge « Serveur 3D : en ligne / hors ligne » | En haut à droite | Aucun clic ; mis à jour toutes les 30 s par `GET /health/provider` | `main.js` → `refreshProviderHealth()` |
+| « Déconnexion » | En haut à droite | `POST /auth/logout`, efface le cookie, retour à `#/login` | `auth.js` → `logout()` |
+| Bouton ☰ | Sur mobile seulement | Ouvre ou ferme le menu | `router.js` |
+| « Documentation », « GitHub » | Pied de page | Ouvre le dépôt GitHub (privé : visible seulement par un compte autorisé) | `index.html` |
+| « Guide d'intégration » | Pied de page | Va à `#/guide` | `index.html` |
+
+Sur l'écran de connexion, le menu, le badge et le pied de page sont **masqués**.
+
+### 10.1 Connexion — `#/login`
+
+**But :** protéger le Studio par le mot de passe de la propriétaire.
+
+```
+┌───────────────────────────────────┐
+│            [cube vert]            │
+│          CONSOLE PRIVÉE           │
+│          Forma3D Studio           │
+│ Saisissez le mot de passe de la   │
+│ propriétaire pour accéder au      │
+│ Studio.                           │
+│ Mot de passe                      │
+│ [••••••••••••••••]   [Afficher]   │
+│ [   Accéder au Studio →        ]  │
+│ Session protégée par le serveur…  │
+└───────────────────────────────────┘
+```
+
+| Élément | Ce qui se passe | Fichier, fonction, route |
+|---|---|---|
+| Champ « Mot de passe » | Saisie masquée | `pages/login.js` |
+| « Afficher » / « Masquer » | Montre ou cache le texte saisi | `login.js` |
+| « Accéder au Studio → » | Le bouton passe à « Vérification… » ; envoi du mot de passe | `auth.js` → `login()` → `api.js` → `loginOwner()` → `POST /auth/login` |
+
+| État | Message affiché |
+|---|---|
+| Champ vide | « Saisissez le mot de passe. » |
+| Mot de passe faux | « Mot de passe incorrect. » (réponse 401) |
+| 6e tentative en moins d'une minute | « Trop de tentatives. Patientez une minute avant de réessayer. » (429) |
+| Mot de passe non configuré sur le serveur | « Connexion impossible : définissez FORMA3D_OWNER_PASSWORD dans backend/.env, puis redémarrez le serveur. » |
+| Succès | Cookie de session posé ; retour à la page demandée, sinon `#/accueil` |
+
+⚠️ **Piège** : mettre le mot de passe dans `.env.example` ne marche pas ; le serveur lit seulement `backend/.env` (ou `.env` à la racine).
+
+### 10.2 Accueil — `#/accueil`
+
+**But :** une vue d'ensemble et des raccourcis.
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│ ● Serveur 3D hors ligne · exemples disponibles                  │
+│ Transformez vos photos en modèles 3D            [chaise 3D qui  │
+│ Créez, gérez et intégrez vos modèles 3D…         tourne]        │
+│ [Créer un modèle 3D →]  [Voir les exemples]                     │
+├──────────────────┬──────────────────┬──────────────────────────┤
+│ 3 Modèles  Voir  │ 1 Clés API  Gérer│ 3 Catégories   Organiser │
+├──────────────────┴──────────────────┴──────────────────────────┤
+│ Vos modèles récents                                 Tout voir → │
+│ [carte] [carte] [carte]   ou   « Votre bibliothèque est vide » │
+│ Exemples du catalogue                               Explorer →  │
+│ [carte] [carte] [carte] [carte] [carte]  (défilement horizontal)│
+│ Raccourcis                                                      │
+│ [Créer un modèle] [Importer un GLB] [Gérer les clés API] [Guide]│
+└────────────────────────────────────────────────────────────────┘
+```
+
+| Élément | Au clic | Données |
+|---|---|---|
+| « Créer un modèle 3D → » | Va à `#/creer` | — |
+| « Voir les exemples » | Va à `#/exemples` | — |
+| Carte « Modèles enregistrés » → « Voir » | Va à `#/modeles` | Nombre lu par `GET /models/gallery` (modèles UUID seulement) |
+| Carte « Clés API actives » → « Gérer » | Va à `#/cles-api` | `GET /api-keys`, clés non révoquées |
+| Carte « Catégories disponibles » → « Organiser » | Va à `#/categories` | `GET /categories` |
+| « Tout voir → » | Va à `#/modeles` | 3 derniers modèles par date |
+| Une carte de modèle | Ouvre la fiche `#/modeles/{id}` | La miniature tourne au survol |
+| « Créer mon premier modèle » (état vide) | Va à `#/creer` | — |
+| « Explorer → » | Va à `#/exemples` | — |
+| Raccourci « Importer un GLB » | Va à `#/modeles?import=1`, qui ouvre directement le formulaire d'import | — |
+| Raccourci « Guide d'intégration » | Va à `#/guide` | — |
+
+Fichier : `pages/dashboard.js`. États : cartes grises animées (« squelettes ») pendant le chargement ; message rouge si le serveur ne répond pas.
+
+### 10.3 Créer — `#/creer`
+
+**But :** transformer une photo en modèle 3D.
+
+```
+┌──────────────────────────────┬─────────────────────────────────────────┐
+│ Photo et catégorie           │ ESPACE DE TRAVAIL       [Aperçu d'un    │
+│ ┌──────────────────────────┐ │ Aperçu du modèle         fichier GLB…]  │
+│ │  (+) Glissez une photo   │ │ ┌─────────────────────────────────────┐ │
+│ │  ici ou [Choisir une     │ │ │                                     │ │
+│ │  photo]                  │ │ │       Votre modèle apparaîtra ici   │ │
+│ └──────────────────────────┘ │ │                                     │ │
+│ Catégorie du produit [▼]     │ └─────────────────────────────────────┘ │
+│ [   Créer le modèle 3D →   ] │ [↶][↷] [←][→][↑][↓] [−][+] Rotation auto │
+│ Choisissez une photo…        │ Plein écran  Réinitialiser              │
+│ + Conseils photo             │ ⓘ Aperçu 3D généré automatiquement…     │
+│ + Détails techniques         │                                         │
+├──────────────────────────────┴─────────────────────────────────────────┤
+│ Suivi de création  ①Photo envoyée ②En file ③Création ④Validation ⑤Terminé│
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+| Élément | Ce qui se passe | Fichier, fonction, route |
+|---|---|---|
+| Zone « Glissez une photo ici » / « Choisir une photo » | Choix ou glisser-déposer ; aperçu de la photo dans la zone ; contrôle JPG, PNG ou WebP, 10 Mo maximum | `views/uploader.js` → `setSelectedPhoto()` |
+| « Catégorie du produit » | Liste des catégories **actives** | `GET /categories?include_inactive=true` puis filtre |
+| « Créer le modèle 3D → » | Désactivé tant que photo, catégorie ou serveur 3D manquent ; sinon `POST /models` | `uploader.js` → `create.js` → `startGeneration()` → `api.js` → `createGeneration()` |
+| Texte sous le bouton | Explique pourquoi le bouton est désactivé (« Choisissez une photo pour activer la création. », « Le serveur 3D est hors ligne. Consultez les exemples en attendant. », « Tout est prêt pour créer le modèle. ») | `uploader.js` → `syncState()` |
+| « Voir les exemples » (bandeau jaune) | Va à `#/exemples` ; visible si le serveur 3D est hors ligne | `create.js` |
+| « Conseils photo » | Déplie 4 conseils (un objet, fond uni, lumière douce, 70 % de l'image) | `create.js` |
+| « Détails techniques » | Déplie l'état du serveur et comment relancer Colab | `create.js` |
+| « Aperçu d'un fichier GLB (sans enregistrer) » | Ouvre un GLB local **dans le navigateur seulement** (rien n'est envoyé) | `views/viewer.js` |
+| « Vue 3D / Photo source / Comparer » | Change l'affichage (visible quand une photo source existe) ; en « Comparer », la rotation s'arrête et la caméra se recadre | `viewer.js` → `setView()` → `model-appearance.js` → `refitCamera()` |
+| ↶ ↷ | Tourne de 15° | `viewer.js` → `rotateCamera()` |
+| ← → ↑ ↓ | Déplace la vue | `viewer.js` → `panCamera()` |
+| − + | Zoom | `viewer.js` |
+| « Rotation auto » | Active ou arrête la rotation | `viewer.js` |
+| « Plein écran » | Plein écran du viewer | `viewer.js` |
+| « Réinitialiser » | Remet la caméra par défaut | `viewer.js` |
+| « Télécharger » | Télécharge le GLB | lien vers `/models/{id}/glb` |
+| Vignette « Agrandir » | Ouvre la photo source en grand | `viewer.js` |
+| « Réessayer avec cette photo » | Relance après un échec | `create.js` |
+| « Ouvrir la fiche du modèle → » | Va à la fiche après `DONE` | `create.js` |
+
+| État | Ce qu'on voit |
+|---|---|
+| Vide | Cube dessiné, « Votre modèle apparaîtra ici » |
+| Envoi / en file / création | Étapes du suivi colorées, chronomètre, roue de chargement |
+| Avertissement photo | Bandeau jaune « La photo est petite… » ou « …floue… » (n'empêche pas la création) |
+| Succès | Modèle affiché, « Votre modèle est prêt » |
+| Échec | Cause réelle renvoyée par le serveur (exemple : quota TRELLIS) |
+
+⚠️ **Pièges** : le bouton reste gris si le badge est « hors ligne » ; un échec dû au quota n'est pas un problème de photo.
+
+### 10.4 Mes modèles — `#/modeles`
+
+**But :** la bibliothèque des modèles enregistrés (générés, importés, copiés).
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│ Mes modèles                          [Importer un modèle (.glb)] │
+│ Modèles enregistrés                                  [3 modèles] │
+│ [Tous 3] [Chaise 2] [Tabouret 1] [Table d'appoint 0]             │
+│ ┌────────┐ ┌────────┐ ┌────────┐                                 │
+│ │Généré  │ │Importé │ │Exemple │   badge d'origine                │
+│ │ (3D)   │ │ (3D)   │ │ (3D)   │                                 │
+│ │Titre   │ │Titre   │ │Titre   │                                 │
+│ │Chaise · il y a 2 jours · 1,2 Mo                                │
+│ └────────┘ └────────┘ └────────┘                                 │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+| Élément | Ce qui se passe | Route |
+|---|---|---|
+| « Importer un modèle (.glb) » | Ouvre le formulaire d'import | — |
+| Champs « Fichier .glb », « Titre », « Catégorie » | Le titre se remplit avec le nom du fichier | — |
+| « Importer dans Mes modèles » | Envoie le fichier ; message « Modèle importé… » et lien « Ouvrir sa fiche » | `POST /models/import` |
+| « Annuler » | Ferme le formulaire | — |
+| Filtres « Tous », catégories avec compteur | Filtrent les cartes | local (aucun appel) |
+| Une carte | Ouvre la fiche | — |
+| État vide : « Créer à partir d'une photo », « Importer un modèle » | Va à Créer / ouvre l'import | — |
+
+Fichiers : `pages/models.js`, `views/gallery.js`. Le GLB importé est vérifié (format GLB 2.0, taille `MAX_GLB_UPLOAD_MB`) et marqué « Importé ».
+
+### 10.5 Fiche du modèle — `#/modeles/{id}`
+
+**But :** examiner un modèle, le télécharger et l'intégrer à un site.
+
+```
+┌───────────────────────────────────────────┬─────────────────────────┐
+│ Aperçu 3D      [Vue 3D|Photo source|Comparer]│ Chaise en bois cintré   │
+│ ┌───────────────────┬───────────────────┐ │ État        Prêt        │
+│ │  modèle 3D        │  photo source     │ │ Catégorie   Chaise      │
+│ │  (mode Comparer)  │                   │ │ Origine     Exemple · TRELLIS│
+│ └───────────────────┴───────────────────┘ │ Date        …           │
+│ ⓘ Aperçu 3D généré automatiquement…       │ Durée       1 min 16 s  │
+│                                           │ [Télécharger le modèle] │
+├───────────────────────────────────────────┴─────────────────────────┤
+│ Afficher ce modèle sur un site                                      │
+│ ① Activez l'intégration            [○—]  interrupteur               │
+│ ② Choisissez votre méthode         [IFrame][Widget Forma3D]         │
+│ ③ Copiez le code                   <iframe src=…>        [Copier]   │
+│ ④ Aperçu                           [cadre de navigateur avec /embed]│
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+| Élément | Ce qui se passe | Route |
+|---|---|---|
+| « ← Retour à Mes modèles » / « ← Retour aux exemples » | Retour à la liste | — |
+| « Vue 3D », « Photo source », « Comparer » | Changent l'affichage ; « Comparer » met le modèle et la photo côte à côte | local |
+| « Télécharger le modèle (.glb) » | Télécharge le fichier | `/models/{id}/glb` ou `/models/gallery/{id}` |
+| ① Interrupteur « Intégration publique de ce modèle » | Active ou désactive la publication (désactivée par défaut) | `PATCH /models/{id}/integration` |
+| ② Onglets « IFrame » / « Widget Forma3D » | Choisissent le code affiché ; bloqués tant que l'étape 1 n'est pas faite | local |
+| ③ « Copier » | Copie le code ; « Code copié. Collez-le dans la page produit de votre site. » | presse-papiers |
+| ④ Aperçu | Affiche la vraie page `/embed/{public_id}` dans un cadre | `/embed/...` |
+
+| État | Ce qu'on voit |
+|---|---|
+| Chargement | « Chargement des informations… », roue sur le modèle |
+| Modèle en cours | « Le modèle est encore en cours de création. » ; la page se met à jour toutes les 2 s |
+| Échec | « La création n'a pas abouti. Aucun fichier n'est disponible. » |
+| Identifiant inconnu | « Ce modèle est introuvable. Il a peut-être été supprimé. » |
+
+⚠️ Les **exemples du catalogue** n'ont pas de section d'intégration : il faut d'abord les copier dans « Mes modèles ». Fichier : `pages/model-detail.js`.
+
+### 10.6 Exemples — `#/exemples`
+
+**But :** montrer les 5 modèles de démonstration, réellement générés pendant les essais.
+
+| Élément | Ce qui se passe | Route |
+|---|---|---|
+| Filtres par catégorie avec compteur | Filtrent | local |
+| Une carte | Ouvre la fiche de l'exemple | — |
+| Texte sous la carte | « Généré avec TRELLIS à partir d'une seule photo en 1 min 16 s. » (fournisseur et durée réellement mesurés) | `format.js` |
+| « Ajouter à mes modèles » | Ouvre le panneau « Ajouter l'exemple à Mes modèles » | — |
+| « Ajouter à Mes modèles » (panneau) | Copie l'exemple ; « Exemple ajouté à Mes modèles. » + « Ouvrir sa fiche » | `POST /models/examples/{id}/copy` |
+| « Annuler » | Ferme le panneau | — |
+
+Depuis le 11 novembre 2026, 3 exemples (chaise cintrée, tabouret, table d'appoint) viennent de **TRELLIS** et 2 (chaises métal) de **TripoSR**. Fichier : `pages/examples.js`.
+
+### 10.7 Catégories — `#/categories` (menu Administration)
+
+| Élément | Ce qui se passe | Route |
+|---|---|---|
+| « Nouvelle catégorie » + « Ajouter la catégorie » | Crée une catégorie (le slug est calculé à partir du nom) | `POST /categories` |
+| Champ du nom + « Renommer » | Change le nom affiché | `PATCH /categories/{slug}` |
+| Badge « Active » / « Désactivée » | État de la catégorie | — |
+| Badge « N modèles » | Nombre de modèles enregistrés dans cette catégorie | calculé depuis `GET /models/gallery` |
+| « Désactiver » / « Réactiver » | Fenêtre de confirmation, puis la catégorie n'est plus proposée à la création | `PATCH /categories/{slug}` |
+| « Supprimer » | Grisé si la catégorie est utilisée ; sinon confirmation puis suppression | `DELETE /categories/{slug}` |
+
+Message d'erreur si le nom existe déjà : « Ce nom de catégorie est déjà utilisé… ». Fichiers : `pages/categories.js`, `views/categories.js`.
+
+### 10.8 Clés API — `#/cles-api` (menu Administration)
+
+```
+┌───────────────────────────────────────────────────────────────┐
+│ Comment utiliser l'API                       Guide complet →  │
+│ ①Créez une clé → ②Copiez le secret → ③Ajoutez l'en-tête → ④Testez│
+│ [exemple curl]                                       [Copier] │
+├───────────────────────────────────────────────────────────────┤
+│ Créer une clé   Nom pour la reconnaître [______] [Créer une clé API]│
+│ ⚠ Copiez votre clé maintenant  f3d_live_…      [Copier la clé]│
+├───────────────────────────────────────────────────────────────┤
+│ Clés existantes                          [1 active · 2 clés]  │
+│ ┌ Boutique ● Active ┐  ┌ dd ○ Révoquée ───────────┐           │
+│ │ f3d_live_abc…     │  │ f3d_live_xyz…            │           │
+│ │ [Révoquer]        │  │ [Supprimer définitivement]│           │
+└───────────────────────────────────────────────────────────────┘
+```
+
+| Élément | Ce qui se passe | Route |
+|---|---|---|
+| « Guide complet → » | Va à `#/guide` | — |
+| « Copier » (exemple curl) | Copie la commande d'exemple | — |
+| « Nom pour la reconnaître » + « Créer une clé API » | Crée la clé ; affiche le secret **une seule fois** | `POST /api-keys` |
+| « Copier la clé » | Copie le secret | — |
+| « Révoquer » (clé active) | Confirmation, puis la clé est refusée par l'API ; le secret affiché disparaît | `DELETE /api-keys/{id}` |
+| « Supprimer définitivement » (clé révoquée) | Confirmation, puis la clé et ses compteurs sont effacés | `DELETE /api-keys/{id}/permanent` |
+
+⚠️ Une clé active ne peut pas être supprimée directement (le serveur répond 409) : il faut d'abord la révoquer. Fichier : `pages/api-keys.js`.
+
+### 10.9 Guide d'intégration — `#/guide` (menu Administration)
+
+Page de lecture : sommaire (« Créer une clé », « Envoyer une photo », « Suivre le modèle », « Activer et intégrer », « Quotas et origines », « Sécurité »), 6 sections et des blocs de code avec un bouton « Copier ». Les adresses des exemples utilisent l'adresse réelle du serveur. Aucun appel au serveur. Fichier : `pages/guide.js`.
+
+### 10.10 Page introuvable
+
+Toute adresse inconnue affiche « Cette page n'existe pas » et un bouton « Retour à l'accueil ». Fichier : `router.js` → `makeNotFoundPage()`.
+
+---
+
+## 11. Utiliser le site de bout en bout
+
+**En une phrase :** trois personnes utilisent Forma3D, chacune avec un chemin différent.
+
+### 11 a. La propriétaire : de la connexion à un modèle intégré
+
+```mermaid
+flowchart LR
+    A["Connexion<br/>#/login"] --> B["Créer<br/>photo + catégorie"]
+    B --> C["Suivi<br/>PENDING → DONE"]
+    C --> D["Fiche du modèle<br/>vérifier, comparer"]
+    D --> E["Activer l'intégration"]
+    E --> F["Copier le code<br/>iframe ou widget"]
+    F --> G["Créer une clé API<br/>si un serveur doit appeler l'API"]
+```
+
+1. Lancer le serveur, ouvrir `http://127.0.0.1:8000`, se connecter.
+2. Aller dans **Créer**, déposer une photo nette, choisir la catégorie, cliquer sur « Créer le modèle 3D → ».
+3. Attendre l'étape « Terminé », puis cliquer sur « Ouvrir la fiche du modèle → ».
+4. Vérifier le modèle avec « Comparer » ; le télécharger si besoin.
+5. Activer l'interrupteur « Intégration publique de ce modèle ».
+6. Choisir « IFrame » ou « Widget Forma3D », cliquer sur « Copier », envoyer le code au développeur de la boutique.
+7. Si le développeur doit appeler l'API, créer une clé dans **Clés API** et la lui transmettre de façon sûre.
+
+Sans serveur 3D en ligne : remplacer l'étape 2 par **Exemples → « Ajouter à mes modèles »** ou **Mes modèles → « Importer un modèle (.glb) »**.
+
+### 11 b. Le développeur d'une boutique : de la clé API à l'affichage
+
+```mermaid
+sequenceDiagram
+    participant S as Serveur de la boutique
+    participant F as Forma3D
+    participant P as Page produit
+    S->>F: POST /api/v1/models (X-API-Key, photo)
+    F-->>S: 202 + id
+    S->>F: GET /api/v1/models/{id} (répété)
+    F-->>S: DONE
+    Note over F: La propriétaire active l'intégration
+    S->>F: GET /api/v1/models/{id}/integration-code
+    F-->>S: iframe_html, widget_html, public_id
+    S->>P: insère le code dans la page
+```
+
+1. Recevoir une clé API de la propriétaire et la ranger **côté serveur** (jamais dans le JavaScript public).
+2. Envoyer une photo : `POST /api/v1/models` avec l'en-tête `X-API-Key`.
+3. Suivre l'état : `GET /api/v1/models/{id}` jusqu'à `DONE`.
+4. Après activation par la propriétaire, récupérer le code : `GET /api/v1/models/{id}/integration-code`.
+5. Insérer l'iframe ou le widget dans la page produit.
+6. Faire autoriser l'adresse du site dans `EMBED_ALLOWED_ORIGINS`.
+
+### 11 c. Le visiteur final
+
+```mermaid
+flowchart LR
+    A["Ouvre la page produit<br/>de la boutique"] --> B["La page charge<br/>widget.js ou l'iframe"]
+    B --> C["/embed/{public_id}<br/>servi par Forma3D"]
+    C --> D["model-viewer télécharge<br/>/public/models/{public_id}/glb"]
+    D --> E["Le visiteur fait tourner<br/>et zoome le meuble"]
+```
+
+1. Le visiteur ouvre la page produit de la boutique.
+2. Le navigateur charge l'iframe `/embed/{public_id}` depuis Forma3D.
+3. Forma3D vérifie que le modèle existe, est terminé et que son intégration est activée ; sinon, il affiche « Ce modèle 3D n'est pas disponible… ».
+4. Le visiteur fait tourner le modèle à la souris ou au doigt. Il ne voit **jamais** de clé API.
