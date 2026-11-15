@@ -1162,3 +1162,266 @@ flowchart LR
 2. Le navigateur charge l'iframe `/embed/{public_id}` depuis Forma3D.
 3. Forma3D vérifie que le modèle existe, est terminé et que son intégration est activée ; sinon, il affiche « Ce modèle 3D n'est pas disponible… ».
 4. Le visiteur fait tourner le modèle à la souris ou au doigt. Il ne voit **jamais** de clé API.
+
+---
+
+## 12. Sécurité
+
+**En une phrase :** le Studio est protégé par un mot de passe vérifié par le serveur, l'API par des clés dont seule l'empreinte est gardée, et l'affichage public par une liste de sites autorisés.
+
+### 12.1 Ce qui protège quoi
+
+```mermaid
+flowchart TD
+    subgraph Studio["Routes du Studio : /models, /categories, /api-keys"]
+        S1["Cookie de session<br/>require_owner"]
+    end
+    subgraph API["API externe : /api/v1"]
+        A1["En-tête X-API-Key<br/>require_api_key + quotas"]
+    end
+    subgraph Public["Public : /embed, /public, /static, /, /health"]
+        P1["Aucun mot de passe<br/>mais modèle activé obligatoire<br/>+ CSP frame-ancestors"]
+    end
+```
+
+### 12.2 Connexion de la propriétaire
+
+- Le mot de passe vient de `FORMA3D_OWNER_PASSWORD` ; il n'est jamais dans le code ni dans le navigateur.
+- Comparaison avec `hmac.compare_digest` : le temps de réponse ne révèle pas la longueur des caractères corrects (protection contre les attaques par mesure du temps).
+- Après connexion, le serveur pose un **cookie** `forma3d_session` :
+  - **HttpOnly** : JavaScript ne peut pas le lire (protège contre le vol par script) ;
+  - **SameSite=Lax** : il n'est pas envoyé par les formulaires d'autres sites ;
+  - **Secure** en HTTPS ;
+  - durée **8 heures**.
+- Le contenu du cookie est un **jeton signé HMAC-SHA256** : `owner.<expiration>.<signature>`. Sans la clé secrète du serveur, impossible d'en fabriquer un faux. La clé est tirée au hasard à chaque démarrage : un redémarrage déconnecte la propriétaire.
+- Limite : **5 tentatives par minute et par adresse IP** (en mémoire).
+
+🔁 **Keycloak** fait la même chose en plus complet (jetons JWT signés, sessions, rôles). Ici, il n'y a qu'un utilisateur et un seul rôle.
+
+### 12.3 Clés API
+
+- Format : `f3d_live_…` (un préfixe lisible + un secret aléatoire).
+- Le secret est montré **une seule fois**, à la création (réponse avec `Cache-Control: no-store`).
+- La base garde seulement l'**empreinte SHA-256** du secret. Un **hachage** est une fonction à sens unique : on peut vérifier une clé, mais pas retrouver la clé à partir de l'empreinte.
+- **Révoquer** : la clé est refusée immédiatement (401), la ligne reste comme trace. **Supprimer définitivement** : seulement après révocation.
+- **Quotas par clé** : `API_DAILY_GENERATION_LIMIT` créations par jour, `API_RATE_LIMIT_PER_MINUTE` requêtes par minute (429 avec `Retry-After`).
+
+### 12.4 CORS et CSP
+
+| Mécanisme | Question à laquelle il répond | Réglage | Par défaut |
+|---|---|---|---|
+| **CORS** (Cross-Origin Resource Sharing) | « Le JavaScript d'un autre site peut-il appeler l'API ? » | `API_CORS_ORIGINS` | Aucun site |
+| **CSP `frame-ancestors`** (Content Security Policy) | « Un autre site peut-il afficher `/embed` dans une iframe ? » | `EMBED_ALLOWED_ORIGINS` | Seulement le Studio (`'self'`) |
+
+Les deux refusent `*`. Le test d'intégration du 12 novembre 2026 l'a vérifié : la page s'affiche sur le site autorisé et elle est bloquée sur un site non autorisé (voir `docs/etapes/etape-17.md`). ✅
+
+### 12.5 Ce qui n'est pas encore protégé
+
+- ⚠️ **HTTP en local** : sans HTTPS, le cookie et les clés circulent en clair sur le réseau. Usage local uniquement tant qu'il n'y a pas de déploiement HTTPS.
+- ⚠️ Pas de jeton anti-CSRF dédié (seulement `SameSite=Lax`).
+- ⚠️ Pas de comptes multiples ni de rôles : un seul mot de passe.
+- ⚠️ La limite de tentatives est en mémoire : elle repart à zéro au redémarrage.
+- ⚠️ `/health/provider` est public (il ne donne qu'un statut, jamais l'adresse du serveur).
+- ⚠️ Tout le monde qui connaît le `public_id` d'un modèle activé peut le voir ; désactiver l'intégration coupe l'accès.
+
+---
+
+## 13. Intégration chez un client
+
+**En une phrase :** un site partenaire affiche un modèle activé avec une iframe ou une balise `<forma3d-viewer>`, et peut piloter les créations par l'API `/api/v1`.
+
+### 13.1 Trois façons d'intégrer
+
+| Méthode | Pour qui | Clé API ? | Exemple |
+|---|---|---|---|
+| **iframe** | N'importe quel site | Non | `<iframe src="https://SERVICE/embed/PUBLIC_ID" width="100%" height="480">` |
+| **Widget** `<forma3d-viewer>` | Site qui accepte un script | Non | voir ci-dessous |
+| **API `/api/v1`** | Le **serveur** de la boutique | Oui (`X-API-Key`) | `curl -H "X-API-Key: …" …/api/v1/models/ID` |
+
+### 13.2 Le widget pas à pas
+
+```html
+<script src="https://SERVICE/static/widget.js" defer></script>
+<forma3d-viewer model="PUBLIC_ID" height="480" auto-rotate></forma3d-viewer>
+```
+
+1. `widget.js` définit la balise `forma3d-viewer` (Web Component).
+2. La balise lit `model` (le `public_id`, contrôlé : format UUID), `height` (bornée entre 240 et 1200 px) et `auto-rotate`.
+3. Elle crée une iframe vers `/embed/{public_id}` sur le même serveur que le script.
+4. La clé API n'est **jamais** utilisée par le widget.
+
+### 13.3 Les routes de l'API externe
+
+| Méthode | Route | Rôle |
+|---|---|---|
+| `POST` | `/api/v1/models` | Envoyer une photo (`file`, `category`) ; réponse 202 |
+| `GET` | `/api/v1/models/{id}` | Lire l'état |
+| `GET` | `/api/v1/models/{id}/glb` | Télécharger le GLB (409 si pas prêt) |
+| `GET` | `/api/v1/models/{id}/integration-code` | Obtenir `iframe_html`, `widget_html`, `public_id` (403 si l'intégration n'est pas activée) |
+
+Les erreurs ont toujours la forme `{"error": {"code": "...", "message": "..."}}`.
+
+### 13.4 Exemple de test fourni
+
+`examples/integration.html` est un faux site de boutique : on y saisit l'adresse de Forma3D et un `public_id`, puis la page charge le widget. Mode d'emploi complet : `docs/INTEGRATION.md` et la page `#/guide`.
+
+---
+
+## 14. Tests et CI/CD
+
+**En une phrase :** 145 tests automatiques vérifient le backend et les fichiers du frontend, et GitHub les relance à chaque envoi de code.
+
+### 14.1 Ce que prouvent les tests
+
+- Ils prouvent que les **règles du code** sont respectées : validation des photos, états des générations, sécurité des clés, protection des routes, structure des GLB, présence des éléments d'interface.
+- Ils utilisent des **faux fournisseurs** : aucun test n'appelle vraiment un service d'IA.
+- Ils **ne prouvent pas** la qualité visuelle d'un modèle, ni le rendu réel dans un navigateur, ni la disponibilité des services gratuits.
+
+Lancer les tests (Windows, depuis la racine du dépôt) :
+
+```powershell
+cd backend
+.venv\Scripts\python.exe -m pytest -q
+```
+
+### 14.2 CI et CD en mots simples
+
+- **CI (intégration continue)** : à chaque envoi de code, un robot récupère le projet, installe les dépendances et lance les tests. Si un test échoue, on le voit tout de suite.
+- **CD (déploiement continu)** : après des tests réussis, un robot met automatiquement le site en ligne.
+- ✅ Le projet a la **CI**. ❌ Il n'a **pas de CD** : aucun déploiement automatique n'existe.
+
+```mermaid
+flowchart LR
+    A["git push"] --> B["GitHub Actions<br/>machine Ubuntu"]
+    B --> C["Installe Python 3.14<br/>et les dépendances"]
+    C --> D["pytest -q"]
+    D --> E["Vérifie la présence<br/>des fichiers requis"]
+    E --> F{"Tout est vert ?"}
+    F -->|oui| G["Coche verte sur GitHub"]
+    F -->|non| H["Croix rouge + journal d'erreur"]
+```
+
+### 14.3 `.github/workflows/ci.yml` ligne par ligne
+
+| Ligne(s) | Sens |
+|---|---|
+| `name: Project checks` | Nom affiché dans l'onglet « Actions » de GitHub |
+| `on: push` et `pull_request` | Se lance à chaque envoi de code et à chaque demande de fusion |
+| `permissions: contents: read` | Le robot peut seulement **lire** le dépôt (sécurité) |
+| `jobs: project-checks:` | Une seule tâche nommée « Documents and backend tests » |
+| `runs-on: ubuntu-latest` | Machine virtuelle Linux fournie par GitHub |
+| `uses: actions/checkout@v7` | Récupère le code du dépôt |
+| `uses: actions/setup-python@v7` avec `python-version: "3.14"` | Installe Python 3.14 |
+| `run: python -m pip install -r requirements.txt` (dans `backend`) | Installe les dépendances |
+| `run: python -m pytest -q` (dans `backend`) | Lance tous les tests |
+| `test -f README.md` … `test -f frontend/README.md` | Vérifie que les documents obligatoires existent (`set -euo pipefail` arrête au premier fichier manquant) |
+
+⚠️ Le résultat de la CI se lit dans l'onglet **Actions** du dépôt GitHub ; il n'a pas été vérifié pour ce document (**à vérifier**).
+
+---
+
+## 15. Installer, configurer, lancer, dépanner
+
+**En une phrase :** on installe Python, on crée un environnement virtuel, on renseigne `backend/.env`, puis on lance uvicorn depuis la racine du dépôt principal.
+
+### 15.1 Installation (Windows, une seule fois)
+
+```powershell
+cd C:\chemin\vers\forma3d-kit-codex
+python -m venv backend\.venv
+backend\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
+copy .env.example backend\.env
+```
+
+Puis ouvrez `backend\.env` et renseignez au minimum `FORMA3D_OWNER_PASSWORD`.
+
+### 15.2 Lancer
+
+```powershell
+cd C:\chemin\vers\forma3d-kit-codex
+backend\.venv\Scripts\python.exe -m uvicorn app.main:app --app-dir backend --port 8000
+```
+
+Ouvrez `http://127.0.0.1:8000`. Variante automatique : `.\scripts\dev.ps1` (lance d'abord les tests, puis le serveur sur le port **8001**).
+
+### 15.3 Erreurs fréquentes
+
+| Symptôme | Cause probable | Solution |
+|---|---|---|
+| La page affiche encore l'ancienne version | Cache du navigateur | Recharger avec **Ctrl+F5** |
+| Mes modèles ou mes réglages ont « disparu » | Serveur lancé depuis le mauvais dossier (une copie de travail au lieu du dépôt principal) | Lancer depuis la racine du dépôt principal, celle qui contient votre `backend/.env` et `backend/data/` |
+| « Connexion impossible : définissez FORMA3D_OWNER_PASSWORD… » | Mot de passe absent de `backend/.env` (ou mis par erreur dans `.env.example`) | L'ajouter dans `backend/.env`, redémarrer |
+| `error while attempting to bind on address … 8000` | Port déjà utilisé par un autre serveur | Arrêter l'autre serveur (Ctrl+C) ou utiliser `--port 8001` |
+| Badge « Serveur 3D : hors ligne » | `HF_SPACE_ID` vide ou lien Colab expiré | Utiliser les exemples et l'import, ou configurer un fournisseur |
+| « Quota GPU gratuit du Space TRELLIS atteint » | Quota journalier épuisé | Réessayer plus tard ; ajouter un jeton gratuit `HF_TOKEN` |
+| Le modèle paraît noir | Matériau métallique par défaut (ancien fichier) | Déjà corrigé à l'affichage et pour les nouveaux fichiers ; recharger avec Ctrl+F5 |
+| Un site partenaire n'affiche rien | Origine absente de `EMBED_ALLOWED_ORIGINS`, ou intégration non activée | Ajouter l'origine exacte, redémarrer, activer l'interrupteur sur la fiche |
+
+---
+
+## 16. Limites, travail restant et perspectives
+
+**En une phrase :** le prototype fonctionne de bout en bout en local, mais il reste mono-propriétaire, dépendant de services gratuits instables, et non déployé.
+
+### 16.1 Limites honnêtes
+
+- **Qualité 3D** : une seule photo ne montre pas l'arrière ; TripoSR a des couleurs approximatives, TRELLIS invente parfois des parties (exemple observé : une table en demi-lune devenue ovale).
+- **Fiabilité** : Colab expire, les Spaces gratuits ont des quotas journaliers et des mises en veille.
+- **Génération TRELLIS depuis le Studio** : la chaîne est branchée et a joint le Space, mais une génération complète par l'interface reste à obtenir (quota épuisé lors de la tentative du 11 novembre 2026).
+- **Sécurité** : usage local, HTTP, un seul mot de passe (section 12.5).
+- **Données** : SQLite et disque local, sans sauvegarde automatique.
+- **Pas de déploiement** ni de CD.
+
+### 16.2 La deuxième partie du projet (proposée, non commencée)
+
+| Étape | Contenu |
+|---|---|
+| D | Comptes vendeurs et inscription ; données séparées par boutique ; tests d'isolation |
+| E | Rôle `superadmin`, journal d'audit, suppression réversible |
+| F | Passage à PostgreSQL grâce à l'interface `GenerationRepository` ; sauvegardes |
+| G | Récupération de mot de passe par courriel (service d'envoi à choisir) |
+| Plus tard | Plusieurs vues d'un même produit (face, côté, arrière) si le modèle le permet ; application pour une plateforme e-commerce ; déploiement HTTPS |
+
+---
+
+## 17. Glossaire A–Z
+
+| Terme | Définition |
+|---|---|
+| **API** | Interface qui permet à un programme d'en appeler un autre par des requêtes |
+| **Clé API** | Secret qui identifie un programme client ; ici `f3d_live_…` |
+| **CI / CD** | Intégration continue (tests automatiques) / déploiement continu (mise en ligne automatique) |
+| **Colab** | Service Google qui prête un GPU gratuitement, pour une durée limitée |
+| **Cookie HttpOnly** | Petit fichier du navigateur, illisible par JavaScript, qui garde la session |
+| **CORS** | Règle qui autorise ou non le JavaScript d'un autre site à appeler une API |
+| **CSP** | Politique de sécurité envoyée par le serveur ; `frame-ancestors` dit qui peut afficher la page dans une iframe |
+| **Détourage** | Suppression du fond d'une photo pour ne garder que l'objet |
+| **Empreinte (hachage)** | Résultat d'une fonction à sens unique (SHA-256) : sert à vérifier un secret sans le stocker |
+| **FastAPI** | Framework Python qui transforme des fonctions en routes HTTP |
+| **GLB / glTF** | Format standard de fichier 3D pour le web ; GLB est la version binaire en un seul fichier |
+| **Gradio** | Bibliothèque qui crée une page web autour d'un modèle d'IA |
+| **HMAC** | Signature calculée avec une clé secrète ; prouve qu'un jeton n'a pas été modifié |
+| **Hugging Face Space** | Démonstration d'IA hébergée gratuitement sur huggingface.co |
+| **iframe** | Cadre qui affiche une page web à l'intérieur d'une autre page |
+| **Maillage (mesh)** | Ensemble des triangles qui forment la surface d'un objet 3D |
+| **Matériau** | Description de la réaction d'une surface à la lumière (couleur, métal, rugosité) |
+| **Migration** | Modification de la structure d'une base de données sans perdre les données |
+| **model-viewer** | Composant HTML de Google qui affiche un fichier 3D |
+| **Module ES** | Fichier JavaScript qui exporte et importe des fonctions (`import` / `export`) |
+| **Normale** | Direction perpendiculaire à une surface, utilisée pour l'éclairage |
+| **Pré-entraîné** | Modèle d'IA déjà appris par une autre équipe ; on l'utilise sans l'entraîner |
+| **Pydantic** | Bibliothèque Python qui valide la forme des données JSON |
+| **Quota** | Limite d'utilisation (par jour ou par minute) |
+| **Révoquer** | Désactiver définitivement une clé tout en gardant sa trace |
+| **Routeur** | Code qui associe une adresse à une page (frontend) ou une route à une fonction (backend) |
+| **SPA** | Application à page unique : le contenu change sans recharger la page |
+| **SQLite** | Base de données SQL contenue dans un seul fichier |
+| **Tâche de fond** | Travail exécuté après la réponse HTTP (ici, la génération) |
+| **Texture** | Image plaquée sur la surface d'un objet 3D |
+| **TRELLIS** | Modèle d'IA de Microsoft qui produit un modèle 3D texturé à partir d'une image |
+| **TripoSR** | Modèle d'IA de Stability AI et Tripo qui produit un modèle 3D à couleurs de sommets |
+| **UUID** | Identifiant unique de 36 caractères, impossible à deviner en pratique |
+| **uvicorn** | Serveur qui exécute une application FastAPI |
+| **Web Component** | Balise HTML personnalisée créée en JavaScript (`<forma3d-viewer>`) |
+| **Widget** | Petit composant intégrable dans un autre site |
+| **ZeroGPU** | GPU gratuit partagé des Spaces Hugging Face, limité par un quota journalier |
