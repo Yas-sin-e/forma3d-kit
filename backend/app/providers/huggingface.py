@@ -4,15 +4,20 @@
 
 from __future__ import annotations
 
+# json (standard) : lit le bloc JSON d'un fichier GLB pour le vérifier.
 import json
 import time
+# concurrent.futures.TimeoutError (standard) : erreur levée quand un travail dépasse le délai d'attente.
 from concurrent.futures import TimeoutError as JobTimeoutError
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Callable
 from urllib.parse import quote, urlsplit
 
+# httpx2 : client HTTP ; ici, interroge l'état d'un Space Hugging Face (démarré, en veille…).
 import httpx2
+# gradio_client : appelle une application Gradio depuis Python. view_api() décrit les fonctions
+# réellement exposées ; le projet lit toujours ce contrat avant d'envoyer une photo.
 from gradio_client import Client, handle_file
 
 from app.config import Settings, get_settings
@@ -47,12 +52,21 @@ class HuggingFaceSpaceProvider:
         client_factory: Callable[..., Any] = Client,
         sleep: Callable[[float], None] = time.sleep,
     ) -> None:
+        """Reçoit la configuration, la fabrique de client Gradio et la fonction d'attente.
+
+        client_factory et sleep sont remplaçables par les tests (faux client, pas d'attente réelle).
+        """
         self.settings = settings or get_settings()
         self._client_factory = client_factory
         self._sleep = sleep
 
     def generate(self, image_path: Path) -> bytes:
-        """Envoie une image et ne retourne que des octets GLB 2.0 valides."""
+        """Envoie une image et ne retourne que des octets GLB 2.0 valides.
+
+        Paramètre : image_path (photo préparée). Retour : octets du GLB.
+        Une ou deux tentatives dans un délai global ; on ne relance que les erreurs passagères
+        (Space en cours de démarrage, coupure réseau). Lève ProviderError avec un message sans jeton.
+        """
         if not self.settings.hf_space_id.strip():
             raise ProviderError(
                 "HF_SPACE_ID est vide dans backend/.env ; le serveur 3D n'est pas configuré."
@@ -202,6 +216,7 @@ class HuggingFaceSpaceProvider:
                 analytics_enabled=False,
                 download_files=download_dir,
             )
+            # view_api : on demande au serveur la liste réelle de ses fonctions et paramètres (le « contrat »).
             api_description = client.view_api(
                 print_info=False,
                 return_format="dict",
@@ -302,6 +317,7 @@ class HuggingFaceSpaceProvider:
             if isinstance(value, _ImageInput)
         )
         values[input_index] = handle_file(str(image_path))
+        # client.submit : lance le travail sur le serveur distant sans bloquer ; on attend ensuite son résultat.
         job = client.submit(*values, **selector)
         return self._result_before_deadline(job, deadline)
 
@@ -320,6 +336,7 @@ class HuggingFaceSpaceProvider:
 
     @staticmethod
     def _result_before_deadline(job: Any, deadline: float) -> Any:
+        """Attend le résultat d'un travail Gradio sans dépasser le délai global ; annule le travail sinon."""
         remaining = deadline - time.monotonic()
         if remaining <= 0:
             job.cancel()
@@ -343,6 +360,7 @@ class HuggingFaceSpaceProvider:
 
     @staticmethod
     def _is_http_url(value: str) -> bool:
+        """Vrai si la cible est une URL http(s) (serveur Gradio direct) et non un identifiant de Space."""
         return value.startswith(("http://", "https://"))
 
     @classmethod
@@ -570,6 +588,9 @@ class HuggingFaceSpaceProvider:
         component_props: list[dict[str, Any] | object] | None = None,
         configured_settings: dict[str, float | int | None] | None = None,
     ) -> dict[str, Any]:
+        """Assemble tout ce qu'il faut pour appeler une fonction Gradio : sélecteur, valeurs par défaut,
+        réglages appliqués, position de l'image et position de la sortie GLB.
+        """
         inputs = cls._defaulted_inputs(
             parameters,
             image_index,
@@ -811,6 +832,7 @@ class HuggingFaceSpaceProvider:
 
     @classmethod
     def _parameter_name(cls, parameter: dict[str, Any]) -> str:
+        """Renvoie le nom normalisé d'un paramètre décrit par view_api (ou une chaîne vide)."""
         raw_name = parameter.get("parameter_name") or parameter.get("label") or parameter.get("name")
         return cls._normalize_name(str(raw_name)) if raw_name else ""
 
@@ -823,6 +845,7 @@ class HuggingFaceSpaceProvider:
 
     @classmethod
     def _image_input_index(cls, parameters: list[dict[str, Any]]) -> int | None:
+        """Trouve la position du paramètre « image » dans la liste des paramètres, ou None."""
         for index, parameter in enumerate(parameters):
             name = cls._parameter_name(parameter)
             component = str(parameter.get("component", "")).casefold()
@@ -832,6 +855,7 @@ class HuggingFaceSpaceProvider:
 
     @classmethod
     def _has_background_control(cls, parameters: list[dict[str, Any]]) -> bool:
+        """Vrai si la fonction propose une option de suppression du fond."""
         return any(
             cls._parameter_name(parameter) in {"do_remove_background", "remove_background"}
             or (
@@ -843,10 +867,12 @@ class HuggingFaceSpaceProvider:
 
     @classmethod
     def _has_foreground_control(cls, parameters: list[dict[str, Any]]) -> bool:
+        """Vrai si la fonction propose un réglage de taille du premier plan (foreground)."""
         return any("foreground" in cls._parameter_name(parameter) for parameter in parameters)
 
     @classmethod
     def _has_resolution_control(cls, parameters: list[dict[str, Any]]) -> bool:
+        """Vrai si la fonction propose un réglage de résolution du maillage."""
         return any(
             "resolution" in cls._parameter_name(parameter)
             or cls._parameter_name(parameter) == "mc_resolution"
@@ -855,6 +881,7 @@ class HuggingFaceSpaceProvider:
 
     @classmethod
     def _find_image_output(cls, outputs: list[Any]) -> int | None:
+        """Trouve la position de la sortie « image prétraitée », ou None."""
         for index, output in enumerate(outputs):
             if not isinstance(output, dict):
                 continue
@@ -866,6 +893,7 @@ class HuggingFaceSpaceProvider:
 
     @classmethod
     def _find_glb_output(cls, outputs: list[Any]) -> int | None:
+        """Trouve la position de la sortie fichier dont le libellé contient « glb », ou None."""
         for index, output in enumerate(outputs):
             if (
                 isinstance(output, dict)
@@ -877,6 +905,7 @@ class HuggingFaceSpaceProvider:
 
     @staticmethod
     def _is_file_output(output: dict[str, Any]) -> bool:
+        """Vrai si une sortie décrite par view_api est un fichier (chemin local ou composant Model3D)."""
         python_type = output.get("python_type")
         if isinstance(python_type, dict):
             return (
@@ -917,6 +946,10 @@ class HuggingFaceSpaceProvider:
         error_message: str,
         require_glb: bool,
     ) -> Path:
+        """Extrait le chemin du fichier renvoyé par Gradio à la position demandée.
+
+        Lève ProviderError si la sortie manque, n'est pas un fichier présent, ou n'est pas un .glb quand require_glb est vrai.
+        """
         if isinstance(result, (list, tuple)):
             if output_index >= len(result):
                 raise ProviderError(error_message)

@@ -6,15 +6,27 @@ Uvicorn importe ce module au démarrage ; les tests l'importent aussi. FastAPI
 expose le contrôle GET /health et initialise le stockage des métadonnées.
 """
 
+# logging (bibliothèque standard) : écrit des messages dans le journal du serveur.
+# Ici : avertissements au démarrage. Équivalent de SLF4J / Logback en Java.
 import logging
+# contextlib (standard) : fabrique des « gestionnaires de contexte » (blocs with).
+# asynccontextmanager sert au cycle de vie de l'application (démarrage / arrêt).
 from contextlib import asynccontextmanager
+# pathlib (standard) : manipule les chemins de fichiers comme des objets (Path / "dossier").
+# Équivalent de java.nio.file.Path ; fonctionne sous Windows comme sous Linux.
 from pathlib import Path
 from typing import AsyncIterator
 
+# FastAPI : le framework web du projet. Il transforme des fonctions Python en routes HTTP,
+# valide les données et génère la documentation /docs. Équivalent de Spring Boot (Spring MVC).
+# Depends = injection de dépendances ; Request = la requête HTTP reçue.
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse
+# Starlette : la boîte à outils HTTP sur laquelle FastAPI est construit (middlewares, erreurs).
+# CORSMiddleware gère les appels venant d'autres sites (CORS).
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.cors import CORSMiddleware
+# StaticFiles : sert un dossier de fichiers tel quel (ici frontend/ sous /static).
 from fastapi.staticfiles import StaticFiles
 
 from app.providers.huggingface import HuggingFaceSpaceProvider
@@ -35,8 +47,12 @@ from app.services.generation_service import GenerationService
 from app.services.owner_auth import OwnerAuthService, session_key_from_environment
 from app.storage.local_storage import LocalStorage
 
+# Racine du dépôt calculée depuis ce fichier : backend/app/main.py -> on remonte de 2 dossiers.
+# Le serveur ne dépend donc pas du dossier d'où il est lancé.
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 logger = logging.getLogger(__name__)
+# Objets créés UNE fois, au chargement du module (comme des beans singleton de Spring).
+# Le fournisseur TripoSR lit la configuration (Settings) à sa création.
 provider = HuggingFaceSpaceProvider()
 # IMAGE3D_PROVIDER choisit le fournisseur de génération ; TripoSR reste le défaut (sous-étape C3).
 generation_provider = (
@@ -53,7 +69,12 @@ generation_repository.initialize()
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    """Initialise l'historique et signale l'absence de configuration sensible."""
+    """Cycle de vie de l'application : le code avant « yield » s'exécute au démarrage.
+
+    Initialise la base SQLite puis écrit des avertissements (sans bloquer le démarrage) si
+    backend/.env, le mot de passe propriétaire ou HF_SPACE_ID manquent.
+    Équivalent d'un @PostConstruct / ApplicationRunner de Spring Boot.
+    """
     generation_repository.initialize()
     backend_env = _PROJECT_ROOT / "backend" / ".env"
     if not backend_env.is_file():
@@ -64,12 +85,15 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         logger.warning("HF_SPACE_ID est vide ; les générations distantes sont désactivées.")
     yield
 
+# L'application elle-même : c'est cet objet « app » qu'Uvicorn (le serveur HTTP) exécute.
 app = FastAPI(
     title="Forma3D Studio API",
     version="0.1.0",
     description="API de base du prototype SaaS 3D Forma3D Studio.",
     lifespan=lifespan,
 )
+# app.state : sac d'objets partagés de l'application. Les routes y retrouvent les services
+# (voir les fonctions get_... des routeurs). C'est notre conteneur d'injection, en très simple.
 app.state.generation_service = GenerationService(
     provider=generation_provider,
     storage=LocalStorage(),
@@ -88,6 +112,8 @@ app.state.demo_gallery = DemoGallery()
 app.state.owner_auth = OwnerAuthService(signing_key=session_key_from_environment())
 
 # Routes du Studio : protégées par la session de la propriétaire (cookie signé, étape 5f).
+# dependencies=[Depends(require_owner)] applique la vérification de session à TOUTES les routes
+# d'un routeur. Équivalent d'une règle .authenticated() de Spring Security sur un préfixe d'URL.
 studio_protection = [Depends(require_owner)]
 app.include_router(auth_router)
 app.include_router(models_router, dependencies=studio_protection)
@@ -97,6 +123,8 @@ app.include_router(api_keys_router, dependencies=studio_protection)
 app.include_router(public_models_router)
 app.include_router(api_v1_router)
 app.include_router(embed_router)
+# Middleware CORS : code exécuté avant chaque requête. Il n'autorise que les origines listées
+# dans API_CORS_ORIGINS (aucune par défaut), sans cookies (allow_credentials=False).
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list(provider.settings.api_cors_origins),
@@ -110,7 +138,12 @@ app.add_middleware(
 
 @app.exception_handler(StarletteHTTPException)
 async def handle_http_error(request: Request, error: StarletteHTTPException) -> JSONResponse:
-    """Garde les erreurs internes existantes et normalise les réponses versionnées."""
+    """Gestionnaire global des erreurs HTTP (équivalent d'un @ControllerAdvice de Spring).
+
+    Pour /api/v1 : renvoie toujours {"error": {"code": ..., "message": ...}} (contrat stable
+    pour les intégrateurs). Pour le Studio : garde le format FastAPI {"detail": ...}.
+    Les en-têtes de l'erreur (par exemple Retry-After) sont conservés.
+    """
     if request.url.path == "/api/v1" or request.url.path.startswith("/api/v1/"):
         codes = {
             400: "bad_request",
@@ -133,6 +166,7 @@ async def handle_http_error(request: Request, error: StarletteHTTPException) -> 
     )
 
 
+# mount : branche une sous-application. Tout le dossier frontend/ est servi sous /static.
 app.mount(
     "/static",
     StaticFiles(directory=_PROJECT_ROOT / "frontend"),
@@ -154,7 +188,12 @@ def health_check() -> dict[str, str]:
 
 @app.get("/health/provider", tags=["health"])
 def provider_health_check(request: Request) -> dict[str, str]:
-    """Retourne la disponibilité sans révéler l'URL ou les détails réseau."""
+    """Retourne la disponibilité du fournisseur 3D sans révéler l'URL ou les détails réseau.
+
+    Retour : {"status": "ONLINE" | "OFFLINE" | "UNCONFIGURED", "message": texte lisible}.
+    Le message diffère selon le fournisseur (Colab pour TripoSR, Space pour TRELLIS).
+    """
+    # On lit le fournisseur réellement utilisé (TripoSR ou TRELLIS), rangé dans app.state.
     generation_provider = request.app.state.generation_provider
     status = generation_provider.health_status()
     if status == "OFFLINE" and isinstance(generation_provider, TrellisSpaceProvider):

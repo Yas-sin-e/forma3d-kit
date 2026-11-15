@@ -19,6 +19,8 @@ from __future__ import annotations
 import json
 import logging
 import math
+# struct (standard) : lit et écrit des nombres binaires (« <II » = deux entiers 32 bits, « <3f » = trois décimaux).
+# Indispensable ici car un GLB est un fichier binaire. Équivalent de ByteBuffer en Java.
 import struct
 from dataclasses import dataclass
 
@@ -52,6 +54,11 @@ class _Unsupported(Exception):
 
 
 def _read_glb(content: bytes) -> tuple[dict, bytearray]:
+    """Découpe un GLB en (document JSON, données binaires).
+
+    Lit l'en-tête de 12 octets puis chaque bloc (« chunk ») : longueur, type, contenu.
+    Lève _Unsupported si la structure n'est pas un GLB 2.0 simple.
+    """
     if len(content) < 20 or content[:4] != _GLB_MAGIC:
         raise _Unsupported("en-tête GLB absent")
     version, total_length = struct.unpack_from("<II", content, 4)
@@ -74,6 +81,10 @@ def _read_glb(content: bytes) -> tuple[dict, bytearray]:
 
 
 def _write_glb(document: dict, binary: bytearray) -> bytes:
+    """Reconstruit un fichier GLB à partir du document JSON et du binaire.
+
+    Chaque bloc est complété pour que sa taille soit un multiple de 4 octets (règle du format).
+    """
     json_bytes = json.dumps(document, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
     json_bytes += b" " * (-len(json_bytes) % 4)
     binary = bytes(binary) + b"\x00" * (-len(binary) % 4)
@@ -97,6 +108,10 @@ def _accessor_view(document: dict, binary: bytearray, accessor_index: int) -> tu
 
 
 def _read_positions(document: dict, binary: bytearray, accessor_index: int) -> list[tuple[float, float, float]]:
+    """Lit la liste des sommets (x, y, z) décrite par un accesseur glTF.
+
+    Lève _Unsupported si ce ne sont pas des triplets de décimaux ou si les données dépassent le binaire.
+    """
     accessor, start, stride = _accessor_view(document, binary, accessor_index)
     if accessor.get("componentType") != _FLOAT or accessor.get("type") != "VEC3":
         raise _Unsupported("positions non float VEC3")
@@ -108,6 +123,7 @@ def _read_positions(document: dict, binary: bytearray, accessor_index: int) -> l
 
 
 def _read_indices(document: dict, binary: bytearray, primitive: dict, vertex_count: int) -> list[int]:
+    """Lit la liste des indices de triangles ; sans indices, les sommets sont pris dans l'ordre (0, 1, 2…)."""
     if "indices" not in primitive:
         return list(range(vertex_count))
     accessor, start, stride = _accessor_view(document, binary, primitive["indices"])
@@ -136,6 +152,8 @@ def compute_vertex_normals(positions: list[tuple[float, float, float]], indices:
         cx, cy, cz = positions[c]
         ux, uy, uz = bx - ax, by - ay, bz - az
         vx, vy, vz = cx - ax, cy - ay, cz - az
+        # Produit vectoriel de deux côtés du triangle : un vecteur perpendiculaire à sa surface,
+        # dont la longueur est proportionnelle à l'aire (les grands triangles pèsent donc plus).
         nx, ny, nz = uy * vz - uz * vy, uz * vx - ux * vz, ux * vy - uy * vx
         for vertex in (a, b, c):
             total = sums[vertex]

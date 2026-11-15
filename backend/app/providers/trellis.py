@@ -15,14 +15,20 @@ produisent une ProviderError compréhensible ; aucun contournement n'est tenté.
 
 from __future__ import annotations
 
+# time (standard) : time.monotonic sert à calculer le temps restant avant le délai maximal.
 import time
 from concurrent.futures import TimeoutError as JobTimeoutError
 from pathlib import Path
+# tempfile.TemporaryDirectory (standard) : dossier temporaire supprimé à la fin du bloc « with ».
 from tempfile import TemporaryDirectory
 from typing import Any, Callable
 from urllib.parse import quote
 
+# httpx2 : client HTTP (comme RestTemplate/WebClient en Java, ou HttpClient d'Angular côté serveur).
+# Ici : une seule requête GET pour connaître l'état du Space (contrôle de santé).
 import httpx2
+# gradio_client : bibliothèque officielle pour appeler une application Gradio (la page web d'un modèle d'IA)
+# depuis un programme. Client = connexion au Space ; handle_file = prépare l'envoi d'un fichier.
 from gradio_client import Client, handle_file
 
 from app.config import Settings, get_settings
@@ -71,17 +77,29 @@ class TrellisSpaceProvider:
         client_factory: Callable[..., Any] = Client,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
+        """Reçoit la configuration, la fabrique de client Gradio et l'horloge.
+
+        client_factory et clock sont remplaçables : les tests y mettent un faux client, sans réseau.
+        """
         self.settings = settings or get_settings()
         self._client_factory = client_factory
         self._clock = clock
 
     def generate(self, image_path: Path) -> bytes:
+        """Transforme une photo en GLB texturé avec le Space TRELLIS.
+
+        Paramètre : image_path (photo préparée). Retour : octets d'un GLB 2.0 vérifié.
+        Étapes : contrat (view_api), /start_session, /preprocess_image (détourage), /generate_and_extract_glb.
+        Lève ProviderError avec un message clair (quota, délai dépassé, Space indisponible).
+        """
         source = Path(image_path)
         if not source.is_file():
             raise ProviderError("La photo à convertir est introuvable sur le serveur.")
         deadline = self._clock() + self.settings.hf_timeout_seconds
         try:
             with TemporaryDirectory(prefix="forma3d-trellis-") as download_dir:
+                # Connexion au Space. download_files : dossier où le client range les fichiers reçus.
+                # httpx_kwargs : délai de 120 s par requête HTTP (le délai par défaut de 5 s échouait quand le Space était lent).
                 client = self._client_factory(
                     self.settings.trellis_space_id,
                     token=self.settings.hf_token or None,
@@ -113,6 +131,10 @@ class TrellisSpaceProvider:
             raise ProviderError(self._explain(error)) from error
 
     def _check_contract(self, client: Any) -> None:
+        """Vérifie que le Space expose encore les trois fonctions attendues, avant d'envoyer la photo.
+
+        view_api() renvoie la description réelle de l'API ; on n'invente jamais un nom de fonction.
+        """
         description = client.view_api(print_info=False, return_format="dict")
         endpoints = description.get("named_endpoints", {}) if isinstance(description, dict) else {}
         missing = [name for name in REQUIRED_FUNCTIONS if name not in endpoints]
@@ -120,7 +142,11 @@ class TrellisSpaceProvider:
             raise ProviderError(f"Le contrat du Space TRELLIS a changé : fonctions absentes {missing}.")
 
     def _call(self, client: Any, deadline: float, **kwargs: Any) -> Any:
-        """Soumet un appel et attend son résultat sans dépasser le délai global."""
+        """Soumet un appel et attend son résultat sans dépasser le délai global.
+
+        client.submit lance le travail sans bloquer ; job.result(timeout=...) attend au plus le temps restant.
+        Si le délai est dépassé, le travail est annulé côté Space.
+        """
         remaining = deadline - self._clock()
         if remaining <= 0:
             raise JobTimeoutError("Délai global atteint.")

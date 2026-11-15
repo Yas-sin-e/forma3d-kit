@@ -2,19 +2,27 @@
 # Exécution : appelé à la première génération ; jamais besoin d'un secret pour démarrer l'API.
 """Configuration locale du fournisseur image-vers-3D."""
 
+# math, os, re (standard) : nombres, variables d'environnement (os.getenv), expressions régulières.
 import math
 import os
 import re
+# dataclasses (standard) : génère automatiquement constructeur et comparaison d'une classe de données.
+# Équivalent d'un record Java ou de Lombok @Value.
 from dataclasses import dataclass
 from pathlib import Path
+# urllib.parse (standard) : découpe une URL en schéma, hôte, chemin, paramètres.
 from urllib.parse import urlsplit
 
+# python-dotenv : charge les lignes CLE=valeur d'un fichier .env dans les variables d'environnement.
+# Ici : lit backend/.env (secrets locaux, ignoré par Git). Équivalent d'application.properties.
 from dotenv import load_dotenv
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
+# Motif « propriétaire/nom » d'un Space Hugging Face (jamais une URL).
 _SPACE_ID_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*")
 
 
+# frozen=True : l'objet devient non modifiable après sa création (configuration immuable).
 @dataclass(frozen=True)
 class Settings:
     """Réglages d'un Space ou serveur Gradio et des limites d'attente."""
@@ -36,7 +44,12 @@ class Settings:
     trellis_space_id: str = "trellis-community/TRELLIS"
 
     def __post_init__(self) -> None:
-        """Refuse une cible distante invalide ou des délais non positifs."""
+        """Valide la configuration juste après la construction de l'objet.
+
+        Lève ValueError (le serveur refuse alors de démarrer) si une valeur est dangereuse ou
+        incohérente : URL avec identifiants, délai nul, fournisseur inconnu, origine « * », etc.
+        Une erreur de configuration doit se voir au démarrage, pas au milieu d'une démonstration.
+        """
         target = self.hf_space_id.strip()
         if "://" in target:
             parsed = urlsplit(target)
@@ -73,6 +86,7 @@ class Settings:
             raise ValueError("API_DAILY_GENERATION_LIMIT doit être au moins égal à 1.")
         if self.api_rate_limit_per_minute < 1:
             raise ValueError("API_RATE_LIMIT_PER_MINUTE doit être au moins égal à 1.")
+        # Mêmes règles pour les deux listes d'origines : HTTP(S) précis, sans chemin ni identifiants, jamais « * ».
         for setting_name, origins in (
             ("API_CORS_ORIGINS", self.api_cors_origins),
             ("EMBED_ALLOWED_ORIGINS", self.embed_allowed_origins),
@@ -108,7 +122,11 @@ def parse_embed_allowed_origins(value: str) -> tuple[str, ...]:
 
 
 def get_settings() -> Settings:
-    """Charge backend/.env en priorité, puis .env racine, sans écraser l'environnement."""
+    """Charge backend/.env en priorité, puis .env racine, sans écraser l'environnement.
+
+    override=False : une variable déjà définie dans le terminal garde la priorité.
+    Retour : un objet Settings validé. Lève ValueError si une valeur est invalide.
+    """
     load_dotenv(_PROJECT_ROOT / "backend" / ".env", override=False)
     load_dotenv(_PROJECT_ROOT / ".env", override=False)
     token = os.getenv("HF_TOKEN", "").strip() or None

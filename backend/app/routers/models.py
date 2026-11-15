@@ -5,7 +5,10 @@
 from pathlib import Path
 from typing import Annotated
 
+# FastAPI : UploadFile/File/Form lisent un formulaire multipart (fichier + champs texte) ;
+# BackgroundTasks exécute un travail après la réponse.
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile
+# FileResponse envoie un fichier du disque ; Response sert aux réponses sans contenu (204).
 from fastapi.responses import FileResponse, Response
 
 from app.models import GenerationRecord, GenerationStatus, ModelOrigin
@@ -29,7 +32,11 @@ public_router = APIRouter(prefix="/public/models", tags=["public-models"])
 
 
 def get_generation_service(request: Request) -> GenerationService:
-    """Récupère le service unique créé au démarrage de l'application."""
+    """Retourne le service de génération créé au démarrage (app.state).
+
+    Fonction de dépendance : les routes la reçoivent par Depends, et les tests la remplacent
+    avec app.dependency_overrides (équivalent d'un @MockBean).
+    """
     return request.app.state.generation_service
 
 
@@ -39,7 +46,11 @@ def get_demo_gallery(request: Request) -> DemoGallery:
 
 
 def _to_response(record: GenerationRecord) -> GenerationResponse:
-    """Transforme le modèle interne en réponse sans exposer les chemins locaux."""
+    """Transforme le modèle interne en réponse sans exposer les chemins locaux.
+
+    C'est le « mapper » entité -> DTO : status_url et model_url sont des adresses HTTP,
+    jamais des chemins du disque. model_url n'existe que pour un modèle DONE.
+    """
     is_done = record.status is GenerationStatus.DONE
     return GenerationResponse(
         id=record.id,
@@ -67,8 +78,13 @@ async def create_model_generation(
     background_tasks: BackgroundTasks,
     service: Annotated[GenerationService, Depends(get_generation_service)],
 ) -> GenerationResponse:
-    """Valide et stocke la photo puis démarre une tâche de génération en arrière-plan."""
+    """Valide et stocke la photo puis démarre une tâche de génération en arrière-plan.
+
+    Paramètres : file (photo), category (slug). Retour : 202 + GenerationResponse (statut PENDING).
+    Erreurs : 400/413/415 (photo refusée par UploadValidator), 422 (catégorie inconnue ou désactivée).
+    """
     try:
+        # Lecture bornée : au plus 10 Mo + 1 octet. Un fichier trop gros est détecté sans le charger entier.
         content = await file.read(MAX_UPLOAD_BYTES + 1)
         validated = UploadValidator.validate(
             filename=file.filename,
@@ -87,6 +103,7 @@ async def create_model_generation(
         record = service.create_generation(validated, content, category)
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
+    # FastAPI envoie d'abord la réponse 202, puis exécute service.run (équivalent d'un @Async Spring).
     background_tasks.add_task(service.run, record.id)
     return _to_response(record)
 
@@ -157,7 +174,11 @@ def _get_enabled_public_model(
     public_id: str,
     service: GenerationService,
 ) -> tuple[GenerationRecord, Path]:
-    """Résout uniquement un GLB terminé et explicitement autorisé à l'intégration."""
+    """Résout uniquement un GLB terminé et explicitement autorisé à l'intégration.
+
+    Retour : (enregistrement, chemin du GLB). Lève toujours la même 404 si le modèle est inconnu,
+    pas terminé, non activé ou sans fichier : on ne révèle pas la raison au public.
+    """
     record = service.get_generation_by_public_id(public_id)
     if record is None or not record.embed_enabled or record.status is not GenerationStatus.DONE:
         raise HTTPException(status_code=404, detail="Ce modèle n'est pas disponible pour l'intégration.")

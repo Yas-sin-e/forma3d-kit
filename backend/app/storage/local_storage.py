@@ -4,8 +4,10 @@
 
 from __future__ import annotations
 
+# os (standard) : appels système ; ici fsync (forcer l'écriture sur disque) et link.
 import os
 from pathlib import Path
+# uuid (standard) : UUID(...) vérifie qu'un identifiant a bien la forme d'un UUID.
 from uuid import UUID, uuid4
 
 _ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
@@ -15,13 +17,21 @@ class LocalStorage:
     """Conserve les fichiers sous un dossier dédié au backend."""
 
     def __init__(self, root: Path | None = None) -> None:
+        """Fixe les dossiers de stockage : backend/storage/images et backend/storage/models par défaut.
+
+        Paramètre : root, remplacé par un dossier temporaire dans les tests.
+        """
         default_root = Path(__file__).resolve().parents[2] / "storage"
         self.root = (root or default_root).resolve()
         self.images_dir = self.root / "images"
         self.models_dir = self.root / "models"
 
     def save_image(self, generation_id: str, extension: str, content: bytes) -> Path:
-        """Écrit une image validée avec un nom choisi par le serveur."""
+        """Écrit une image validée avec un nom choisi par le serveur.
+
+        Paramètres : generation_id (UUID), extension (.jpg, .jpeg, .png, .webp), content (octets).
+        Retour : chemin du fichier. Lève ValueError si l'identifiant, l'extension ou le contenu est invalide.
+        """
         self._validate_generation_id(generation_id)
         normalized_extension = extension.lower()
         if normalized_extension not in _ALLOWED_IMAGE_EXTENSIONS:
@@ -59,7 +69,11 @@ class LocalStorage:
 
     @staticmethod
     def _validate_generation_id(generation_id: str) -> None:
-        """Refuse toute valeur qui n'est pas un UUID généré par l'application."""
+        """Refuse toute valeur qui n'est pas un UUID généré par l'application.
+
+        Sécurité : le nom du fichier est construit à partir de cet identifiant ; un UUID ne peut pas
+        contenir « ../ » et ne permet donc pas de sortir du dossier de stockage.
+        """
         try:
             UUID(generation_id)
         except (ValueError, AttributeError) as error:
@@ -67,14 +81,20 @@ class LocalStorage:
 
     @staticmethod
     def _write_atomically(destination: Path, content: bytes) -> None:
-        """Écrit dans un fichier temporaire du même dossier puis le renomme."""
+        """Écrit dans un fichier temporaire du même dossier puis le renomme.
+
+        Écriture « atomique » : le fichier final apparaît complet ou pas du tout, jamais à moitié écrit,
+        même si le serveur s'arrête pendant l'écriture.
+        """
         destination.parent.mkdir(parents=True, exist_ok=True)
         temporary_path = destination.with_name(f".{destination.name}.{uuid4().hex}.tmp")
         try:
+            # Mode « xb » : création exclusive en binaire (échoue si le fichier existe déjà).
             with temporary_path.open("xb") as temporary_file:
                 temporary_file.write(content)
                 temporary_file.flush()
                 os.fsync(temporary_file.fileno())
+            # os.link échoue si la destination existe : on n'écrase jamais un fichier déjà présent.
             os.link(temporary_path, destination)
             temporary_path.unlink()
         except Exception:

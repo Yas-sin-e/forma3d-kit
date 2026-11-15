@@ -2,6 +2,7 @@
 # Exécution : la route POST /models l'appelle avant d'accepter une photo.
 """Validation bornée des photos envoyées au backend."""
 
+# dataclasses (standard) : classe de données immuable pour le résultat de la validation.
 from dataclasses import dataclass
 
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
@@ -13,6 +14,8 @@ _FORMATS_BY_EXTENSION = {
     ".webp": "image/webp",
 }
 
+# Signature = premiers octets réels du fichier. Renommer un fichier ne change pas sa signature :
+# un AVIF renommé en .jpg est donc refusé (protection contre un contenu déguisé).
 _SIGNATURES_BY_MEDIA_TYPE = {
     "image/jpeg": lambda content: content.startswith(b"\xff\xd8\xff"),
     "image/png": lambda content: content.startswith(b"\x89PNG\r\n\x1a\n"),
@@ -26,6 +29,7 @@ class UploadValidationError(ValueError):
     """Erreur de validation avec le code HTTP à renvoyer au client."""
 
     def __init__(self, detail: str, status_code: int = 415) -> None:
+        """Garde le message et le code HTTP que la route devra renvoyer (415 par défaut)."""
         super().__init__(detail)
         self.detail = detail
         self.status_code = status_code
@@ -49,7 +53,12 @@ class UploadValidator:
         content_type: str | None,
         content: bytes,
     ) -> ValidatedUpload:
-        """Valide une photo par extension, MIME, signature et taille."""
+        """Valide une photo par extension, MIME, signature et taille.
+
+        Paramètres : filename, content_type (type annoncé par le navigateur), content (octets lus).
+        Retour : ValidatedUpload (nom nettoyé, type, taille).
+        Lève UploadValidationError : 400 (vide ou nom invalide), 413 (plus de 10 Mo), 415 (format refusé).
+        """
         if not content:
             raise UploadValidationError(
                 "Le fichier est vide.",
@@ -62,6 +71,7 @@ class UploadValidator:
                 status_code=413,
             )
 
+        # On ne garde que le nom, sans dossier : un nom comme « ../../secret » ne peut pas viser un autre chemin.
         safe_filename = (filename or "").replace("\\", "/").rsplit("/", maxsplit=1)[-1]
         if not safe_filename or safe_filename in {".", ".."}:
             raise UploadValidationError(

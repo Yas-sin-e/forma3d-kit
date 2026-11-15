@@ -4,10 +4,14 @@
 
 from __future__ import annotations
 
+# hashlib (standard) : SHA-256 pour l'empreinte des clés (on ne stocke jamais la clé elle-même).
 import hashlib
+# hmac (standard) : compare_digest compare deux empreintes en temps constant.
 import hmac
+# secrets (standard) : génère la partie aléatoire de la clé avec un hasard cryptographique.
 import secrets
 from datetime import UTC, datetime
+# uuid (standard) : identifiants uniques aléatoires (UUID version 4), impossibles à deviner en pratique.
 from uuid import uuid4
 
 from app.models import APIKeyRecord
@@ -15,6 +19,8 @@ from app.repositories.base import GenerationRepository
 
 _KEY_PREFIX = "f3d_live_"
 _PREFIX_RANDOM_LENGTH = 8
+# Empreinte factice : sert à faire une comparaison « pour rien » quand aucune clé ne correspond,
+# afin que le temps de réponse ne révèle pas si un préfixe existe.
 _DUMMY_FINGERPRINT = hashlib.sha256(b"forma3d-invalid-api-key").hexdigest()
 
 
@@ -26,15 +32,22 @@ class APIKeyService:
     """Gère les secrets sans jamais les conserver ni les journaliser."""
 
     def __init__(self, repository: GenerationRepository) -> None:
+        """Reçoit le dépôt (injection par constructeur, comme un @Service Spring qui reçoit son @Repository)."""
         self._repository = repository
 
     def create(self, name: str) -> tuple[APIKeyRecord, str]:
-        """Crée une clé aléatoire et retourne son secret une seule fois à l’appelant."""
+        """Crée une clé aléatoire et retourne son secret une seule fois à l'appelant.
+
+        Paramètre : name (nom choisi par la propriétaire, 1 à 80 caractères).
+        Retour : (enregistrement sans secret, secret en clair). Lève APIKeyValidationError si le nom est invalide.
+        Seuls le préfixe lisible et l'empreinte SHA-256 sont enregistrés en base.
+        """
         clean_name = name.strip()
         if not clean_name:
             raise APIKeyValidationError("Donnez un nom à cette clé API.")
         if len(clean_name) > 80:
             raise APIKeyValidationError("Le nom d’une clé API ne peut pas dépasser 80 caractères.")
+        # token_urlsafe(32) : 32 octets aléatoires encodés en texte utilisable dans une URL ou un en-tête.
         secret = _KEY_PREFIX + secrets.token_urlsafe(32)
         prefix = secret[: len(_KEY_PREFIX) + _PREFIX_RANDOM_LENGTH]
         record = APIKeyRecord(
@@ -75,17 +88,24 @@ class APIKeyService:
         )
 
     def authenticate(self, candidate: str | None) -> APIKeyRecord | None:
-        """Vérifie une clé active avec comparaison d’empreintes à temps constant."""
+        """Vérifie une clé active avec comparaison d'empreintes à temps constant.
+
+        Paramètre : candidate (valeur de l'en-tête X-API-Key, ou None).
+        Retour : l'enregistrement de la clé acceptée, sinon None (absente, fausse ou révoquée).
+        Le préfixe sert à retrouver vite les candidates ; l'empreinte complète décide.
+        """
         supplied = candidate or ""
         prefix_length = len(_KEY_PREFIX) + _PREFIX_RANDOM_LENGTH
         prefix = supplied[:prefix_length] if supplied.startswith(_KEY_PREFIX) else ""
         fingerprint = self._fingerprint(supplied)
         matches = self._repository.find_api_keys_by_prefix(prefix) if prefix else []
         if not matches:
+            # Comparaison factice : même durée que pour une clé existante (pas de fuite d'information par le temps).
             hmac.compare_digest(fingerprint, _DUMMY_FINGERPRINT)
             return None
         accepted: APIKeyRecord | None = None
         for record in matches:
+            # On ne sort pas de la boucle au premier succès : la durée reste la même dans tous les cas.
             is_match = hmac.compare_digest(fingerprint, record.fingerprint)
             if is_match:
                 accepted = record

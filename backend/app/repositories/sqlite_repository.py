@@ -4,7 +4,10 @@
 
 from __future__ import annotations
 
+# sqlite3 (standard) : pilote de la base SQLite (un seul fichier, aucun serveur à installer).
+# Équivalent de JDBC ; ici, le SQL est écrit à la main dans ce dépôt (patron Repository).
 import sqlite3
+# contextlib.contextmanager (standard) : transforme une fonction avec « yield » en bloc « with ».
 from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -26,14 +29,22 @@ class SQLiteGenerationRepository:
     """Lit et écrit les générations avec une connexion SQLite par opération."""
 
     def __init__(self, database_path: Path) -> None:
+        """Mémorise le chemin absolu du fichier SQLite ; aucune connexion n'est ouverte ici."""
         self.database_path = database_path.resolve()
 
     @contextmanager
     def _connection(self) -> Iterator[sqlite3.Connection]:
-        """Fournit une connexion indépendante, avec commit/rollback et fermeture garantis."""
+        """Fournit une connexion indépendante, avec commit/rollback et fermeture garantis.
+
+        Utilisation : « with self._connection() as connection: ». Si le bloc réussit : commit ;
+        si une erreur survient : rollback ; dans tous les cas : fermeture.
+        Équivalent d'une méthode @Transactional de Spring.
+        """
         connection = sqlite3.connect(self.database_path, timeout=5.0)
         try:
+            # sqlite3.Row : permet de lire une colonne par son nom (row["status"]) plutôt que par sa position.
             connection.row_factory = sqlite3.Row
+            # SQLite n'applique les clés étrangères que si on le demande, à chaque connexion.
             connection.execute("PRAGMA foreign_keys = ON")
             yield connection
             connection.commit()
@@ -44,7 +55,11 @@ class SQLiteGenerationRepository:
             connection.close()
 
     def initialize(self) -> None:
-        """Crée les tables, insère les catégories de départ et échoue les travaux interrompus."""
+        """Crée les tables, insère les catégories de départ et échoue les travaux interrompus.
+
+        Peut être appelée plusieurs fois sans danger (CREATE TABLE IF NOT EXISTS).
+        Contient aussi les migrations : ajout des colonnes manquantes sur une base plus ancienne.
+        """
         self.database_path.parent.mkdir(parents=True, exist_ok=True)
         now = datetime.now(UTC).isoformat()
         with self._connection() as connection:
@@ -82,6 +97,8 @@ class SQLiteGenerationRepository:
                 )
                 """
             )
+            # Migration simple et non destructive : on lit les colonnes existantes (PRAGMA table_info),
+            # puis on ajoute celles qui manquent avec ALTER TABLE. Les données déjà présentes sont conservées.
             generation_columns = {
                 row["name"]
                 for row in connection.execute("PRAGMA table_info(generations)").fetchall()
@@ -135,6 +152,7 @@ class SQLiteGenerationRepository:
             connection.execute(
                 "CREATE INDEX IF NOT EXISTS idx_api_rate_events_key_time ON api_rate_events(api_key_id, occurred_at)"
             )
+            # Migration de données : les anciens modèles terminés reçoivent un identifiant public (UUID).
             completed_without_public_id = connection.execute(
                 "SELECT id FROM generations WHERE status = 'DONE' AND public_id IS NULL"
             ).fetchall()
@@ -164,11 +182,17 @@ class SQLiteGenerationRepository:
                 SET status = 'FAILED', error_message = ?, updated_at = ?, duration_seconds = NULL
                 WHERE status IN ('PENDING', 'RUNNING')
                 """,
+                # Au démarrage, une génération restée PENDING ou RUNNING a été coupée par l'arrêt du serveur :
+                # on la marque FAILED pour qu'elle ne reste pas « en cours » pour toujours.
                 (_INTERRUPTED_MESSAGE, now),
             )
 
     def save_generation(self, record: GenerationRecord) -> None:
-        """Insère ou met à jour une génération en reliant sa catégorie par slug."""
+        """Insère ou met à jour une génération en reliant sa catégorie par slug.
+
+        « INSERT ... ON CONFLICT(id) DO UPDATE » (upsert) : une seule requête sert à créer puis à mettre à jour.
+        L'identifiant public et l'autorisation d'intégration déjà enregistrés ne sont jamais écrasés.
+        """
         with self._connection() as connection:
             connection.execute(
                 """
@@ -208,6 +232,7 @@ class SQLiteGenerationRepository:
                     record.error_message,
                     record.image_warning,
                     record.origin.value,
+                    # L'identifiant public n'est créé qu'au moment où le modèle devient DONE.
                     record.public_id or (str(uuid4()) if record.status is GenerationStatus.DONE else None),
                     int(record.embed_enabled),
                     record.created_at.isoformat(),
@@ -292,10 +317,16 @@ class SQLiteGenerationRepository:
     def consume_api_rate_limit(
         self, key_id: str, rate_limit_per_minute: int, now: datetime
     ) -> str | None:
-        """Réserve atomiquement une requête par clé dans une fenêtre glissante de 60 secondes."""
+        """Réserve atomiquement une requête par clé dans une fenêtre glissante de 60 secondes.
+
+        Retour : None si la requête est acceptée, "revoked" si la clé est révoquée,
+        "rate_limit" si la limite par minute est atteinte.
+        """
         current = now.astimezone(UTC)
         cutoff = (current - timedelta(seconds=60)).isoformat()
         with self._connection() as connection:
+            # BEGIN IMMEDIATE réserve l'écriture dès le début de la transaction : deux requêtes simultanées
+            # ne peuvent pas lire le même compteur puis dépasser la limite ensemble.
             connection.execute("BEGIN IMMEDIATE")
             active_key = connection.execute(
                 "SELECT id FROM api_keys WHERE id = ? AND revoked = 0", (key_id,)
@@ -318,7 +349,10 @@ class SQLiteGenerationRepository:
     def consume_api_daily_quota(
         self, key_id: str, daily_limit: int, now: datetime
     ) -> str | None:
-        """Consomme atomiquement une création disponible dans la journée UTC."""
+        """Consomme atomiquement une création disponible dans la journée UTC.
+
+        Retour : None si acceptée, "revoked" si la clé est révoquée, "daily_quota" si le quota du jour est atteint.
+        """
         current = now.astimezone(UTC)
         usage_date = current.date().isoformat()
         with self._connection() as connection:

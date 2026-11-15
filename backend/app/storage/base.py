@@ -3,6 +3,8 @@
 """Contrat de persistance des photos et des modèles GLB."""
 
 from pathlib import Path
+# typing.Protocol (standard) : interface du stockage de fichiers (disque local aujourd'hui,
+# stockage d'objets demain) ; GenerationService ne connaît que ce contrat.
 from typing import Protocol
 
 

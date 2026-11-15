@@ -3,8 +3,11 @@
 # Révoquer (DELETE /{id}) coupe l'accès en gardant une trace ; supprimer (DELETE /{id}/permanent) efface une clé déjà révoquée.
 """Routes de gestion et vérification des clés API d’intégration."""
 
+# typing.Annotated (standard) : attache une information à un type. FastAPI s'en sert pour
+# l'injection : Annotated[Service, Depends(fonction)] = « appelle fonction et donne-moi le résultat ».
 from typing import Annotated
 
+# FastAPI : Depends = injection de dépendances ; Header = lecture d'un en-tête HTTP.
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response, status
 
 from app.models import APIKeyRecord
@@ -49,6 +52,7 @@ def create_api_key(
         record, secret = service.create(payload.name)
     except APIKeyValidationError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
+    # Le secret n'apparaît que dans cette réponse : on interdit au navigateur de la garder en cache.
     response.headers["Cache-Control"] = "no-store"
     response.headers["Pragma"] = "no-cache"
     return APIKeyCreatedResponse(**_response(record).model_dump(), key=secret)
@@ -84,7 +88,11 @@ def require_api_key(
     service: Annotated[APIKeyService, Depends(get_api_key_service)],
     x_api_key: Annotated[str | None, Header(alias="X-API-Key")] = None,
 ) -> APIKeyRecord:
-    """Dépendance des routes d’intégration ; refuse les clés absentes, fausses ou révoquées."""
+    """Dépendance des routes d'intégration ; refuse les clés absentes, fausses ou révoquées.
+
+    Lit l'en-tête X-API-Key (Header(alias=...)). Retour : la clé authentifiée.
+    Lève 401 avec l'en-tête WWW-Authenticate si la clé n'est pas acceptée.
+    """
     record = service.authenticate(x_api_key)
     if record is None:
         raise HTTPException(

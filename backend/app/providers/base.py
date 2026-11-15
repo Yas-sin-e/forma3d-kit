@@ -3,6 +3,8 @@
 """Contrat commun pour transformer une image en octets GLB."""
 
 from pathlib import Path
+# typing.Protocol (standard) : décrit une interface. Toute classe qui possède ces méthodes convient,
+# sans mot-clé « implements » (typage structurel). Équivalent d'une interface Java.
 from typing import Protocol
 
 
