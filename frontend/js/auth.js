@@ -7,9 +7,10 @@
  * FORMA3D_OWNER_PASSWORD, et la session est un cookie HttpOnly signé (illisible en JavaScript).
  * Ce module ne garde qu'un indicateur en mémoire, rafraîchi par GET /auth/me.
  */
-import { getSession, loginOwner, logoutOwner } from "./api.js?v=20261112-d1";
+import { getSession, loginOwner, logoutOwner } from "./api.js?v=20261115-e1";
 
 const NEXT_ROUTE_KEY = "forma3d:next-route";
+const SESSION_EXPIRED_KEY = "forma3d:session-expired";
 let authenticated = false;
 let passwordConfigured = true;
 
@@ -53,6 +54,13 @@ export async function logout() {
   }
 }
 
+/* Vrai une seule fois après une expiration de session : la page de connexion l'annonce. */
+export function consumeSessionExpired() {
+  const expired = window.sessionStorage.getItem(SESSION_EXPIRED_KEY) === "1";
+  window.sessionStorage.removeItem(SESSION_EXPIRED_KEY);
+  return expired;
+}
+
 /* Mémorise la page demandée avant la connexion pour y revenir ensuite. */
 export function rememberNextRoute(hash) {
   if (!hash || hash.startsWith("#/login")) return;
@@ -70,5 +78,6 @@ window.addEventListener("forma3d:unauthorized", () => {
   if (!authenticated) return;
   setAuthenticated(false);
   rememberNextRoute(window.location.hash);
+  window.sessionStorage.setItem(SESSION_EXPIRED_KEY, "1");
   window.location.hash = "#/login";
 });

@@ -20,6 +20,7 @@ Les Sprints 3 (comptes publics) et 4 (vitrine/catalogue public) sont retirés du
 - Exemple d'intégration et guide alignés sur le port 8001 de `dev.ps1`.
 - Étape 23 : suppression confirmée d'un modèle depuis sa fiche (`DELETE /models/{id}`), ligne SQLite, GLB et photo source effacés ; refus pendant la création et pour les exemples. Détails : `docs/etapes/etape-23.md`. Bouton non vérifié visuellement dans le navigateur par l'assistant.
 - Étape 24 : `FORMA3D_SESSION_SECRET` facultatif (32 caractères minimum) garde la session du Studio après un redémarrage ; vide, rien ne change. Détails : `docs/etapes/etape-24.md`.
+- Page Créer : un envoi refusé affiche désormais la cause exacte et l'action à faire (réseau, 400, 413, 415, 422, 401 avec retour à la connexion annoncé, 429 avec Retry-After, 5xx) au lieu d'un message générique ; frontend seulement, clé de cache passée à `20261115-e1`. Vérifié par tests statiques et par exécution de la fonction de traduction sur des erreurs simulées, pas dans un navigateur.
 - Documentation (option C choisie : le produit reste mono-propriétaire pour la soutenance) : `docs/ARCHITECTURE-CIBLE.md` décrit le futur SaaS multi-clients sans rien coder ; `docs/COMPRENDRE-FORMA3D.md` est corrigé (TRELLIS, 120 s, ports 8001/8000, isolation des tests, 159 tests, suppression, session) et enrichi (exemples concrets, analogies, sections 17 « hors ligne », 18 « vers le SaaS », 19 « Git »).
 
 ## Sprint 2 — Qualité et fiabilité (terminé)

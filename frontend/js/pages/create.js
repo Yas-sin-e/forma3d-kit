@@ -5,12 +5,12 @@
  * le stepper en 3 étapes (redondant avec le suivi) et la note encadrée sont supprimés,
  * les conseils et détails techniques sont repliés en bas du formulaire.
  */
-import { createGeneration, getGenerationStatus, listCategories } from "../api.js?v=20261112-d1";
-import { appState, beginGeneration, stopGenerationTimers, updateElapsedSeconds, updateGenerationStatus } from "../state.js?v=20261112-d1";
-import { setupUploader } from "../views/uploader.js?v=20261112-d1";
-import { createProgressView } from "../views/progress.js?v=20261112-d1";
-import { setupViewer } from "../views/viewer.js?v=20261112-d1";
-import { viewerMarkup } from "./viewer-markup.js?v=20261112-d1";
+import { createGeneration, getGenerationStatus, listCategories } from "../api.js?v=20261115-e1";
+import { appState, beginGeneration, stopGenerationTimers, updateElapsedSeconds, updateGenerationStatus } from "../state.js?v=20261115-e1";
+import { setupUploader } from "../views/uploader.js?v=20261115-e1";
+import { createProgressView } from "../views/progress.js?v=20261115-e1";
+import { setupViewer } from "../views/viewer.js?v=20261115-e1";
+import { viewerMarkup } from "./viewer-markup.js?v=20261115-e1";
 
 export const title = "Créer";
 
@@ -95,6 +95,48 @@ export function render() {
       </section>
     </section>
   `;
+}
+
+/* « 90 secondes » ou « 2 minutes » : délai lisible tiré de l'en-tête Retry-After. */
+function formatWait(seconds) {
+  if (seconds < 60) return `${seconds} seconde${seconds > 1 ? "s" : ""}`;
+  const minutes = Math.ceil(seconds / 60);
+  return `${minutes} minute${minutes > 1 ? "s" : ""}`;
+}
+
+/*
+ * Traduit l'échec de l'envoi (POST /models) en titre + cause + action, sans jeton, chemin ni trace.
+ * Codes réels du backend : 400 fichier vide ou nom invalide, 413 plus de 10 Mo, 415 format, type ou
+ * contenu refusé (upload_validator.py), 422 catégorie inconnue ou désactivée, 401 session expirée.
+ */
+export function describeUploadError(error) {
+  if (error instanceof TypeError) {
+    return ["Studio injoignable", "Le Studio ne répond pas. Vérifiez que le serveur est lancé (scripts/dev.ps1) et votre connexion, puis réessayez."];
+  }
+  const detail = typeof error?.serverDetail === "string" ? error.serverDetail.trim() : "";
+  switch (error?.status) {
+    case 400:
+      return ["Photo refusée", `${detail || "Le fichier envoyé n'est pas utilisable."} Choisissez une autre photo puis réessayez.`];
+    case 413:
+      return ["Photo trop lourde", "Votre photo dépasse 10 Mo. Réduisez-la ou choisissez une image plus légère."];
+    case 415:
+      return ["Format non accepté", `${detail || "Ce format de fichier n'est pas accepté."} Enregistrez la photo en JPG, PNG ou WebP avec un logiciel d'image (renommer le fichier ne suffit pas), puis réessayez.`];
+    case 422:
+      return ["Catégorie indisponible", `${detail || "La catégorie choisie n'est pas valide."} Choisissez une autre catégorie, ou réactivez-la dans Administration → Catégories.`];
+    case 401:
+      return ["Session expirée", "Votre session a expiré. Reconnectez-vous : la page de connexion va s'ouvrir."];
+    case 429:
+      return ["Trop de demandes", error.retryAfterSeconds
+        ? `Trop de demandes en peu de temps. Réessayez dans ${formatWait(error.retryAfterSeconds)}.`
+        : "Trop de demandes en peu de temps. Patientez un moment, puis réessayez."];
+    case 500:
+    case 502:
+    case 503:
+    case 504:
+      return ["Erreur du serveur", "Le serveur a rencontré un problème. Réessayez dans un instant ; si cela continue, redémarrez le serveur."];
+    default:
+      return ["Création indisponible", "Impossible de lancer la création pour une raison inattendue. Réessayez ; si cela continue, redémarrez le serveur."];
+  }
 }
 
 function sameOriginPath(value) {
@@ -200,7 +242,9 @@ export function mount() {
       const terminal = await applyStatus(data);
       if (!terminal && appState.currentStatusUrl) appState.pollingTimer = window.setInterval(() => void refreshStatus(), 1500);
     } catch (error) {
-      showFailure("Impossible de lancer la création. Vérifiez la photo et réessayez.", "Création indisponible");
+      // Cause exacte et action à faire ; pour 401, api.js renvoie en plus vers la page de connexion.
+      const [titleText, message] = describeUploadError(error);
+      showFailure(message, titleText);
     }
   }
 
