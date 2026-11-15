@@ -4,7 +4,7 @@ Ce guide s’adresse à la personne qui connecte une boutique au service Forma3D
 
 ## Avant de commencer
 
-- Forma3D Studio et son backend doivent tourner sur une adresse joignable depuis l'intégrateur ; en local, le script de développement utilise `http://127.0.0.1:8000`.
+- Forma3D Studio et son backend doivent tourner sur une adresse joignable depuis l'intégrateur ; en local, le script de développement utilise `http://127.0.0.1:8001`.
 - Créez une clé dans la page locale **Clés API** (`#/cles-api`). La clé complète n'apparaît qu'une fois. Copiez-la immédiatement dans le coffre ou la configuration du serveur intégrateur.
 - Envoyez les requêtes API depuis un backend marchand protégé. Ne placez jamais `X-API-Key` dans JavaScript, HTML public, application mobile distribuée, capture ou dépôt Git.
 - Une génération doit être terminée dans le Studio puis activée sur la fiche du modèle avant que les clients puissent voir son viewer public.
@@ -15,7 +15,7 @@ Ce guide s’adresse à la personne qui connecte une boutique au service Forma3D
 La clé a le droit d'envoyer des photos JPG, PNG ou WebP jusqu'à 10 Mo. Le champ catégorie reçoit un slug actif, par exemple `chair`.
 
 ```bash
-BASE_URL="http://127.0.0.1:8000"
+BASE_URL="http://127.0.0.1:8001"
 API_KEY="REMPLACER_PAR_VOTRE_CLE"
 curl --fail-with-body -X POST "$BASE_URL/api/v1/models" \
   -H "X-API-Key: $API_KEY" \
@@ -77,7 +77,7 @@ Depuis un terminal à la racine du dépôt, servez-la sur HTTP :
 python -m http.server 8081
 ```
 
-Dans une configuration locale de démonstration, ajoutez précisément `http://127.0.0.1:8081` à `EMBED_ALLOWED_ORIGINS` dans votre environnement local, redémarrez le backend, puis ouvrez `http://127.0.0.1:8081/examples/integration.html`. Dans la page, gardez l'origine Forma3D `http://127.0.0.1:8000` et saisissez l'UUID public d'un modèle terminé et activé. Si vous hébergez la page ailleurs, autorisez l'origine exacte réellement visible par le navigateur.
+Dans une configuration locale de démonstration, ajoutez précisément `http://127.0.0.1:8081` à `EMBED_ALLOWED_ORIGINS` dans votre environnement local, redémarrez le backend, puis ouvrez `http://127.0.0.1:8081/examples/integration.html`. Dans la page, gardez l'origine Forma3D `http://127.0.0.1:8001` et saisissez l'UUID public d'un modèle terminé et activé. Si vous hébergez la page ailleurs, autorisez l'origine exacte réellement visible par le navigateur.
 
 `EMBED_ALLOWED_ORIGINS` est distinct de `API_CORS_ORIGINS`. Un site qui n'effectue aucun `fetch` API direct et affiche seulement le viewer n'a besoin que de l'autorisation `frame-ancestors`. Si son JavaScript appelle aussi l'API, son origine doit en plus apparaître dans `API_CORS_ORIGINS`. Ces deux paramètres refusent `*` et restent vides par défaut.
 
