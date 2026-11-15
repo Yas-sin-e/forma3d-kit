@@ -164,6 +164,12 @@ Les Sprints 3 (comptes publics) et 4 (vitrine/catalogue public) sont retirés du
 - Preuve : capture headless du vrai `chair-bentwood.glb`, journal metallic 1 → 0 (voir `docs/etapes/etape-19.md`). Aucun GLB modifié ; aucune amélioration de géométrie revendiquée.
 - Non vérifié : cadrage du mode Comparer dans le vrai Studio. Prochaine sous-étape proposée : B (matériau et normales écrits dans le GLB côté serveur), sur accord.
 
+## Contrôle de clôture du Sprint 5 (15 novembre 2026)
+
+- Vérifié dans le code : `docs/INTEGRATION.md`, `examples/integration.html`, `docs/etapes/etape-17.md` (5e) ; `FORMA3D_OWNER_PASSWORD` dans `.env.example`, `/auth/login|logout|me`, cookie HttpOnly signé, 5 tentatives par minute, `require_owner` sur `/models`, `/categories`, `/api-keys` ; `/api/v1`, `/embed`, `/public` et le widget ouverts ; aucune constante `forma3d-demo` dans le frontend (5f).
+- Suite complète : 145 tests réussis en 9,69 s (dont 15 dans `test_auth.py`), dotenv désactivé et `HF_SPACE_ID` vide ; `node --check` sur 25 fichiers JS. Imports frontend tous avec `?v=` (sauf le CDN model-viewer, versionné dans son URL).
+- Aucun code n'a été modifié lors de ce contrôle. Non vérifié : connexion dans un vrai navigateur (pas de pilotage), CI GitHub.
+
 ## Étape 18 — Sprint 5f : connexion côté serveur (terminée)
 
 - La constante JavaScript `forma3d-demo` est supprimée. Le mot de passe unique vient de `FORMA3D_OWNER_PASSWORD` (documenté dans `.env.example`, jamais dans Git) ; s'il est absent, `POST /auth/login` répond 503 avec un message clair.
