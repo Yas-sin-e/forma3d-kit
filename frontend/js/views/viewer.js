@@ -7,6 +7,8 @@
  */
 import { refitCamera, watchProductAppearance } from "./model-appearance.js?v=20261115-e1";
 
+// Branche le viewer 3D de la page Créer et ses boutons de caméra.
+// <model-viewer> est un composant web de Google : une balise HTML qui affiche un fichier GLB avec rotation et zoom.
 export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
   const viewer = document.querySelector("#model-viewer");
   const emptyState = document.querySelector("#empty-state");
@@ -34,6 +36,7 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
   let activeModel = null;
   const categoryLabels = { chair: "Chaise", stool: "Tabouret", "side-table": "Table d’appoint" };
 
+  // Libère l'adresse temporaire d'un GLB local ouvert dans le navigateur.
   function releaseLocalObjectUrl() {
     if (localObjectUrl !== null) {
       URL.revokeObjectURL(localObjectUrl);
@@ -41,6 +44,7 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
     }
   }
 
+  // Libère l'adresse temporaire de la photo source affichée.
   function releaseSourcePhotoObjectUrl() {
     if (sourcePhotoObjectUrl !== null) {
       URL.revokeObjectURL(sourcePhotoObjectUrl);
@@ -49,10 +53,12 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
     sourcePhotoLarge.removeAttribute("src");
   }
 
+  // Écrit un message dans une zone lue par les lecteurs d'écran (accessibilité).
   function announce(message) {
     announcement.textContent = message;
   }
 
+  // Montre le bouton de réalité augmentée seulement si l'appareil le permet.
   function updateArAvailability() {
     if (!activeModel) return;
     viewer.setAttribute("ar", "");
@@ -78,6 +84,7 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
     if (activeModel && previous !== mode) refitCamera(viewer);
   }
 
+  // Remet le viewer à l'état vide : plus de modèle, de photo ni de boutons.
   function clear() {
     viewer.removeAttribute("ar");
     viewer.removeAttribute("auto-rotate");
@@ -103,6 +110,8 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
     announce("");
   }
 
+  // Affiche un modèle : adresse du serveur, ou fichier local (source « local », jamais envoyé au serveur).
+  // Gère aussi la photo source, le badge d'origine et le lien de téléchargement.
   function showModel({ url, filename, source, category = null, downloadUrl = null, sourcePhoto = null }) {
     clear();
     if (source === "local") {
@@ -159,11 +168,13 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
     }
   }
 
+  // N'exécute l'action que si un modèle est réellement affiché.
   function whenModelIsLoaded(action) {
     if (!activeModel || viewer.modelIsVisible !== true) return;
     action();
   }
 
+  // Tourne la caméra de 15° (π/12) à gauche ou à droite.
   function rotateCamera(direction) {
     whenModelIsLoaded(() => {
       const orbit = viewer.getCameraOrbit();
@@ -172,6 +183,7 @@ export function setupViewer({ onReady = () => {}, onError = () => {} } = {}) {
     });
   }
 
+  // Déplace le point visé de 5 % de la plus grande dimension du modèle.
   function panCamera(axis, direction) {
     whenModelIsLoaded(() => {
       const target = viewer.getCameraTarget();

@@ -7,6 +7,7 @@ import { consumeNextRoute, consumeSessionExpired, isPasswordConfigured, login } 
 
 export const title = "Connexion";
 
+// Retourne le HTML de l'écran de connexion.
 export function render() {
   return `
     <section class="login-screen" aria-labelledby="page-title">
@@ -36,6 +37,8 @@ export function render() {
     </section>`;
 }
 
+// Branche la connexion : afficher/masquer, envoi (POST /auth/login), messages d'erreur,
+// annonce d'une session expirée, puis retour à la page demandée.
 export function mount() {
   const form = document.querySelector("#login-form");
   const password = document.querySelector("#login-password");

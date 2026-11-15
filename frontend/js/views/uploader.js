@@ -9,6 +9,8 @@ const acceptedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const acceptedExtensions = new Set(["jpg", "jpeg", "png", "webp"]);
 const maxUploadBytes = 10 * 1024 * 1024;
 
+// Contrôle la photo DANS le navigateur avant tout envoi : extension, type, fichier vide, 10 Mo maximum.
+// Renvoie un message d'erreur ou null. Le serveur refait toujours ces contrôles (on ne fait jamais confiance au navigateur).
 function validatePhoto(file) {
   const extension = file.name.split(".").pop().toLowerCase();
   if (!acceptedExtensions.has(extension) || (file.type && !acceptedTypes.has(file.type))) {
@@ -19,6 +21,8 @@ function validatePhoto(file) {
   return null;
 }
 
+// Branche le formulaire d'envoi : choix ou glisser-déposer de la photo, catégorie, bouton de création.
+// Entrées : onSubmit(photo, catégorie) appelé à l'envoi, onStateChange informé de chaque changement.
 export function setupUploader(onSubmit, onStateChange = () => {}) {
   const form = document.querySelector("#upload-form");
   const photoInput = document.querySelector("#photo-input");
@@ -36,11 +40,13 @@ export function setupUploader(onSubmit, onStateChange = () => {}) {
   let providerAvailable = false;
   let categoriesLoaded = false;
 
+  // Affiche ou efface le message d'erreur sous la zone de photo.
   function setFeedback(message = "") {
     uploadFeedback.textContent = message;
     uploadFeedback.hidden = message.length === 0;
   }
 
+  // Active ou désactive le bouton « Créer » et explique pourquoi (photo, catégorie, serveur 3D, création en cours).
   function syncState() {
     const photoError = selectedPhoto ? validatePhoto(selectedPhoto) : "";
     const hasCategory = Boolean(categoryInput.value);
@@ -62,6 +68,8 @@ export function setupUploader(onSubmit, onStateChange = () => {}) {
     });
   }
 
+  // Affiche l'aperçu de la photo choisie.
+  // URL.createObjectURL crée une adresse temporaire locale pour un fichier (rien n'est envoyé) ; revokeObjectURL la libère.
   function updatePreview(file, error) {
     if (previewObjectUrl !== null) {
       URL.revokeObjectURL(previewObjectUrl);
@@ -80,6 +88,7 @@ export function setupUploader(onSubmit, onStateChange = () => {}) {
     }
   }
 
+  // Mémorise la photo choisie, la valide, met à jour l'aperçu et l'état du bouton.
   function setSelectedPhoto(file) {
     selectedPhoto = file ?? null;
     appState.selectedPhoto = selectedPhoto;
@@ -91,6 +100,7 @@ export function setupUploader(onSubmit, onStateChange = () => {}) {
     syncState();
   }
 
+  // Verrouille le formulaire pendant une génération et change le texte du bouton.
   function setBusy(isBusy) {
     busy = isBusy;
     photoInput.disabled = isBusy;

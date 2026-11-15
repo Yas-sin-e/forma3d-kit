@@ -13,6 +13,7 @@ import { refitCamera, watchProductAppearance } from "../views/model-appearance.j
 
 export const title = "Fiche du modèle";
 
+// Retourne le HTML de la fiche d'un modèle (viewer, informations, intégration en 4 étapes).
 export function render(route) {
   const backHref = route.navKey === "examples" ? "#/exemples" : "#/modeles";
   const backLabel = route.navKey === "examples" ? "← Retour aux exemples" : "← Retour à Mes modèles";
@@ -108,10 +109,13 @@ export function render(route) {
     </section>`;
 }
 
+// Titre de l'onglet du navigateur pour cette fiche.
 export function titleFor(route) {
   return `Modèle ${route.id}`;
 }
 
+// Branche la fiche : chargement des données, vues 3D/photo/comparer, intégration, suppression.
+// Renvoie une fonction de nettoyage (arrêt du minuteur), appelée en quittant la page.
 export function mount(route) {
   const $ = (selector) => document.querySelector(selector);
   const modelViewer = $("#detail-model-viewer");
@@ -152,6 +156,7 @@ export function mount(route) {
   let method = "iframe";
   let currentModelUrl = null;
 
+  // Change l'affichage : « model » (3D), « photo » (photo source) ou « compare » (côte à côte).
   function setView(mode) {
     const previous = stage.dataset.view;
     stage.dataset.view = mode;
@@ -165,6 +170,7 @@ export function mount(route) {
     if (previous !== mode && !modelViewer.hidden) refitCamera(modelViewer);
   }
 
+  // Affiche un message d'erreur à la place du modèle.
   function showError(message) {
     empty.hidden = true;
     skeleton.hidden = true;
@@ -175,6 +181,7 @@ export function mount(route) {
     name.textContent = "Modèle introuvable";
   }
 
+  // Fabrique le code à coller sur un site : iframe vers /embed/{public_id}, ou balise du widget.
   function integrationSnippet() {
     const baseUrl = window.location.origin;
     const publicId = model.public_id;
@@ -184,6 +191,7 @@ export function mount(route) {
     return `<iframe src="${baseUrl}/embed/${encodeURIComponent(publicId)}" title="Aperçu 3D du produit" width="100%" height="480" loading="lazy" style="border:0"></iframe>`;
   }
 
+  // Met à jour les 4 étapes de l'intégration (interrupteur, méthode, code, aperçu) selon l'activation.
   function renderIntegration() {
     integration.hidden = !model?.public_id;
     if (!model?.public_id) return;
@@ -218,6 +226,7 @@ export function mount(route) {
     }
   }
 
+  // Remplit la fiche avec l'enregistrement reçu (état, catégorie, origine, dates) et affiche le modèle.
   function showGeneration(record, nextModel = null) {
     const displayName = nextModel?.name || record.filename || "Modèle";
     name.textContent = displayName;
@@ -306,6 +315,7 @@ export function mount(route) {
   $("#detail-copy-code").addEventListener("click", async (event) => {
     const button = event.currentTarget;
     try {
+      // navigator.clipboard : API du navigateur pour écrire dans le presse-papiers (bouton « Copier »).
       await navigator.clipboard.writeText(embedCode.textContent);
       button.dataset.copied = "true";
       button.textContent = "Copié ✓";
@@ -360,6 +370,7 @@ export function mount(route) {
     }
   });
 
+  // Charge la galerie, les catégories et l'état du modèle (GET /models/gallery, /categories, /models/{id}).
   async function load() {
     try {
       const [galleryResponse, categoryResponse] = await Promise.all([

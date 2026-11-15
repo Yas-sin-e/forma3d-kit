@@ -6,6 +6,7 @@
  */
 export const title = "Guide d’intégration";
 
+// Fabrique un bloc de code avec bouton « Copier » ; < > & sont échappés pour s'afficher comme du texte.
 function codeBlock(label, code) {
   const escaped = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   return `
@@ -15,6 +16,7 @@ function codeBlock(label, code) {
     </div>`;
 }
 
+// Retourne le HTML du guide d'intégration ; les exemples utilisent l'adresse réelle du serveur.
 export function render() {
   const base = window.location.origin;
   return `
@@ -84,6 +86,7 @@ export function render() {
     </section>`;
 }
 
+// Branche les boutons « Copier » des blocs de code (navigator.clipboard).
 export function mount() {
   document.querySelectorAll("[data-copy-code]").forEach((button) => {
     button.addEventListener("click", async () => {

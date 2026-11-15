@@ -14,6 +14,8 @@ const providerLabel = document.querySelector("#provider-label");
 const logoutButton = document.querySelector("#logout-button");
 let providerCheckInFlight = false;
 
+// Met à jour le badge « Serveur 3D » et diffuse l'état aux pages par l'événement « forma3d:health ».
+// CustomEvent = événement personnalisé : les modules communiquent sans s'importer entre eux.
 function publishHealth(status, message) {
   appState.providerHealth = { status, message };
   const online = status === "ONLINE";
@@ -23,6 +25,8 @@ function publishHealth(status, message) {
   window.dispatchEvent(new CustomEvent("forma3d:health", { detail: appState.providerHealth }));
 }
 
+// Interroge l'état du serveur 3D (GET /health/provider) ; toute erreur est affichée comme « hors ligne ».
+// providerCheckInFlight évite deux vérifications en même temps.
 async function refreshProviderHealth() {
   if (providerCheckInFlight) return;
   providerCheckInFlight = true;
@@ -40,6 +44,7 @@ async function refreshProviderHealth() {
 logoutButton.addEventListener("click", () => void logout());
 
 // Le routeur démarre après la réponse du serveur, pour éviter d'afficher une page puis de rediriger.
+// « await » au niveau du module : la suite attend la réponse du serveur sur la session.
 await refreshSession();
 startRouter();
 void refreshProviderHealth();

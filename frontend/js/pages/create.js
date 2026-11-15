@@ -14,6 +14,7 @@ import { viewerMarkup } from "./viewer-markup.js?v=20261115-e1";
 
 export const title = "Créer";
 
+// Retourne le HTML de la page Créer (formulaire photo, viewer, suivi). Le routeur l'insère dans #app.
 export function render() {
   return `
     <section class="page-shell create-page">
@@ -139,12 +140,15 @@ export function describeUploadError(error) {
   }
 }
 
+// Garde seulement le chemin d'une adresse renvoyée par le serveur, et refuse une adresse d'un autre site.
 function sameOriginPath(value) {
   const url = new URL(value, window.location.origin);
   if (url.origin !== window.location.origin) throw new Error("Le serveur a renvoyé une adresse inattendue.");
   return url.pathname + url.search;
 }
 
+// Branche la page Créer : formulaire, viewer, suivi, état du serveur 3D.
+// Appelée par le routeur juste après render() (équivalent de ngOnInit d'Angular).
 export function mount() {
   const uploader = setupUploader(startGeneration);
   const progress = createProgressView();
@@ -155,16 +159,19 @@ export function mount() {
   const technicalMessage = document.querySelector("#technical-health-message");
   const resultLink = document.querySelector("#model-detail-link");
 
+  // Rafraîchit le panneau de suivi avec le temps écoulé.
   function updateProgress(status, options = {}) {
     const elapsedSeconds = appState.generationStartedAt === null ? undefined : updateElapsedSeconds();
     progress.render(status, { ...options, elapsedSeconds });
   }
 
+  // Arrête l'interrogation du serveur et oublie l'adresse de suivi.
   function stopTracking() {
     stopGenerationTimers();
     appState.currentStatusUrl = null;
   }
 
+  // Affiche un échec (titre + message) et rend le formulaire de nouveau utilisable.
   function showFailure(message, titleText = "La création a échoué") {
     const elapsedSeconds = appState.generationStartedAt === null ? undefined : updateElapsedSeconds();
     stopTracking();
@@ -173,6 +180,8 @@ export function mount() {
     progress.render("FAILED", { summary: titleText, detail: message, elapsedSeconds });
   }
 
+  // Applique l'état renvoyé par le serveur : suivi si PENDING/RUNNING, message réel si FAILED,
+  // affichage du modèle et lien vers sa fiche si DONE. Renvoie true quand le suivi est terminé.
   async function applyStatus(data) {
     warning.hidden = !data.image_warning;
     warning.textContent = data.image_warning
@@ -211,6 +220,7 @@ export function mount() {
     return true;
   }
 
+  // Interroge l'adresse de suivi (GET /models/{id}) ; pollingInFlight évite deux requêtes en même temps.
   async function refreshStatus() {
     if (!appState.currentStatusUrl || appState.pollingInFlight) return false;
     appState.pollingInFlight = true;
@@ -224,6 +234,8 @@ export function mount() {
     }
   }
 
+  // Lance une génération : POST /models, puis interrogation toutes les 1,5 s jusqu'à DONE ou FAILED.
+  // Si l'envoi échoue, describeUploadError explique la cause et l'action à faire.
   async function startGeneration(photo, category) {
     if (appState.isGenerating || !photo) return;
     stopTracking();
@@ -248,6 +260,7 @@ export function mount() {
     }
   }
 
+  // Réagit à l'état du serveur 3D (événement forma3d:health) : active ou bloque la création.
   function updateProviderHealth(event) {
     const health = event?.detail ?? appState.providerHealth;
     const online = health?.status === "ONLINE";

@@ -18,6 +18,7 @@ const stepForStatus = {
   DONE: 4,
 };
 
+// Prépare le panneau « Suivi de création » et renvoie la fonction render qui l'actualise.
 export function createProgressView() {
   const panel = document.querySelector("#progress-panel");
   const summary = document.querySelector("#progress-summary");
@@ -27,6 +28,7 @@ export function createProgressView() {
   const elapsedSeconds = document.querySelector("#elapsed-seconds");
   const retryButton = document.querySelector("#retry-button");
 
+  // Affiche l'état reçu : titre, détail, temps écoulé, et colore les 5 étapes (faite, active, erreur, à venir).
   function render(status, options = {}) {
     const [defaultSummary, defaultDetail] = statusCopy[status] ?? statusCopy.FAILED;
     const activeStep = status === "FAILED"

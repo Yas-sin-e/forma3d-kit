@@ -32,11 +32,14 @@ export const exampleGenerationSeconds = {
   "side-table-metal": 91.2,
 };
 
+// Affiche une taille en mégaoctets (« 1,5 Mo »).
+// Intl = API du navigateur pour formater nombres et dates selon la langue (ici le français).
 export function formatMegabytes(bytes) {
   if (!Number.isFinite(bytes)) return "Taille inconnue";
   return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 1 }).format(bytes / (1024 * 1024)) + " Mo";
 }
 
+// Affiche une durée (« 1 min 33 s ») ; « Non communiquée » si la valeur est absente : aucune durée n'est inventée.
 export function formatDuration(seconds) {
   if (!Number.isFinite(seconds) || seconds < 0) return "Non communiquée";
   const total = Math.round(seconds);
@@ -66,6 +69,7 @@ export function formatRelativeDate(value) {
   return "à l’instant";
 }
 
+// Affiche une date complète en français (« 15 novembre 2026 à 14:07 »).
 export function formatLongDate(value) {
   if (!value) return "Date non disponible";
   const date = new Date(value);
@@ -74,6 +78,7 @@ export function formatLongDate(value) {
     : new Intl.DateTimeFormat("fr-FR", { dateStyle: "long", timeStyle: "short" }).format(date);
 }
 
+// Accorde un mot avec un nombre : « 1 modèle », « 2 modèles ».
 export function pluralize(count, singular, plural = `${singular}s`) {
   return `${count} ${count === 1 ? singular : plural}`;
 }

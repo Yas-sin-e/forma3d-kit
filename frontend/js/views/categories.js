@@ -7,6 +7,7 @@
 import { createCategory, deleteCategory, listCategories, updateCategory } from "../api.js?v=20261115-e1";
 import { confirmDialog } from "./confirm-dialog.js?v=20261115-e1";
 
+// Branche l'écran de gestion des catégories : création, renommage, activation, suppression.
 export function setupCategoryManager(onCategoriesChanged, options = {}) {
   const createForm = document.querySelector("#category-create-form");
   const slugInput = document.querySelector("#new-category-slug");
@@ -15,12 +16,14 @@ export function setupCategoryManager(onCategoriesChanged, options = {}) {
   const count = document.querySelector("#category-count");
   const feedback = document.querySelector("#category-feedback");
 
+  // Affiche un message de succès ou d'erreur sous le formulaire.
   function showMessage(message = "", isError = false) {
     feedback.textContent = message;
     feedback.dataset.kind = isError ? "error" : "success";
     feedback.hidden = message.length === 0;
   }
 
+  // Construit la ligne d'une catégorie avec ses boutons (Renommer, Désactiver/Réactiver, Supprimer).
   function makeCategoryRow(category, usage) {
     const row = document.createElement("article");
     row.className = category.is_active ? "category-admin-row" : "category-admin-row is-inactive";
@@ -97,6 +100,7 @@ export function setupCategoryManager(onCategoriesChanged, options = {}) {
     return row;
   }
 
+  // Recharge la liste (GET /categories?include_inactive=true) et le nombre de modèles par catégorie.
   async function reload() {
     count.textContent = "Chargement des catégories…";
     try {
@@ -121,6 +125,8 @@ export function setupCategoryManager(onCategoriesChanged, options = {}) {
     }
   }
 
+  // Exécute une action (créer, renommer…), affiche le résultat et recharge la liste ;
+  // traduit les erreurs techniques du serveur en message simple.
   async function runAction(action, successMessage) {
     showMessage("");
     try {

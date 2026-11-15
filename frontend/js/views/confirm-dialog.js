@@ -9,6 +9,7 @@
  */
 export function confirmDialog({ title, message, confirmLabel = "Confirmer", cancelLabel = "Annuler", danger = false }) {
   return new Promise((resolve) => {
+    // <dialog> : élément HTML natif de fenêtre modale. showModal() l'ouvre au premier plan et bloque le reste de la page.
     const dialog = document.createElement("dialog");
     dialog.className = "confirm-dialog";
     dialog.setAttribute("aria-labelledby", "confirm-dialog-title");
@@ -36,6 +37,7 @@ export function confirmDialog({ title, message, confirmLabel = "Confirmer", canc
     document.body.append(dialog);
 
     let settled = false;
+    // Donne la réponse une seule fois (true = confirmé), ferme et retire la fenêtre.
     function finish(answer) {
       if (settled) return;
       settled = true;

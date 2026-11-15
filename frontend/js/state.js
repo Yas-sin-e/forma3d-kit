@@ -16,6 +16,7 @@ export const appState = {
   providerHealth: { status: "UNCONFIGURED", message: "Le serveur 3D n'est pas configuré." },
 };
 
+// Démarre le suivi d'une génération : mémorise la photo, l'heure de départ et l'état « SENDING ».
 export function beginGeneration(photo) {
   appState.selectedPhoto = photo;
   appState.isGenerating = true;
@@ -25,17 +26,21 @@ export function beginGeneration(photo) {
   appState.currentStatusUrl = null;
 }
 
+// Enregistre le nouvel état et calcule si une génération est encore en cours.
 export function updateGenerationStatus(status) {
   appState.generationStatus = status;
   appState.isGenerating = ["SENDING", "PENDING", "RUNNING"].includes(status);
 }
 
+// Calcule le temps écoulé depuis le départ, en secondes entières (pour le chronomètre).
 export function updateElapsedSeconds() {
   if (appState.generationStartedAt === null) return 0;
   appState.elapsedSeconds = Math.max(0, Math.floor((Date.now() - appState.generationStartedAt) / 1000));
   return appState.elapsedSeconds;
 }
 
+// Arrête les deux minuteurs (interrogation du serveur et chronomètre).
+// setInterval/clearInterval : fonctions du navigateur pour répéter une action à intervalle régulier.
 export function stopGenerationTimers() {
   if (appState.pollingTimer !== null) {
     window.clearInterval(appState.pollingTimer);
