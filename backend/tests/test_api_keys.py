@@ -19,6 +19,7 @@ from app.services.api_key_service import APIKeyService
 
 
 def test_key_creation_persists_only_fingerprint_and_revocation_survives_restart(tmp_path: Path) -> None:
+    """Prouve que seule l'empreinte de la clé est enregistrée (jamais le secret) et qu'une révocation survit à un redémarrage."""
     database = tmp_path / "keys.sqlite3"
     repository = SQLiteGenerationRepository(database)
     repository.initialize()
@@ -48,6 +49,7 @@ def test_key_creation_persists_only_fingerprint_and_revocation_survives_restart(
 
 
 def test_key_management_routes_reveal_secret_once_and_revoke(tmp_path: Path) -> None:
+    """Prouve que les routes /api-keys montrent le secret une seule fois, puis savent révoquer la clé."""
     repository = SQLiteGenerationRepository(tmp_path / "api.sqlite3")
     repository.initialize()
     service = APIKeyService(repository)
@@ -79,6 +81,7 @@ def test_key_management_routes_reveal_secret_once_and_revoke(tmp_path: Path) -> 
 
 
 def test_fastapi_key_dependency_accepts_only_active_key(tmp_path: Path) -> None:
+    """Prouve que la dépendance require_api_key refuse une clé absente, fausse ou révoquée (401)."""
     repository = SQLiteGenerationRepository(tmp_path / "auth.sqlite3")
     repository.initialize()
     service = APIKeyService(repository)
@@ -88,6 +91,7 @@ def test_fastapi_key_dependency_accepts_only_active_key(tmp_path: Path) -> None:
 
     @test_app.get("/protected")
     def protected_api(api_key: Annotated[APIKeyRecord, Depends(require_api_key)]) -> dict[str, str]:
+        """Petite route de test protégée par require_api_key."""
         return {"name": api_key.name}
 
     with TestClient(test_app) as client:
@@ -102,6 +106,7 @@ def test_fastapi_key_dependency_accepts_only_active_key(tmp_path: Path) -> None:
 
 
 def test_api_key_quota_and_rate_limit_are_persisted_by_key_and_utc_day(tmp_path: Path) -> None:
+    """Prouve que la limite par minute et le quota journalier sont comptés par clé et par jour UTC, en base."""
     repository = SQLiteGenerationRepository(tmp_path / "limits.sqlite3")
     repository.initialize()
     service = APIKeyService(repository)
@@ -121,6 +126,7 @@ def test_api_key_quota_and_rate_limit_are_persisted_by_key_and_utc_day(tmp_path:
 
 
 def test_only_revoked_keys_can_be_deleted_permanently_with_their_counters(tmp_path: Path) -> None:
+    """Prouve qu'une clé active ne peut pas être supprimée (409) et qu'une clé révoquée l'est avec ses compteurs."""
     repository = SQLiteGenerationRepository(tmp_path / "api.sqlite3")
     repository.initialize()
     service = APIKeyService(repository)

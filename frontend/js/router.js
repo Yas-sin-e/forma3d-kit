@@ -16,6 +16,8 @@ import * as examplesPage from "./pages/examples.js?v=20261115-e1";
 import * as apiKeysPage from "./pages/api-keys.js?v=20261115-e1";
 import * as guidePage from "./pages/guide.js?v=20261115-e1";
 
+// document.querySelector : trouve un élément de la page avec un sélecteur CSS (« #app » = id app).
+// #app est le point de montage : le contenu de chaque page y est inséré.
 const app = document.querySelector("#app");
 const nav = document.querySelector("#main-nav");
 const menuToggle = document.querySelector("#menu-toggle");
@@ -39,6 +41,8 @@ let activeCleanup = null;
 let activePath = "";
 
 /* Exemple : "#/modeles?import=1" → chemin "/modeles", query import=1 ; "#/cles-api#integration-guide" → ancre. */
+// Analyse l'adresse après le « # » et renvoie la page à afficher (clé, entrée de menu, identifiant, paramètres).
+// Équivalent de la table Routes d'Angular, écrite à la main.
 function parseRoute(hash) {
   const withoutHash = hash.replace(/^#/, "");
   const [beforeAnchor, anchor = ""] = withoutHash.split("#");
@@ -68,6 +72,7 @@ function parseRoute(hash) {
   return { ...base, key: "notFound", navKey: null, path: raw };
 }
 
+// Marque le lien actif du menu (aria-current) et referme le menu.
 function updateNavigation(navKey) {
   for (const link of nav.querySelectorAll("a[data-nav]")) {
     if (link.dataset.nav === navKey) link.setAttribute("aria-current", "page");
@@ -77,6 +82,7 @@ function updateNavigation(navKey) {
   closeMenu();
 }
 
+// Referme le menu mobile et le sous-menu Administration.
 function closeMenu() {
   menuToggle.setAttribute("aria-expanded", "false");
   menuToggle.setAttribute("aria-label", "Ouvrir le menu");
@@ -84,6 +90,8 @@ function closeMenu() {
   adminGroup.open = false;
 }
 
+// Retire la page affichée et appelle sa fonction de nettoyage (arrêt des minuteurs).
+// Exception : la page Créer est seulement cachée, pour ne pas perdre une génération en cours.
 function removeActivePage() {
   if (!activeContainer) return;
   activeContainer.hidden = true;
@@ -95,6 +103,7 @@ function removeActivePage() {
   activeCleanup = null;
 }
 
+// Fabrique la page « Cette page n'existe pas » pour une adresse inconnue.
 function makeNotFoundPage() {
   return {
     title: "Page introuvable",
@@ -102,6 +111,8 @@ function makeNotFoundPage() {
   };
 }
 
+// Cœur du routeur : choisit la page selon l'adresse, protège par la connexion, insère le HTML (render)
+// puis branche les écouteurs (mount). Équivalent du RouterOutlet + garde CanActivate d'Angular.
 function renderRoute() {
   if (!window.location.hash || window.location.hash === "#/" || window.location.hash === "#") {
     window.location.replace(`${window.location.pathname}${window.location.search}#/accueil`);
@@ -147,6 +158,8 @@ function renderRoute() {
     const container = document.createElement("div");
     container.className = "route-page";
     container.dataset.route = route.path;
+    // innerHTML : insère le HTML produit par render(). Ce HTML est écrit dans le code (pas de saisie utilisateur) ;
+    // les données venant du serveur sont ensuite placées avec textContent.
     container.innerHTML = typeof view.render === "function" ? view.render(route) : view.html;
     app.append(container);
     activeContainer = container;
@@ -163,12 +176,15 @@ function renderRoute() {
   scrollToAnchor(route.anchor);
 }
 
+// Fait défiler jusqu'à une section de la page si l'adresse contient une ancre.
 function scrollToAnchor(anchor) {
   if (!anchor) return;
   const target = document.getElementById(anchor);
   if (target) window.setTimeout(() => target.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
 }
 
+// Démarre le routage : écoute « hashchange » (changement d'adresse après le #) et les clics du menu.
+// Le serveur ne sert qu'une page ; c'est ce code qui change le contenu, sans rechargement.
 export function startRouter() {
   window.addEventListener("hashchange", renderRoute);
   nav.addEventListener("click", (event) => {

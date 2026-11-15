@@ -4,7 +4,10 @@
 
 from __future__ import annotations
 
+# FastAPI : APIRouter regroupe des routes (comme un @RestController) ; HTTPException renvoie une
+# erreur HTTP ; Response permet de poser un cookie ; status contient les codes HTTP nommés.
 from fastapi import APIRouter, HTTPException, Request, Response, status
+# Pydantic : décrit et valide le JSON reçu (ici le corps de la connexion).
 from pydantic import BaseModel, Field
 
 from app.services.owner_auth import (
@@ -24,18 +27,27 @@ class LoginRequest(BaseModel):
 
 
 def _service(request: Request) -> OwnerAuthService:
+    """Retourne le service d'authentification créé au démarrage (rangé dans app.state)."""
     return request.app.state.owner_auth
 
 
 def require_owner(request: Request) -> None:
-    """Dépendance FastAPI : refuse avec 401 toute requête sans cookie de session valide."""
+    """Dépendance FastAPI : refuse avec 401 toute requête sans cookie de session valide.
+
+    FastAPI l'exécute AVANT la route ; si elle lève HTTPException, la route n'est jamais appelée.
+    Équivalent d'un filtre Spring Security ou d'un garde CanActivate d'Angular, côté serveur.
+    """
     if not _service(request).validate_token(request.cookies.get(SESSION_COOKIE_NAME)):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Connexion requise.")
 
 
 @router.post("/login")
 def login(payload: LoginRequest, request: Request, response: Response) -> dict[str, bool]:
-    """Vérifie le mot de passe puis pose un cookie HttpOnly, SameSite=Lax, signé et expirant."""
+    """Vérifie le mot de passe puis pose un cookie HttpOnly, SameSite=Lax, signé et expirant.
+
+    Ordre des contrôles : limite de tentatives par IP (429 + Retry-After), mot de passe non
+    configuré (503), mot de passe faux (401). Retour : {"authenticated": true}.
+    """
     service = _service(request)
     client_ip = request.client.host if request.client else "unknown"
     try:
@@ -52,6 +64,9 @@ def login(payload: LoginRequest, request: Request, response: Response) -> dict[s
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(error)) from error
     if not valid:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Mot de passe incorrect.")
+    # httponly : JavaScript ne peut pas lire le cookie (protection contre le vol par script).
+    # samesite="lax" : non envoyé par les formulaires d'autres sites. secure : seulement en HTTPS.
+    # max_age : durée de vie (8 h).
     response.set_cookie(
         SESSION_COOKIE_NAME,
         service.issue_token(),

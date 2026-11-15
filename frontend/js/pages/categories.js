@@ -9,6 +9,7 @@ import { setupCategoryManager } from "../views/categories.js?v=20261115-e1";
 
 export const title = "Catégories";
 
+// Retourne le HTML de la page Catégories.
 export function render() {
   return `
     <section class="page-shell" aria-labelledby="page-title">
@@ -37,6 +38,7 @@ async function loadCategoryCounts() {
   return counts;
 }
 
+// Branche l'écran de gestion avec le nombre de modèles par catégorie.
 export function mount() {
   setupCategoryManager(() => Promise.resolve(), { loadCounts: loadCategoryCounts });
 }

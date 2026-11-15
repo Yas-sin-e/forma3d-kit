@@ -7,8 +7,12 @@
   const widgetOrigin = scriptUrl ? new URL(scriptUrl, document.baseURI).origin : window.location.origin;
   const publicIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+  // Web Component : une classe qui hérite de HTMLElement devient une vraie balise HTML (<forma3d-viewer>).
+  // Équivalent d'un composant Angular exporté avec Angular Elements, utilisable sur n'importe quel site.
   class Forma3DViewer extends HTMLElement {
+    // Appelée par le navigateur quand la balise est ajoutée à la page : construit l'iframe.
     connectedCallback() {
+      // Shadow DOM : zone isolée ; les styles du site client ne déforment pas le widget, et inversement.
       const root = this.shadowRoot || this.attachShadow({ mode: "open" });
       root.replaceChildren();
       const style = document.createElement("style");
@@ -30,6 +34,7 @@
       const source = new URL(`/embed/${encodeURIComponent(publicId)}`, widgetOrigin);
       if (this.hasAttribute("auto-rotate")) source.searchParams.set("auto-rotate", "1");
 
+      // L'iframe affiche /embed/{public_id} servi par Forma3D ; aucune clé API n'est utilisée.
       const iframe = document.createElement("iframe");
       iframe.src = source.toString();
       iframe.title = this.getAttribute("title") || "Aperçu 3D du produit";
@@ -41,6 +46,7 @@
     }
   }
 
+  // customElements.define enregistre la nouvelle balise, une seule fois même si le script est chargé deux fois.
   if (!customElements.get("forma3d-viewer")) {
     customElements.define("forma3d-viewer", Forma3DViewer);
   }

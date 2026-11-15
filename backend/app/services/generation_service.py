@@ -4,13 +4,19 @@
 
 from __future__ import annotations
 
+# logging (standard) : journal du serveur. On y écrit le diagnostic d'un échec, jamais un secret.
 import logging
 import re
+# tempfile (standard) : dossier temporaire effacé automatiquement (pour la copie préparée de la photo).
 import tempfile
+# dataclasses.replace : crée une COPIE modifiée d'un objet immuable (frozen).
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
+# threading.RLock (standard) : verrou réentrant. Une seule lecture-écriture à la fois entre la requête HTTP
+# et la tâche de fond. Équivalent de synchronized en Java.
 from threading import RLock
+# time.monotonic (standard) : horloge qui ne recule jamais, pour mesurer une durée.
 from time import monotonic
 from uuid import uuid4
 
@@ -36,6 +42,10 @@ class GenerationService:
         repository: GenerationRepository,
         image_preparer: ImagePreparer | None = None,
     ) -> None:
+        """Reçoit ses dépendances par le constructeur : fournisseur 3D, stockage, dépôt, préparateur d'image.
+
+        Chacune est une interface (Protocol) : on peut changer de fournisseur ou de base sans modifier ce service.
+        """
         self._provider = provider
         self._storage = storage
         self._repository = repository
@@ -48,7 +58,11 @@ class GenerationService:
         content: bytes,
         category: str,
     ) -> GenerationRecord:
-        """Enregistre l'image et sa catégorie, puis initialise PENDING."""
+        """Enregistre l'image et sa catégorie, puis initialise PENDING.
+
+        Paramètres : upload (métadonnées validées), content (octets de la photo), category (slug).
+        Retour : l'enregistrement PENDING. Lève ValueError si la catégorie est inconnue ou désactivée.
+        """
         category_slug = str(getattr(category, "value", category))
         if self._repository.get_category(category_slug) is None:
             raise ValueError("Cette catégorie est inconnue ou désactivée.")
@@ -86,7 +100,11 @@ class GenerationService:
         generation_id: str,
         enabled: bool,
     ) -> GenerationRecord | None:
-        """Change l'autorisation publique d'un modèle DONE dont le GLB existe."""
+        """Change l'autorisation publique d'un modèle DONE dont le GLB existe.
+
+        Retour : l'enregistrement mis à jour, ou None si l'identifiant est inconnu.
+        Lève ValueError si le modèle n'est pas terminé (on ne publie jamais un modèle incomplet).
+        """
         with self._lock:
             record = self._repository.get_generation(generation_id)
             if record is None:
@@ -218,12 +236,18 @@ class GenerationService:
         return model_bytes
 
     def run(self, generation_id: str) -> None:
-        """Exécute le fournisseur et publie DONE ou FAILED de façon atomique."""
+        """Exécute le fournisseur et publie DONE ou FAILED de façon atomique.
+
+        Appelée en tâche de fond après la réponse 202. Étapes : PENDING -> RUNNING, préparation de la photo,
+        appel du fournisseur, finition du GLB, écriture du fichier, puis DONE.
+        Toute erreur donne FAILED avec un message sans secret (jeton et adresse masqués).
+        """
         started_at = monotonic()
         with self._lock:
             record = self._repository.get_generation(generation_id)
             if record is None or record.status is not GenerationStatus.PENDING:
                 return
+            # L'enregistrement est immuable : replace() en crée une copie avec le nouveau statut.
             running_record = replace(
                 record,
                 status=GenerationStatus.RUNNING,
@@ -254,6 +278,8 @@ class GenerationService:
                 )
                 with self._lock:
                     self._repository.save_generation(running_record)
+                # Appel du fournisseur (TripoSR ou TRELLIS) : peut durer 1 à 2 minutes. Aucun verrou n'est tenu
+                # ici, pour ne pas bloquer les autres requêtes pendant la génération.
                 model_bytes = self._finish_generated_model(self._provider.generate(provider_image_path))
                 model_path = self._storage.save_model(generation_id, model_bytes)
         except ProviderError as error:
@@ -263,6 +289,7 @@ class GenerationService:
                 getattr(provider_settings, "hf_space_id", None),
             )
 
+            # Sécurité : le jeton HF et l'adresse du serveur 3D sont remplacés avant d'écrire ou d'afficher une erreur.
             def redact(text: str) -> str:
                 """Masque le jeton et l'adresse configurée avant toute exposition."""
                 for protected_value in protected_values:

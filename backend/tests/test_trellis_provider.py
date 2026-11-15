@@ -18,15 +18,19 @@ ENDPOINTS = {"/start_session": {}, "/preprocess_image": {}, "/generate_and_extra
 
 
 class _Job:
+    """Faux travail Gradio : renvoie une valeur prévue ou lève une erreur prévue."""
     def __init__(self, value=None, error=None):
+        """Prépare le faux objet avec les valeurs voulues par le test."""
         self._value, self._error = value, error
 
     def result(self, timeout=None):
+        """Imite job.result() de gradio_client : renvoie la valeur prévue ou lève l'erreur prévue."""
         if self._error:
             raise self._error
         return self._value
 
     def cancel(self):
+        """Imite job.cancel() ; ne fait rien dans le test."""
         pass
 
 
@@ -36,15 +40,18 @@ class FakeClient:
     instances: list["FakeClient"] = []
 
     def __init__(self, src, token=None, endpoints=ENDPOINTS, glb: bytes | None = None, fail_with=None, **kwargs):
+        """Prépare le faux objet avec les valeurs voulues par le test."""
         self.src, self.token, self.kwargs = src, token, kwargs
         self.endpoints, self.fail_with, self.calls = endpoints, fail_with, []
         self.glb = glb if glb is not None else _raw_triangle_glb()
         FakeClient.instances.append(self)
 
     def view_api(self, print_info=False, return_format="dict"):
+        """Imite view_api() : renvoie le contrat d'API prévu par le test."""
         return {"named_endpoints": self.endpoints}
 
     def submit(self, api_name, **kwargs):
+        """Imite submit() : enregistre l'appel et renvoie un faux travail."""
         self.calls.append((api_name, kwargs))
         if self.fail_with and api_name == "/generate_and_extract_glb":
             return _Job(error=self.fail_with)
@@ -61,6 +68,7 @@ class FakeClient:
 
 
 def _provider(tmp_path: Path, token=None, **client_options) -> tuple[TrellisSpaceProvider, Path]:
+    """Prépare un fournisseur TRELLIS relié au faux client, avec une fausse photo."""
     FakeClient.instances.clear()
     photo = tmp_path / "chair.jpg"
     photo.write_bytes(b"\xff\xd8\xffphoto")
@@ -70,6 +78,7 @@ def _provider(tmp_path: Path, token=None, **client_options) -> tuple[TrellisSpac
 
 
 def test_generate_follows_the_observed_trellis_sequence_and_returns_glb(tmp_path: Path) -> None:
+    """Prouve l'enchaînement TRELLIS (session, détourage, génération) et le renvoi d'un GLB valide."""
     provider, photo = _provider(tmp_path)
     data = provider.generate(photo)
 
@@ -92,6 +101,7 @@ def test_client_uses_a_long_http_timeout_for_a_slow_free_space(tmp_path: Path) -
 
 
 def test_contract_change_stops_before_sending_the_photo(tmp_path: Path) -> None:
+    """Prouve qu'un contrat modifié arrête tout avant l'envoi de la photo."""
     provider, photo = _provider(tmp_path, endpoints={"/start_session": {}})
     with pytest.raises(ProviderError, match="contrat du Space TRELLIS a changé"):
         provider.generate(photo)
@@ -99,6 +109,7 @@ def test_contract_change_stops_before_sending_the_photo(tmp_path: Path) -> None:
 
 
 def test_quota_error_is_explained_without_leaking_the_token(tmp_path: Path) -> None:
+    """Prouve qu'une erreur de quota est expliquée clairement sans afficher le jeton."""
     secret = "hf_secret_de_test_123"
     provider, photo = _provider(tmp_path, token=secret, fail_with=RuntimeError(f"ZeroGPU quota exceeded for {secret}"))
     with pytest.raises(ProviderError) as error:
@@ -109,18 +120,21 @@ def test_quota_error_is_explained_without_leaking_the_token(tmp_path: Path) -> N
 
 
 def test_invalid_glb_from_space_is_refused(tmp_path: Path) -> None:
+    """Prouve qu'un GLB invalide renvoyé par le Space est refusé."""
     provider, photo = _provider(tmp_path, glb=b"pas un glb")
     with pytest.raises(ProviderError):
         provider.generate(photo)
 
 
 def test_missing_photo_is_refused(tmp_path: Path) -> None:
+    """Prouve qu'une photo absente du disque est refusée."""
     provider, _ = _provider(tmp_path)
     with pytest.raises(ProviderError, match="introuvable"):
         provider.generate(tmp_path / "absente.jpg")
 
 
 def test_output_file_path_shapes() -> None:
+    """Prouve que les différentes formes de sortie Gradio (chaîne, dictionnaire) sont comprises."""
     assert output_file_path("C:/a.glb") == Path("C:/a.glb")
     assert output_file_path({"path": "/b.glb"}) == Path("/b.glb")
     assert output_file_path({"path": None}) is None
@@ -128,6 +142,7 @@ def test_output_file_path_shapes() -> None:
 
 
 def test_settings_validate_provider_choice_and_space_identifier() -> None:
+    """Prouve que IMAGE3D_PROVIDER et TRELLIS_SPACE_ID sont validés (pas d'URL)."""
     assert Settings().image3d_provider == "triposr"
     assert Settings(image3d_provider="trellis").trellis_space_id == "trellis-community/TRELLIS"
     with pytest.raises(ValueError, match="IMAGE3D_PROVIDER"):
@@ -153,6 +168,7 @@ def test_finisher_sets_metallic_zero_for_textured_material_without_factor() -> N
 
 
 def test_health_route_explains_trellis_offline_without_colab_wording(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Prouve que le message hors ligne parle du Space TRELLIS, pas de Colab."""
     from fastapi.testclient import TestClient
 
     from app.main import app

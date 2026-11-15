@@ -4,6 +4,7 @@
 
 from typing import Annotated
 
+# FastAPI : Query lit un paramètre d'URL (?include_inactive=true).
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 
 from app.repositories.base import CategoryConflictError, CategoryNotFoundError
@@ -24,7 +25,10 @@ def get_category_service(request: Request) -> CategoryService:
 
 
 def _raise_http_error(error: Exception) -> None:
-    """Traduit les erreurs métier de catégorie en statuts HTTP lisibles."""
+    """Traduit une erreur métier de catégorie en erreur HTTP (404 introuvable, 409 conflit, 422 invalide).
+
+    Les services ne connaissent pas HTTP : c'est le routeur qui choisit le code de réponse.
+    """
     if isinstance(error, CategoryValidationError):
         raise HTTPException(status_code=422, detail=str(error)) from error
     if isinstance(error, CategoryNotFoundError):

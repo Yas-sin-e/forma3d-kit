@@ -10,6 +10,7 @@ import { emptyCubeIllustration } from "../views/illustrations.js?v=20261115-e1";
 export const title = "Mes modèles";
 const generationIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+// Retourne le HTML de la page Mes modèles (bouton d'import, galerie).
 export function render() {
   return `
     <section class="page-shell gallery-page" aria-labelledby="page-title">
@@ -45,6 +46,8 @@ export function render() {
     </section>`;
 }
 
+// Branche Mes modèles : galerie des modèles enregistrés et import d'un GLB (POST /models/import).
+// #/modeles?import=1 ouvre directement le formulaire.
 export function mount(route) {
   const panel = document.querySelector("#model-import-panel");
   const form = document.querySelector("#model-import-form");

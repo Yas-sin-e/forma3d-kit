@@ -21,10 +21,12 @@ const icons = {
   tag: '<path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9Z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
 };
 
+// Renvoie le dessin SVG d'une icône à partir de son nom.
 function icon(name) {
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name]}</svg>`;
 }
 
+// Retourne le HTML de l'accueil (bandeau, compteurs, modèles récents, exemples, raccourcis).
 export function render() {
   return `
     <section class="page-shell dashboard-page" aria-labelledby="page-title">
@@ -78,6 +80,7 @@ export function render() {
     </section>`;
 }
 
+// Branche l'accueil : charge les compteurs et les cartes, suit l'état du serveur 3D.
 export function mount() {
   const heroStatus = document.querySelector("#hero-status");
   const heroLabel = document.querySelector("#hero-status-label");
@@ -88,6 +91,7 @@ export function mount() {
   const errorBox = document.querySelector("#dashboard-error");
   const openModel = (model) => { window.location.hash = `#/modeles/${encodeURIComponent(model.id)}`; };
 
+  // Met à jour le bandeau « Serveur 3D en ligne / hors ligne ».
   function updateHealth(event) {
     const health = event?.detail ?? appState.providerHealth;
     const online = health?.status === "ONLINE";
@@ -95,6 +99,7 @@ export function mount() {
     heroLabel.textContent = online ? "Serveur 3D en ligne · création disponible" : "Serveur 3D hors ligne · exemples disponibles";
   }
 
+  // Affiche des cartes grises animées (« squelettes ») pendant le chargement.
   function skeletons(target, total) {
     target.replaceChildren(...Array.from({ length: total }, () => {
       const card = document.createElement("div");
@@ -104,6 +109,8 @@ export function mount() {
     }));
   }
 
+  // Charge en parallèle modèles, clés et catégories.
+  // Promise.allSettled attend toutes les requêtes, même si l'une échoue : chaque compteur s'affiche seul.
   async function load() {
     skeletons(recentGrid, 3);
     skeletons(strip, 5);

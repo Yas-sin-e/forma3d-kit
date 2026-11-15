@@ -11,6 +11,7 @@ import { formatLongDate, pluralize } from "../format.js?v=20261115-e1";
 
 export const title = "Clés API";
 
+// Fabrique l'exemple de commandes curl affiché sur la page, avec l'adresse réelle du serveur.
 function curlExample(baseUrl) {
   return [
     "# 1. Envoyer une photo : la réponse contient l’identifiant du modèle",
@@ -25,6 +26,7 @@ function curlExample(baseUrl) {
   ].join("\n");
 }
 
+// Retourne le HTML de la page Clés API (mode d'emploi, création, liste).
 export function render() {
   return `
     <section class="page-shell api-keys-page" aria-labelledby="page-title">
@@ -60,6 +62,7 @@ export function render() {
     </section>`;
 }
 
+// Copie un texte dans le presse-papiers (navigator.clipboard) ; renvoie false si le navigateur refuse.
 async function copyText(text, button) {
   try {
     await navigator.clipboard.writeText(text);
@@ -73,6 +76,8 @@ async function copyText(text, button) {
   }
 }
 
+// Branche la page Clés API : création (secret affiché une fois), copie, révocation, suppression.
+// Le secret n'est gardé qu'en mémoire et effacé en quittant la page.
 export function mount() {
   const form = document.querySelector("#api-key-create-form");
   const name = document.querySelector("#api-key-name");
@@ -101,11 +106,13 @@ export function mount() {
     }
   });
 
+  // Affiche un message sous le formulaire de création.
   function showFeedback(message) {
     feedback.textContent = message;
     feedback.hidden = false;
   }
 
+  // Construit la carte d'une clé avec le bouton « Révoquer » (clé active) ou « Supprimer définitivement » (clé révoquée).
   function makeKeyCard(key) {
     const card = document.createElement("article");
     card.className = key.revoked ? "api-key-card is-revoked" : "api-key-card";
@@ -173,6 +180,7 @@ export function mount() {
     return card;
   }
 
+  // Recharge la liste des clés (GET /api-keys) : actives d'abord, révoquées ensuite.
   async function reload() {
     count.textContent = "Chargement…";
     try {

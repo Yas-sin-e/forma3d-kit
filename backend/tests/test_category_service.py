@@ -11,6 +11,7 @@ from app.services.category_service import CategoryService, CategoryValidationErr
 
 
 def test_service_trims_values_and_rejects_empty_or_invalid_values(tmp_path: Path) -> None:
+    """Prouve que le service nettoie les espaces et refuse un libellé vide ou un slug invalide."""
     repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
     repository.initialize()
     service = CategoryService(repository)
@@ -25,6 +26,7 @@ def test_service_trims_values_and_rejects_empty_or_invalid_values(tmp_path: Path
 
 
 def test_service_renames_and_preserves_slug_for_optional_updates(tmp_path: Path) -> None:
+    """Prouve qu'un renommage partiel garde le slug inchangé."""
     repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
     repository.initialize()
     service = CategoryService(repository)

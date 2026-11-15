@@ -15,6 +15,8 @@ const originLabels = {
 };
 
 /* Crée une carte autonome ; options : categories, onOpen, description, actionLabel, onAction. */
+// Construit la carte d'un modèle avec document.createElement (création d'éléments un par un).
+// Le texte est placé avec textContent : un nom de modèle ne peut pas injecter de HTML.
 export function createModelCard(model, options = {}) {
   const categories = options.categories ?? [];
   const article = document.createElement("article");
@@ -87,6 +89,8 @@ export function createModelCard(model, options = {}) {
   return article;
 }
 
+// Branche une galerie : charge les modèles, les filtre par catégorie et affiche les cartes.
+// Entrées : onOpenModel (clic sur une carte), options (filtre, messages, action par carte).
 export function setupGallery(onOpenModel, options = {}) {
   const filters = document.querySelector("#gallery-filters");
   const grid = document.querySelector("#gallery-grid");
@@ -98,10 +102,12 @@ export function setupGallery(onOpenModel, options = {}) {
   let loaded = false;
   const includeModel = typeof options.filter === "function" ? options.filter : () => true;
 
+  // Renvoie les modèles retenus par le filtre de la page (Mes modèles ou Exemples).
   function availableModels() {
     return models.filter(includeModel);
   }
 
+  // Réaffiche les cartes de la catégorie choisie, le compteur et les messages d'état vide.
   function render() {
     // Tant que l'API n'a pas répondu, on garde les cartes squelettes au lieu d'un faux état vide.
     if (!loaded) return;
@@ -130,6 +136,7 @@ export function setupGallery(onOpenModel, options = {}) {
     renderFilters();
   }
 
+  // Fabrique un bouton de filtre avec son compteur de modèles.
   function makeFilterButton(slug, label, total) {
     const button = document.createElement("button");
     button.className = "filter-chip";
@@ -146,6 +153,7 @@ export function setupGallery(onOpenModel, options = {}) {
     return button;
   }
 
+  // Reconstruit la ligne de filtres : « Tous » puis une entrée par catégorie.
   function renderFilters() {
     const available = availableModels();
     if (appState.selectedGalleryCategory !== "all" && !categories.some((item) => item.slug === appState.selectedGalleryCategory)) {
@@ -166,6 +174,7 @@ export function setupGallery(onOpenModel, options = {}) {
     render();
   });
 
+  // Charge les modèles (GET /models/gallery) ; affiche des cartes « squelettes » pendant l'attente.
   async function load() {
     count.textContent = "Chargement…";
     message.hidden = true;

@@ -241,13 +241,16 @@ class _CompletedJob:
     """Remplace Job.result dans les tests locaux sans contacter de serveur."""
 
     def __init__(self, result: Any) -> None:
+        """Prépare le faux objet avec les valeurs voulues par le test."""
         self._result = result
 
     def result(self, timeout: float) -> Any:
+        """Imite job.result() de gradio_client : renvoie la valeur prévue ou lève l'erreur prévue."""
         assert timeout > 0
         return self._result
 
     def cancel(self) -> None:
+        """Imite job.cancel() ; ne fait rien dans le test."""
         return None
 
 
@@ -255,16 +258,20 @@ class _TemporaryDownloadDirectory:
     """Remplace le dossier temporaire système bloqué par le dossier de pytest."""
 
     def __init__(self, path: Path) -> None:
+        """Prépare le faux objet avec les valeurs voulues par le test."""
         self.path = path
 
     def __enter__(self) -> str:
+        """Permet d'utiliser le faux objet dans un bloc « with »."""
         return str(self.path)
 
     def __exit__(self, exc_type: Any, exc: Any, traceback: Any) -> None:
+        """Fin du bloc « with » : rien à libérer pour ce faux objet."""
         return None
 
 
 def test_api_contract_uses_the_observed_parameter_defaults_and_model_output() -> None:
+    """Prouve que le contrat lu reprend les valeurs par défaut publiées et la bonne sortie GLB."""
     contract = HuggingFaceSpaceProvider._read_sf3d_api_contract(
         _observed_sf3d_api_description()
     )
@@ -277,6 +284,7 @@ def test_api_contract_uses_the_observed_parameter_defaults_and_model_output() ->
 
 
 def test_api_contract_refuses_unexpected_parameter_names() -> None:
+    """Prouve qu'un nom de paramètre inattendu arrête l'appel (on n'invente jamais un paramètre)."""
     description = _observed_sf3d_api_description()
     parameters = description["named_endpoints"]["/run_button"]["parameters"]
     parameters[-1]["parameter_name"] = "unknown_texture_option"
@@ -286,6 +294,7 @@ def test_api_contract_refuses_unexpected_parameter_names() -> None:
 
 
 def test_api_contract_refuses_missing_glb_output() -> None:
+    """Prouve qu'un contrat sans sortie GLB est refusé."""
     description = _observed_sf3d_api_description()
     description["named_endpoints"]["/run_button"]["returns"][1]["label"] = "Other output"
 
@@ -294,6 +303,7 @@ def test_api_contract_refuses_missing_glb_output() -> None:
 
 
 def test_triposr_api_contract_selects_the_observed_generation_chain() -> None:
+    """Prouve que le contrat TripoSR choisit l'enchaînement de fonctions réellement exposé."""
     contract = HuggingFaceSpaceProvider._read_triphosr_api_contract(
         _triposr_combined_api_description()
     )
@@ -305,6 +315,7 @@ def test_triposr_api_contract_selects_the_observed_generation_chain() -> None:
 
 
 def test_triposr_api_contract_finds_separate_functions_without_guessing_indexes() -> None:
+    """Prouve que les fonctions séparées sont trouvées par leur nom, sans deviner de position."""
     contract = HuggingFaceSpaceProvider._read_triphosr_api_contract(
         _triposr_separate_api_description(),
         _triposr_gradio_config(),
@@ -318,6 +329,7 @@ def test_triposr_api_contract_finds_separate_functions_without_guessing_indexes(
 
 
 def test_triposr_contract_uses_component_values_instead_of_examples() -> None:
+    """Prouve que les valeurs par défaut viennent des composants de l'interface, pas des exemples."""
     description = _triposr_separate_api_description()
 
     with pytest.raises(ProviderError, match="Client.config"):
@@ -333,6 +345,7 @@ def test_triposr_contract_uses_component_values_instead_of_examples() -> None:
 
 
 def test_triposr_settings_use_only_bounds_published_by_api_metadata() -> None:
+    """Prouve que les réglages TripoSR respectent les bornes publiées par l'API."""
     client_config = {
         "dependencies": [{"api_name": "submit", "inputs": [5, 9, 10, 11]}],
         "components": [
@@ -352,6 +365,7 @@ def test_triposr_settings_use_only_bounds_published_by_api_metadata() -> None:
 
 
 def test_triposr_settings_refuse_values_outside_discovered_bounds() -> None:
+    """Prouve qu'un réglage hors des bornes publiées est refusé."""
     client_config = {
         "dependencies": [{"api_name": "submit", "inputs": [5, 9, 10, 11]}],
         "components": [
@@ -370,6 +384,7 @@ def test_triposr_settings_refuse_values_outside_discovered_bounds() -> None:
 
 
 def test_triposr_settings_refuse_to_guess_missing_bounds() -> None:
+    """Prouve qu'un réglage sans bornes publiées est refusé plutôt que deviné."""
     with pytest.raises(ProviderError, match="ne publie pas les bornes de foreground_ratio"):
         HuggingFaceSpaceProvider._read_triphosr_api_contract(
             _triposr_combined_api_description(),
@@ -380,9 +395,11 @@ def test_triposr_settings_refuse_to_guess_missing_bounds() -> None:
 def test_public_provider_health_uses_a_five_second_timeout_and_hides_errors(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Prouve que le contrôle de santé attend au plus 5 s et ne révèle aucun détail d'erreur."""
     observations: dict[str, Any] = {}
 
     def fail_request(url: str, **kwargs: Any) -> Any:
+        """Simule une panne réseau pendant le contrôle de santé."""
         observations["timeout"] = kwargs.get("timeout")
         observations["url"] = url
         raise TimeoutError("failed to reach https://secret-demo.gradio.live/config")
@@ -401,6 +418,7 @@ def test_provider_uses_url_view_api_and_does_not_send_hf_token_to_gradio_share(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Prouve que le jeton HF n'est jamais envoyé à une adresse Gradio publique."""
     input_path = tmp_path / "furniture.png"
     input_path.write_bytes(b"image test")
     glb_path = tmp_path / "generated.glb"
@@ -408,16 +426,20 @@ def test_provider_uses_url_view_api_and_does_not_send_hf_token_to_gradio_share(
     observations: dict[str, Any] = {}
 
     class FakeClient:
+        """Faux client Gradio : enregistre les appels et renvoie des réponses prévues, sans réseau."""
         def view_api(self, **kwargs: Any) -> dict[str, object]:
+            """Imite view_api() : renvoie le contrat d'API prévu par le test."""
             observations["view_api"] = kwargs
             return _triposr_combined_api_description()
 
         def submit(self, *args: Any, **kwargs: Any) -> _CompletedJob:
+            """Imite submit() : enregistre l'appel et renvoie un faux travail."""
             observations["submit_args"] = args
             observations["submit_kwargs"] = kwargs
             return _CompletedJob(["processed.png", "model.obj", {"path": str(glb_path)}])
 
     def fake_client_factory(src: str, **kwargs: Any) -> FakeClient:
+        """Fabrique de faux client Gradio : remplace la vraie connexion réseau."""
         observations["src"] = src
         observations["client_kwargs"] = kwargs
         return FakeClient()
@@ -454,6 +476,7 @@ def test_provider_executes_separate_triposr_steps_in_source_order(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Prouve que les étapes TripoSR séparées sont appelées dans l'ordre de la source."""
     input_path = tmp_path / "furniture.png"
     input_path.write_bytes(b"image test")
     processed_path = tmp_path / "processed.png"
@@ -463,12 +486,15 @@ def test_provider_executes_separate_triposr_steps_in_source_order(
     calls: list[str] = []
 
     class FakeClient:
+        """Faux client Gradio : enregistre les appels et renvoie des réponses prévues, sans réseau."""
         config = _triposr_gradio_config()
 
         def view_api(self, **kwargs: Any) -> dict[str, object]:
+            """Imite view_api() : renvoie le contrat d'API prévu par le test."""
             return _triposr_separate_api_description()
 
         def submit(self, *args: Any, **kwargs: Any) -> _CompletedJob:
+            """Imite submit() : enregistre l'appel et renvoie un faux travail."""
             endpoint = kwargs["api_name"]
             calls.append(endpoint)
             if endpoint == "/preprocess":
@@ -497,6 +523,7 @@ def test_provider_executes_separate_triposr_steps_in_source_order(
 
 
 def test_model_output_path_selects_the_actual_file_and_requires_glb(tmp_path: Path) -> None:
+    """Prouve que la sortie retenue est un vrai fichier local au format .glb."""
     model_path = tmp_path / "generated.glb"
     model_path.write_bytes(b"glTF")
 
@@ -515,6 +542,7 @@ def test_model_output_path_selects_the_actual_file_and_requires_glb(tmp_path: Pa
 
 
 def test_glb_reader_checks_version_and_declared_length(tmp_path: Path) -> None:
+    """Prouve que la lecture du GLB vérifie la version 2 et la longueur déclarée."""
     model_path = tmp_path / "header.glb"
     valid_glb = _minimal_glb_20_bytes()
     model_path.write_bytes(valid_glb)
@@ -536,6 +564,7 @@ def test_glb_reader_checks_version_and_declared_length(tmp_path: Path) -> None:
 
 
 def test_settings_reads_backend_env_before_root_env(monkeypatch, tmp_path: Path) -> None:
+    """Prouve que backend/.env est lu avant le .env racine."""
     backend_folder = tmp_path / "backend"
     backend_folder.mkdir()
     (backend_folder / ".env").write_text(
@@ -560,6 +589,7 @@ def test_settings_reads_backend_env_before_root_env(monkeypatch, tmp_path: Path)
 
 
 def test_settings_reads_optional_triposr_quality_values(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Prouve la lecture des réglages TripoSR facultatifs."""
     monkeypatch.setattr("app.config._PROJECT_ROOT", tmp_path)
     monkeypatch.setenv("HF_SPACE_ID", "https://triposr.example.gradio.live")
     monkeypatch.setenv("FOREGROUND_RATIO", "0.9")
@@ -572,6 +602,7 @@ def test_settings_reads_optional_triposr_quality_values(monkeypatch: pytest.Monk
 
 
 def test_settings_accepts_a_public_gradio_url_without_credentials_or_query() -> None:
+    """Prouve qu'une adresse Gradio publique simple est acceptée."""
     settings = Settings(hf_space_id="https://my-tripodemo.gradio.live/")
 
     assert settings.hf_space_id == "https://my-tripodemo.gradio.live/"
@@ -586,10 +617,12 @@ def test_settings_accepts_a_public_gradio_url_without_credentials_or_query() -> 
     ],
 )
 def test_settings_rejects_unsafe_or_unsupported_urls(target: str) -> None:
+    """Prouve qu'une adresse dangereuse (identifiants, paramètres, autre protocole) est refusée."""
     with pytest.raises(ValueError, match="URL HTTP"):
         Settings(hf_space_id=target)
 
 
 def test_settings_rejects_more_than_two_attempts() -> None:
+    """Prouve qu'on ne peut pas configurer plus de deux tentatives."""
     with pytest.raises(ValueError, match="égal à 1 ou 2"):
         Settings(hf_max_attempts=3)

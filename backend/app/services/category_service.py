@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+# re (standard) : expressions régulières ; ici le motif autorisé pour un slug (minuscules, chiffres, tirets).
 import re
 
 from app.models import CategoryRecord
@@ -25,6 +26,7 @@ class CategoryService:
     """Expose le CRUD en validant les valeurs avant leur écriture."""
 
     def __init__(self, repository: GenerationRepository) -> None:
+        """Reçoit le dépôt des catégories (injection par constructeur)."""
         self._repository = repository
 
     @staticmethod

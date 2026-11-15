@@ -20,6 +20,7 @@ class UnavailableProvider:
     """Fournisseur de test qui signale l'échec observé sans fabriquer de résultat."""
 
     def generate(self, image_path: Path) -> bytes:
+        """Faux fournisseur : remplace l'appel au service d'IA (aucun réseau, aucune vraie génération)."""
         raise ProviderError("Space indisponible dans ce test.")
 
 
@@ -33,6 +34,7 @@ def _validated_upload() -> ValidatedUpload:
 
 
 def test_create_generation_stores_image_and_starts_pending(tmp_path: Path) -> None:
+    """Prouve que create_generation enregistre la photo et crée un modèle PENDING."""
     repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
     repository.initialize()
     service = GenerationService(UnavailableProvider(), LocalStorage(tmp_path), repository)
@@ -46,6 +48,7 @@ def test_create_generation_stores_image_and_starts_pending(tmp_path: Path) -> No
 
 
 def test_run_records_provider_failure_without_creating_a_model(tmp_path: Path) -> None:
+    """Prouve qu'un échec du fournisseur donne FAILED sans créer de fichier GLB."""
     storage = LocalStorage(tmp_path)
     repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
     repository.initialize()
@@ -62,10 +65,13 @@ def test_run_records_provider_failure_without_creating_a_model(tmp_path: Path) -
 
 
 def test_run_sends_prepared_copy_and_preserves_original_photo(tmp_path: Path) -> None:
+    """Prouve que le fournisseur reçoit la copie préparée et que la photo d'origine reste intacte."""
     class InspectingProvider:
+        """Faux fournisseur qui mémorise l'image reçue, pour vérifier qu'il s'agit de la copie préparée."""
         received_size: tuple[int, int] | None = None
 
         def generate(self, image_path: Path) -> bytes:
+            """Faux fournisseur : remplace l'appel au service d'IA (aucun réseau, aucune vraie génération)."""
             with Image.open(image_path) as prepared:
                 self.received_size = prepared.size
             raise ProviderError("Arrêt volontaire après vérification de la photo préparée.")
@@ -95,13 +101,16 @@ def test_run_logs_provider_cause_while_masking_remote_credentials(
     tmp_path: Path,
     caplog,
 ) -> None:
+    """Prouve que le journal garde la cause de l'erreur mais masque le jeton et l'adresse du serveur."""
     class DetailedUnavailableProvider:
+        """Faux fournisseur qui échoue avec une erreur contenant un jeton et une adresse, pour tester leur masquage."""
         settings = SimpleNamespace(
             hf_token="test-token-never-log",
             hf_space_id="https://temporary-space.gradio.live",
         )
 
         def generate(self, image_path: Path) -> bytes:
+            """Faux fournisseur : remplace l'appel au service d'IA (aucun réseau, aucune vraie génération)."""
             raise ProviderError(
                 "Échec avec le jeton test-token-never-log"
             ) from TimeoutError(
@@ -127,6 +136,7 @@ def test_run_logs_provider_cause_while_masking_remote_credentials(
 
 
 def test_run_ignores_unknown_generation_ids(tmp_path: Path) -> None:
+    """Prouve que run() ignore un identifiant inconnu sans erreur."""
     repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
     repository.initialize()
     service = GenerationService(UnavailableProvider(), LocalStorage(tmp_path), repository)
@@ -135,6 +145,7 @@ def test_run_ignores_unknown_generation_ids(tmp_path: Path) -> None:
 
 
 def test_integration_cannot_be_enabled_before_a_glb_is_done(tmp_path: Path) -> None:
+    """Prouve qu'on ne peut pas activer l'intégration d'un modèle non terminé."""
     repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
     repository.initialize()
     service = GenerationService(UnavailableProvider(), LocalStorage(tmp_path), repository)

@@ -3,8 +3,12 @@
 """Schémas des réponses HTTP de Forma3D Studio."""
 
 from datetime import datetime
+# typing.Literal (standard) : limite un champ à une liste de valeurs exactes.
 from typing import Literal
 
+# Pydantic : valide et convertit les données JSON à partir de classes Python.
+# Ici : ce sont les DTO (objets de transfert) de l'API ; FastAPI répond 422 si un JSON reçu
+# ne respecte pas la classe. Équivalent des DTO + Bean Validation (@Valid) de Spring.
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -34,6 +38,7 @@ class GenerationResponse(BaseModel):
 class DemoModelResponse(BaseModel):
     """Modèle de faisabilité consultable dans la galerie du viewer."""
 
+    # from_attributes=True : Pydantic peut lire directement les attributs d'un objet métier (dataclass).
     model_config = ConfigDict(from_attributes=True)
 
     id: str
@@ -110,6 +115,7 @@ class CategoryUpdateRequest(BaseModel):
 class APIKeyCreateRequest(BaseModel):
     """Nom donné par la propriétaire à une nouvelle clé API."""
 
+    # Field(...) ajoute des contraintes : ici 1 à 80 caractères, sinon réponse 422 automatique.
     name: str = Field(min_length=1, max_length=80)
 
 

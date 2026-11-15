@@ -11,6 +11,7 @@ from app.storage.local_storage import LocalStorage
 
 
 def test_storage_saves_image_with_server_generated_filename(tmp_path: Path) -> None:
+    """Prouve que la photo est enregistrée sous un nom choisi par le serveur (UUID)."""
     storage = LocalStorage(tmp_path)
     generation_id = str(uuid4())
     content = b"\xff\xd8\xfflocal storage test payload"
@@ -24,6 +25,7 @@ def test_storage_saves_image_with_server_generated_filename(tmp_path: Path) -> N
 def test_storage_saves_and_reads_arbitrary_test_bytes_without_claiming_a_glb(
     tmp_path: Path,
 ) -> None:
+    """Prouve que le stockage écrit et relit des octets sans prétendre vérifier un GLB."""
     storage = LocalStorage(tmp_path)
     generation_id = str(uuid4())
     test_payload = b"unit test storage payload; not a 3D model"
@@ -36,12 +38,14 @@ def test_storage_saves_and_reads_arbitrary_test_bytes_without_claiming_a_glb(
 
 
 def test_storage_returns_none_when_no_model_exists(tmp_path: Path) -> None:
+    """Prouve qu'aucun chemin n'est renvoyé quand le modèle n'existe pas."""
     storage = LocalStorage(tmp_path)
 
     assert storage.get_model_path(str(uuid4())) is None
 
 
 def test_storage_rejects_path_traversal_and_unknown_image_extension(tmp_path: Path) -> None:
+    """Prouve que « ../ » dans l'identifiant et une extension inconnue sont refusés."""
     storage = LocalStorage(tmp_path)
 
     with pytest.raises(ValueError, match="Identifiant de génération invalide"):

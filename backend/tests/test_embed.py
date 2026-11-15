@@ -24,6 +24,7 @@ def _valid_glb() -> bytes:
 
 
 def test_embed_page_requires_activation_and_sets_restrictive_frame_ancestors(tmp_path: Path) -> None:
+    """Prouve que /embed exige un modèle activé et envoie une politique CSP frame-ancestors restrictive."""
     repository = SQLiteGenerationRepository(tmp_path / "embed.sqlite3")
     repository.initialize()
     service = GenerationService(object(), LocalStorage(tmp_path / "storage"), repository)

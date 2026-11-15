@@ -15,6 +15,7 @@ from app.storage.local_storage import LocalStorage
 
 
 def test_category_crud_and_active_listing(tmp_path: Path) -> None:
+    """Prouve le CRUD des catégories dans SQLite et la liste limitée aux catégories actives."""
     repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
     repository.initialize()
 
@@ -39,6 +40,7 @@ def test_category_crud_and_active_listing(tmp_path: Path) -> None:
 
 
 def test_repository_rejects_duplicate_slug_and_deleting_used_category(tmp_path: Path) -> None:
+    """Prouve que le dépôt refuse un slug en double et la suppression d'une catégorie utilisée."""
     repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
     repository.initialize()
     with pytest.raises(CategoryConflictError, match="slug.*existe déjà"):

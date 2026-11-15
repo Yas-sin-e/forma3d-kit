@@ -2,11 +2,14 @@
 # Exécution : les intégrateurs envoient X-API-Key ; les services internes conservent la logique métier.
 """Routes versionnées de l’API destinée aux sites intégrateurs."""
 
+# datetime (standard) : dates et durées. Tout est calculé en UTC pour un quota journalier stable.
 from datetime import UTC, datetime, timedelta
 from html import escape
 from pathlib import Path
 from typing import Annotated
 
+# FastAPI : BackgroundTasks lance un travail après l'envoi de la réponse ; File/Form/UploadFile
+# lisent un formulaire avec fichier (multipart).
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import FileResponse
 
@@ -28,7 +31,11 @@ def require_api_v1_key(
     key: Annotated[APIKeyRecord, Depends(require_api_key)],
     key_service: Annotated[APIKeyService, Depends(get_api_key_service)],
 ) -> APIKeyRecord:
-    """Authentifie la clé puis applique une limite glissante aux routes versionnées."""
+    """Authentifie la clé puis applique une limite glissante aux routes versionnées.
+
+    Dépendance en chaîne : require_api_key valide d'abord la clé, puis on consomme une requête
+    dans la fenêtre d'une minute. Lève 401 (clé révoquée entre-temps) ou 429 + Retry-After: 60.
+    """
     reason = key_service.consume_rate_limit(
         key, request.app.state.api_rate_limit_per_minute
     )
@@ -72,7 +79,12 @@ async def create_model(
     category_service: Annotated[CategoryService, Depends(get_category_service)],
     key_service: Annotated[APIKeyService, Depends(get_api_key_service)],
 ) -> APIModelResponse:
-    """Valide une photo, consomme le quota et relance le service de génération existant."""
+    """Valide une photo, consomme le quota et relance le service de génération existant.
+
+    Étapes : lecture bornée du fichier (10 Mo + 1 octet), validation, catégorie active (sinon 403),
+    quota du jour par clé (sinon 429 avec Retry-After jusqu'à minuit UTC), création PENDING,
+    puis génération en tâche de fond. Retour : 202 avec l'adresse de suivi.
+    """
     try:
         content = await file.read(MAX_UPLOAD_BYTES + 1)
         validated = UploadValidator.validate(file.filename, file.content_type, content)
@@ -105,6 +117,7 @@ async def create_model(
         record = service.create_generation(validated, content, category)
     except ValueError as error:
         raise HTTPException(status_code=403, detail=str(error)) from error
+    # La génération (1 à 2 minutes) démarre APRÈS l'envoi de la réponse 202. Équivalent d'un @Async Spring.
     background_tasks.add_task(service.run, record.id)
     return _model_response(record)
 

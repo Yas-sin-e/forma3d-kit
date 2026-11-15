@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+# json (standard) : lit le bloc JSON contenu dans un fichier GLB.
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -36,6 +37,10 @@ class DemoGallery:
     """Résout uniquement les cinq noms connus, sans exposer de chemin arbitraire."""
 
     def __init__(self, root: Path | None = None) -> None:
+        """Fixe le dossier des 5 GLB d'exemple (backend/data/feasibility-results par défaut) et celui des photos source.
+
+        Paramètre : root, remplacé par un dossier temporaire dans les tests.
+        """
         default_root = Path(__file__).resolve().parents[2] / "data" / "feasibility-results"
         self.root = (root or default_root).resolve()
         self.source_images_root = self.root.parent / "feasibility-inputs"
@@ -89,6 +94,8 @@ class DemoGallery:
     def is_valid_glb_2(content: bytes) -> bool:
         """Vérifie en mémoire la structure du conteneur GLB et son document glTF 2.0."""
         data = content
+        # Un GLB commence par 12 octets : le mot « glTF », la version (2), la longueur totale.
+        # int.from_bytes(..., "little") lit un entier écrit octet de poids faible en premier.
         if len(data) < 20 or data[:4] != b"glTF":
             return False
         if int.from_bytes(data[4:8], "little") != 2:

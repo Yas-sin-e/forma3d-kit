@@ -2,11 +2,14 @@
 # Exécution : une iframe ou le widget Forma3D ouvre /embed/{public_id}.
 """Page d’intégration 3D minimale avec politique CSP de cadrage explicite."""
 
+# html.escape (standard) : remplace < > & " par des entités HTML.
+# Un nom de fichier ne peut donc pas injecter de script dans la page (protection XSS).
 from html import escape
 from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+# HTMLResponse : réponse dont le corps est une page HTML (et non du JSON).
 from fastapi.responses import HTMLResponse
 
 from app.models import GenerationRecord
@@ -17,7 +20,11 @@ router = APIRouter(prefix="/embed", tags=["embed"])
 
 
 def _frame_ancestors(request: Request) -> str:
-    """Construit une directive CSP limitée au même site et aux origines configurées."""
+    """Construit une directive CSP limitée au même site et aux origines configurées.
+
+    frame-ancestors dit au NAVIGATEUR quels sites ont le droit d'afficher cette page dans une iframe.
+    Par défaut : seulement 'self' (Forma3D lui-même) ; EMBED_ALLOWED_ORIGINS ajoute des sites précis.
+    """
     allowed_origins = tuple(request.app.state.embed_allowed_origins)
     return "frame-ancestors 'self'" + (" " + " ".join(allowed_origins) if allowed_origins else "")
 
@@ -62,6 +69,8 @@ def show_embedded_model(
     service: Annotated[GenerationService, Depends(get_generation_service)],
 ) -> HTMLResponse:
     """Affiche uniquement le viewer d’un modèle DONE avec intégration activée."""
+    # En-têtes de sécurité : CSP (qui peut encadrer la page), no-store (pas de cache),
+    # nosniff (ne pas deviner un autre type de contenu), Referrer-Policy (adresse transmise limitée).
     headers = {
         "Content-Security-Policy": _frame_ancestors(request),
         "Cache-Control": "no-store",

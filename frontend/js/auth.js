@@ -9,17 +9,22 @@
  */
 import { getSession, loginOwner, logoutOwner } from "./api.js?v=20261115-e1";
 
+// sessionStorage : petit stockage du navigateur, propre à l'onglet et effacé à sa fermeture.
+// On y garde seulement la page demandée avant la connexion, jamais un mot de passe ni un jeton.
 const NEXT_ROUTE_KEY = "forma3d:next-route";
 const SESSION_EXPIRED_KEY = "forma3d:session-expired";
 let authenticated = false;
 let passwordConfigured = true;
 
+// Met à jour l'indicateur de connexion, l'attribut data-auth du <body> (le CSS masque ou montre le menu)
+// et prévient les autres modules par un événement personnalisé « forma3d:auth ».
 function setAuthenticated(value) {
   authenticated = value;
   document.body.dataset.auth = value ? "member" : "guest";
   window.dispatchEvent(new CustomEvent("forma3d:auth", { detail: { authenticated: value } }));
 }
 
+// Indique si la propriétaire est connectée, d'après la dernière réponse du serveur.
 export function isAuthenticated() {
   return authenticated;
 }
@@ -29,6 +34,8 @@ export function isPasswordConfigured() {
   return passwordConfigured;
 }
 
+// Demande au serveur si la session est valide : GET /auth/me. Appelée au démarrage de la page.
+// Le navigateur ne décide jamais seul : seul le serveur sait si le cookie est valide.
 export async function refreshSession() {
   try {
     const session = await getSession();
@@ -40,11 +47,13 @@ export async function refreshSession() {
   return authenticated;
 }
 
+// Connexion : envoie le mot de passe (POST /auth/login) puis marque la session comme ouverte.
 export async function login(password) {
   await loginOwner(password);
   setAuthenticated(true);
 }
 
+// Déconnexion : POST /auth/logout, puis retour à la page de connexion même si le serveur ne répond pas (finally).
 export async function logout() {
   try {
     await logoutOwner();
@@ -67,6 +76,8 @@ export function rememberNextRoute(hash) {
   window.sessionStorage.setItem(NEXT_ROUTE_KEY, hash);
 }
 
+// Renvoie la page mémorisée avant la connexion (une seule fois), sinon l'accueil.
+// N'accepte qu'une adresse interne commençant par « #/ ».
 export function consumeNextRoute() {
   const next = window.sessionStorage.getItem(NEXT_ROUTE_KEY);
   window.sessionStorage.removeItem(NEXT_ROUTE_KEY);

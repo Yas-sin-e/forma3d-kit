@@ -14,6 +14,7 @@ _spec.loader.exec_module(trial_trellis)
 
 
 def test_measure_glb_reports_grid_values_for_a_valid_glb() -> None:
+    """Prouve que l'outil d'essai mesure correctement un GLB valide."""
     report = trial_trellis.measure_glb(_raw_triangle_glb())
     assert report["valid_glb2"] is True
     assert report["vertices"] == 3 and report["triangles"] == 1
@@ -23,6 +24,7 @@ def test_measure_glb_reports_grid_values_for_a_valid_glb() -> None:
 
 
 def test_measure_glb_stops_at_validity_for_invalid_content() -> None:
+    """Prouve que l'outil d'essai s'arrête à la validité pour un contenu invalide."""
     assert trial_trellis.measure_glb(b"pas un glb") == {"bytes": 10, "valid_glb2": False}
 
 
@@ -33,6 +35,7 @@ _models_spec.loader.exec_module(trial_models)
 
 
 def test_file_path_from_output_accepts_gradio_shapes() -> None:
+    """Prouve que l'outil d'essai comprend les formes de sortie Gradio."""
     assert trial_models.file_path_from_output("C:/tmp/a.glb") == "C:/tmp/a.glb"
     assert trial_models.file_path_from_output({"path": "/tmp/b.glb", "url": None}) == "/tmp/b.glb"
     assert trial_models.file_path_from_output({"value": "/tmp/c.glb"}) == "/tmp/c.glb"
@@ -42,6 +45,7 @@ def test_file_path_from_output_accepts_gradio_shapes() -> None:
 
 
 def test_missing_functions_stops_when_contract_changes() -> None:
+    """Prouve que l'outil d'essai s'arrête si des fonctions attendues manquent."""
     sf3d_contract = {"/requires_bg_remove", "/run_button", "/lambda"}
     assert trial_models.missing_functions("sf3d", sf3d_contract) == set()
     assert trial_models.missing_functions("trellis", {"/start_session"}) == {"/preprocess_image", "/generate_and_extract_glb"}

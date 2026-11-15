@@ -19,10 +19,12 @@ class UnavailableProvider:
     """Fournisseur simulé, utilisé seulement si une requête est mise en tâche de fond."""
 
     def generate(self, image_path: Path) -> bytes:
+        """Faux fournisseur : remplace l'appel au service d'IA (aucun réseau, aucune vraie génération)."""
         raise RuntimeError("Le fournisseur ne doit pas être appelé par ce test.")
 
 
 def _client(tmp_path: Path) -> TestClient:
+    """Prépare un client de test relié à une base SQLite temporaire."""
     repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
     repository.initialize()
     service = GenerationService(
@@ -34,6 +36,7 @@ def _client(tmp_path: Path) -> TestClient:
 
 
 def test_category_routes_create_rename_toggle_and_delete(tmp_path: Path) -> None:
+    """Prouve que les routes /categories créent, renomment, désactivent, réactivent et suppriment."""
     client = _client(tmp_path)
     try:
         listed = client.get("/categories")
@@ -70,6 +73,7 @@ def test_category_routes_create_rename_toggle_and_delete(tmp_path: Path) -> None
 
 
 def test_category_routes_report_duplicates_blank_labels_and_used_delete(tmp_path: Path) -> None:
+    """Prouve les refus : slug en double, libellé vide, suppression d'une catégorie utilisée (409)."""
     client = _client(tmp_path)
     try:
         duplicate = client.post("/categories", json={"slug": "chair", "label": "Autre"})
@@ -104,6 +108,7 @@ def test_category_routes_report_duplicates_blank_labels_and_used_delete(tmp_path
 
 
 def test_inactive_category_rejects_generation_submission(tmp_path: Path) -> None:
+    """Prouve qu'une catégorie désactivée ne peut plus recevoir de nouvelle photo."""
     client = _client(tmp_path)
     try:
         client.patch("/categories/stool", json={"is_active": False})

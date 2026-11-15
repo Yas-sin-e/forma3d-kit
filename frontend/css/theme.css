@@ -67,6 +67,7 @@
   box-sizing: border-box;
 }
 
+/* Règles globales : page, typographie, liens, boutons et focus clavier visible (accessibilité). */
 html {
   min-width: 360px;
   min-height: 100%;

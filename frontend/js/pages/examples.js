@@ -11,6 +11,7 @@ import { exampleDescription } from "../format.js?v=20261115-e1";
 export const title = "Exemples de modèles";
 const generationIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
+// Retourne le HTML de la page Exemples (catalogue et panneau d'ajout).
 export function render() {
   return `
     <section class="page-shell gallery-page" aria-labelledby="page-title">
@@ -33,6 +34,7 @@ export function render() {
     </section>`;
 }
 
+// Branche la page Exemples : galerie filtrée, ajout d'un exemple à « Mes modèles » (POST /models/examples/{id}/copy).
 export function mount() {
   const panel = document.querySelector("#example-copy-panel");
   const categorySelect = document.querySelector("#copy-example-category");
