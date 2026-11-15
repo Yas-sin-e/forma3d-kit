@@ -1,7 +1,7 @@
 # Comprendre Forma3D Studio — le guide complet
 
 > Document pédagogique pour comprendre **tout** le projet et l'expliquer à un jury.
-> Il décrit uniquement ce qui existe dans le dépôt au 15 novembre 2026 (dernier commit lu : `3623e92`).
+> Il décrit uniquement ce qui existe dans le dépôt au 15 novembre 2026 (dernier commit lu : `95f2d86`, après l'ajout de la suppression des modèles, de la session persistante facultative et de l'architecture cible).
 > Quand une information n'a pas pu être vérifiée dans le code, elle est marquée **« à vérifier »**.
 
 ---
@@ -13,6 +13,10 @@
 - **Si vous avez 10 minutes :** lisez les sections 1, 3 et 11 (le projet, l'architecture, les parcours).
 - **Pour la soutenance :** ajoutez les sections 10 (le site page par page) et 12 (la sécurité).
 - **Pour comprendre le code :** sections 4, 5, 6 et 8.
+- **Si le badge « Serveur 3D » est rouge :** section 17.
+- **Pour la suite du projet (SaaS) :** section 18 et `docs/ARCHITECTURE-CIBLE.md`.
+- **Pour Git, les branches et les pull requests :** section 19.
+- Les sections importantes se terminent par trois encadrés : **Un exemple concret**, **Une analogie** et **Ce que je réponds si on me demande pourquoi**.
 - Les schémas sont écrits en **Mermaid** (un langage texte que GitHub transforme en dessin). Sur GitHub, ils s'affichent automatiquement.
 - Des **analogies** avec ce que vous connaissez déjà (Angular, Spring Boot, Keycloak, Oracle PL/SQL, Symfony) sont signalées par 🔁.
 
@@ -57,7 +61,7 @@ Une boutique en ligne montre ses produits avec des photos plates. Un modèle 3D 
 - ❌ **Aucun entraînement de modèle** : le projet utilise uniquement des modèles **pré-entraînés** (déjà appris par d'autres équipes). Aucun réseau de neurones n'est entraîné ou ajusté.
 - ❌ **Aucune API payante** : tout est gratuit. Les services gratuits ont des **quotas** (limites journalières) et peuvent être hors ligne.
 - ❌ **Pas un service de production** : c'est un prototype de soutenance, à utiliser en local tant qu'il n'est pas déployé en HTTPS.
-- ❌ **Pas de comptes multiples** : un seul mot de passe, celui de la propriétaire (les comptes vendeurs sont une perspective, voir section 16).
+- ❌ **Pas de comptes multiples** : un seul mot de passe, celui de la propriétaire. Le passage à un SaaS multi-clients est **conçu mais pas codé** (section 18 et `docs/ARCHITECTURE-CIBLE.md`).
 - ❌ **Pas une reconstruction exacte** : une seule photo ne montre pas l'arrière de l'objet ; le modèle est une **estimation**, pas un plan de fabrication.
 
 ---
@@ -225,6 +229,28 @@ sequenceDiagram
 
 ⚠️ Le statut terminé s'appelle **`DONE`** dans le code (pas `COMPLETED`). ✅
 
+
+### 3.4 Un exemple concret : la photo du fauteuil vert, de bout en bout
+
+Le 15 novembre 2026, la propriétaire a envoyé `fauteuil-retro-sur-fond-blanc….webp` (fauteuil vert, fond blanc uni) dans la catégorie « Chaise ».
+
+| Étape | Ce qui s'est passé réellement | Où dans le code |
+|---|---|---|
+| 1 | Le navigateur envoie la photo : `POST /models` | `frontend/js/api.js` → `createGeneration()` |
+| 2 | Le serveur vérifie extension, type, **signature** (premiers octets) et taille ≤ 10 Mo | `services/upload_validator.py` |
+| 3 | La photo est rangée dans `backend/storage/images/{uuid}.webp` ; une ligne `PENDING` est créée dans SQLite | `generation_service.create_generation()` |
+| 4 | Réponse immédiate `202 Accepted` ; la génération continue en tâche de fond (`RUNNING`) | `routers/models.py`, `BackgroundTasks` |
+| 5 | Une copie carrée à marges est préparée (512 px minimum) | `services/image_preparer.py` |
+| 6 | TRELLIS : connexion au Space, `/start_session`, détourage `/preprocess_image`, puis `/generate_and_extract_glb` | `providers/trellis.py` |
+| 7 | Le GLB reçu est vérifié, fini (matériau mat, normales) et écrit dans `backend/storage/models/{uuid}.glb` ; statut `DONE` | `glb_finisher.py`, `local_storage.py` |
+| 8 | La page, qui interrogeait `GET /models/{id}` toutes les 1,5 s, affiche le modèle | `pages/create.js` |
+| 9 | Sur la fiche, l'intégration est activée : le modèle reçoit une adresse publique `/embed/{public_id}` | `PATCH /models/{id}/integration` |
+| 10 | Une page servie sur le port 8081 (« site vitrine » de test) affiche le fauteuil grâce au widget | `frontend/widget.js`, `EMBED_ALLOWED_ORIGINS` |
+
+> **Une analogie.** 🔁 C'est une application Spring Boot classique : un `@RestController` reçoit le fichier, un `@Service` orchestre, un `@Repository` écrit en base, et une méthode `@Async` fait le travail long. La différence : le « gros calcul » (l'IA) est délégué à un service externe, comme un microservice appelé par HTTP.
+
+> **Ce que je réponds si on me demande pourquoi.** « J'ai séparé routes, services, dépôts et fournisseurs pour que chaque couche soit testable seule et remplaçable : je peux changer de fournisseur 3D ou de base de données sans réécrire le reste. La génération est asynchrone parce qu'elle dure une à deux minutes : on ne bloque pas la requête HTTP pendant ce temps. »
+
 ---
 
 ## 4. Technologies
@@ -338,22 +364,23 @@ sequenceDiagram
 | `test_api_keys.py` | Empreinte seule, secret affiché une fois, révocation, suppression définitive, quotas |
 | `test_api_settings.py` | Validation des quotas et des origines CORS/iframe |
 | `test_api_v1.py` | API externe : clé, statuts, erreurs, quota |
-| `test_auth.py` | Connexion : 401 sans cookie, mot de passe faux, limite, routes publiques ouvertes |
+| `test_auth.py` | Connexion : 401 sans cookie, mot de passe faux, limite, routes publiques ouvertes, clé de session fixe facultative |
 | `test_categories_api.py` | Routes des catégories |
 | `test_category_repository.py` | Catégories dans SQLite |
 | `test_category_service.py` | Règles des catégories |
-| `test_demo_gallery.py` | Catalogue d'exemples : seuls les fichiers connus et valides |
+| `test_demo_gallery.py` | Catalogue d'exemples : seuls les fichiers connus et valides (isolé de la vraie base SQLite) |
 | `test_embed.py` | Page `/embed` et politique de sécurité CSP |
 | `test_frontend.py` | Fichiers du frontend : présence des éléments, `fetch` seulement dans `api.js` |
 | `test_generation_repository.py` | Historique des générations dans SQLite, redémarrage |
 | `test_generation_service.py` | États PENDING → DONE ou FAILED, photo préparée |
 | `test_glb_finisher.py` | Finition des GLB sans modifier la géométrie |
-| `test_health.py` | Routes `/health` et `/health/provider` |
+| `test_health.py` | Routes `/health` et `/health/provider` (indépendant de `backend/.env`) |
 | `test_huggingface_provider.py` | Fournisseur TripoSR avec client simulé |
 | `test_image_preparer.py` | Préparation de la photo |
 | `test_local_storage.py` | Écriture des fichiers |
 | `test_model_library.py` | Import GLB et copie d'exemple |
 | `test_models_api.py` | Routes `/models` |
+| `test_model_deletion.py` | Suppression d'un modèle : ligne, GLB et photo effacés ; refus pendant la création, pour un exemple ou sans connexion |
 | `test_trellis_provider.py` | Fournisseur TRELLIS avec client simulé |
 | `test_trial_tools.py` | Outils d'essai de fournisseurs |
 | `test_upload_validator.py` | Validation des photos |
@@ -398,6 +425,7 @@ sequenceDiagram
 | Fichier | Rôle |
 |---|---|
 | `docs/COMPRENDRE-FORMA3D.md` | Ce guide |
+| `docs/ARCHITECTURE-CIBLE.md` | Conception du futur SaaS multi-clients (rien n'est codé) |
 | `docs/ETAT.md` | État d'avancement, étape par étape |
 | `docs/STRUCTURE.md` | Rôle de chaque fichier et dossier |
 | `docs/STOCKAGE.md` | Base SQLite, fichiers, intégration |
@@ -430,6 +458,8 @@ sequenceDiagram
 | `docs/etapes/etape-20.md` | Finition serveur des GLB (sous-étape B) |
 | `docs/etapes/etape-21.md` | Grille de qualité et essais de fournisseurs (sous-étape C) |
 | `docs/etapes/etape-22.md` | TRELLIS branché dans Forma3D (sous-étape C3) |
+| `docs/etapes/etape-23.md` | Suppression d'un modèle depuis sa fiche |
+| `docs/etapes/etape-24.md` | Clé de session fixe facultative (`FORMA3D_SESSION_SECRET`) |
 | `docs/archive/v1/AGENTS-ancien.md` | Ancienne version des règles (historique) |
 | `docs/archive/v1/PROMPT-1-v1.md` | Ancienne consigne de démarrage (historique) |
 | `docs/archive/v1/etapes/etape-01-v1.md` | Ancienne étape 1 (historique) |
@@ -440,7 +470,7 @@ sequenceDiagram
 | Fichier | Rôle |
 |---|---|
 | `examples/integration.html` | Faux « site de boutique » pour tester le widget |
-| `scripts/dev.ps1` | Script Windows : crée l'environnement, lance les tests, démarre le serveur sur le port 8001 |
+| `scripts/dev.ps1` | Script Windows : crée l'environnement, lance les tests **isolés de `backend/.env`**, puis démarre le serveur sur le port 8001 (avec `backend/.env`) |
 | `tools/colab/triposr_server.ipynb` | Notebook Colab historique de TripoSR (hors application) |
 | `tools/trials/trial_trellis.py` | Essai TRELLIS reproductible (hors application) |
 | `tools/trials/trial_models.py` | Essai de plusieurs modèles (hors application) |
@@ -643,9 +673,18 @@ Les générations restées `PENDING` ou `RUNNING` (le serveur s'est arrêté au 
 
 ### 6.6 Passer plus tard à PostgreSQL (sans le faire)
 
-Les services ne parlent jamais à SQLite directement : ils utilisent le **contrat** `GenerationRepository` (`backend/app/repositories/base.py`). Ce contrat liste les opérations : `initialize`, `save_generation`, `get_generation`, `get_generation_by_public_id`, `set_embed_enabled`, `list_completed_generations`, `list_categories`, `create_category`, `update_category`, `delete_category`, `create_api_key`, `list_api_keys`, `find_api_keys_by_prefix`, `revoke_api_key`, `delete_revoked_api_key`, `consume_api_rate_limit`, `consume_api_daily_quota`…
+Les services ne parlent jamais à SQLite directement : ils utilisent le **contrat** `GenerationRepository` (`backend/app/repositories/base.py`). Ce contrat liste les opérations : `initialize`, `save_generation`, `get_generation`, `get_generation_by_public_id`, `set_embed_enabled`, `delete_generation`, `list_completed_generations`, `list_categories`, `create_category`, `update_category`, `delete_category`, `create_api_key`, `list_api_keys`, `find_api_keys_by_prefix`, `revoke_api_key`, `delete_revoked_api_key`, `consume_api_rate_limit`, `consume_api_daily_quota`…
 
-🔁 C'est une **interface Java** : pour passer à PostgreSQL, il suffirait d'écrire une classe `PostgreSQLGenerationRepository` qui implémente les mêmes méthodes, puis de la choisir dans `main.py`. Les routes et services ne changeraient pas. Il faudrait aussi un script qui copie les données et des migrations versionnées. **Ce n'est pas fait.**
+🔁 C'est une **interface Java** : pour passer à PostgreSQL, il suffirait d'écrire une classe `PostgreSQLGenerationRepository` qui implémente les mêmes méthodes, puis de la choisir dans `main.py`. Les routes et services ne changeraient pas. Il faudrait aussi un script qui copie les données et des migrations versionnées. **Ce n'est pas fait.** Détails, avec le vrai code et la question de l'`owner_id` : `docs/ARCHITECTURE-CIBLE.md`, section 9.
+
+
+### 6.7 Encadrés
+
+> **Un exemple concret.** Après la génération du fauteuil vert, la table `generations` contient une ligne : `status = DONE`, `category_id` = celui de « chair », `source_photo_path` et `glb_path` vers les fichiers du disque, `embed_enabled = 0`. Quand la propriétaire active l'intégration, seule la colonne `embed_enabled` passe à 1 ; le `public_id` ne change pas. Quand elle supprime le modèle (étape 23), la ligne est effacée, puis le GLB et la photo.
+
+> **Une analogie.** 🔁 Le schéma ressemble à ce que vous écririez en Oracle : clés primaires, clé étrangère `category_id`, contrainte `CHECK` sur le statut. La différence : pas d'instance, pas d'utilisateur de base, pas de PL/SQL ; la logique est dans les services Python, et l'accès passe par un dépôt comme un `@Repository` Spring.
+
+> **Ce que je réponds si on me demande pourquoi.** « SQLite est un vrai moteur SQL, suffisant pour une console mono-propriétaire en local, et il ne demande aucune installation. J'ai isolé tout l'accès derrière l'interface `GenerationRepository` pour pouvoir passer à PostgreSQL le jour où il faudra plusieurs serveurs ou un hébergement : c'est décrit dans `docs/ARCHITECTURE-CIBLE.md`. »
 
 ---
 
@@ -671,14 +710,14 @@ Une image entre, des octets GLB sortent. 🔁 Comme une interface Spring avec de
 | Enchaînement | Lit le contrat (`view_api()`), choisit la fonction disponible, envoie la photo | `view_api()` → `/start_session` → `/preprocess_image` (détourage du fond) → `/generate_and_extract_glb` |
 | Résultat | GLB à couleurs de sommets | GLB texturé |
 | Relance | Oui si le Space démarre (`HF_MAX_ATTEMPTS`, 1 ou 2) | Non |
-| Délai maximal | `HF_TIMEOUT_SECONDS` (300 s par défaut) | Même valeur |
+| Délai maximal | `HF_TIMEOUT_SECONDS` (300 s par défaut) | Même délai global, plus **120 s par requête HTTP** (`_HTTP_REQUEST_TIMEOUT_SECONDS`) |
 | Compatibilité en plus | Sait aussi lire le contrat de Stable Fast 3D (`/run_button`) | — |
 
 Après le fournisseur, **le même traitement** s'applique : vérification GLB 2.0, puis finition (`glb_finisher.py`) qui ajoute un matériau mat et des normales. ✅
 
 ### 7.3 Lequel est utilisé par défaut ?
 
-**TripoSR**, car `IMAGE3D_PROVIDER` vaut `triposr` par défaut (`backend/app/config.py`). ✅
+**TripoSR**, car `IMAGE3D_PROVIDER` vaut `triposr` par défaut (`backend/app/config.py`). ✅ Dans la configuration de démonstration de l'étudiante, `IMAGE3D_PROVIDER=trellis` est défini dans `backend/.env` : c'est **TRELLIS** qui génère (une génération complète depuis le Studio a réussi le 15 novembre 2026).
 
 ```mermaid
 flowchart LR
@@ -687,14 +726,15 @@ flowchart LR
     B -->|trellis| D["TrellisSpaceProvider<br/>utilise TRELLIS_SPACE_ID"]
 ```
 
-**Comment vérifier :** ouvrez `http://127.0.0.1:8000/health/provider`. Quand le service est hors ligne, le message parle de « Colab » pour TripoSR et de « Space TRELLIS » pour TRELLIS.
+**Comment vérifier :** ouvrez `http://127.0.0.1:8001/health/provider` (serveur lancé par `dev.ps1` ; `8000` si uvicorn est lancé à la main). Quand le service est hors ligne, le message parle de « Colab » pour TripoSR et de « Space TRELLIS » pour TRELLIS (section 17).
 
 **Comment changer :** dans `backend/.env`, mettez `IMAGE3D_PROVIDER=trellis`, puis redémarrez le serveur. Ou lancez le serveur depuis un terminal où la variable est définie (elle a alors priorité sur `.env`).
 
 ### 7.4 Le jeton `HF_TOKEN`
 
 - C'est un **mot de passe pour programme** fourni gratuitement par Hugging Face (*Settings → Access Tokens*, type « Read »).
-- Il augmente le **quota GPU gratuit** de TRELLIS.
+- Il augmente le **quota GPU gratuit** de TRELLIS. Ordre de grandeur : environ **2 minutes** de GPU par jour sans jeton et **5 minutes** avec un compte gratuit — **à vérifier** sur https://huggingface.co/docs/hub/spaces-zerogpu. Une génération TRELLIS a pris environ 1 min 30 à 2 min pendant les essais.
+- ⚠️ Le quota est attaché au **compte**, pas au jeton : créer un nouveau jeton sur le même compte ne redonne **aucun** quota. Multiplier les comptes serait un contournement, interdit par les conditions d'utilisation et par les règles du projet.
 - Où le ranger : **uniquement** dans `backend/.env` (ignoré par Git) ou dans la variable d'un terminal. **Jamais** dans `.env.example`, dans le code ou dans une conversation.
 - Sécurité : le code ne l'envoie qu'à Hugging Face. `TRELLIS_SPACE_ID` doit être un identifiant `propriétaire/nom`, jamais une URL, et le fournisseur TripoSR refuse d'envoyer le jeton à une URL Gradio externe. Il est masqué dans les messages d'erreur. ✅
 
@@ -707,6 +747,7 @@ flowchart LR
 | Quota TRELLIS épuisé | La création échoue avec « Quota GPU gratuit du Space TRELLIS atteint pour aujourd'hui… » |
 | Space TRELLIS en veille | « Le Space TRELLIS est en veille, en panne ou indisponible » |
 | Contrat du Space modifié | La génération s'arrête avant l'envoi de la photo (« Le contrat … a changé ») |
+| Space très lent | Avant le 15 novembre 2026, « The read operation timed out » (délai HTTP de 5 s par défaut) ; corrigé avec 120 s par requête |
 
 Quand le fournisseur est hors ligne, le reste du Studio fonctionne : exemples, import GLB, fiches, intégration.
 
@@ -728,6 +769,15 @@ Quand le fournisseur est hors ligne, le reste du Studio fonctionne : exemples, i
 | model-viewer | Apache 2.0 | — |
 
 Détails et essais : `docs/ALTERNATIVES-3D.md` et `docs/QUALITE-3D.md`.
+
+
+### 7.8 Encadrés
+
+> **Un exemple concret.** Le 15 novembre 2026, plusieurs créations échouaient avec « The read operation timed out ». Diagnostic : `gradio_client` coupait chaque requête HTTP après 5 s (valeur par défaut de httpx), alors que la simple connexion au Space chargé prenait 26 s. Avec un délai de 120 s par requête, une photo du fauteuil a produit un GLB en 117 s : connexion 26 s, détourage 14 s, génération 73 s.
+
+> **Une analogie.** 🔁 `Image3DProvider` est une interface Java avec deux implémentations (`HuggingFaceSpaceProvider`, `TrellisSpaceProvider`), et `main.py` choisit laquelle injecter selon une propriété de configuration, comme un `@ConditionalOnProperty` de Spring Boot.
+
+> **Ce que je réponds si on me demande pourquoi.** « Je n'entraîne aucun modèle : j'appelle des modèles pré-entraînés gratuits. Je lis toujours le contrat réel du service (`view_api()`) avant d'envoyer la photo, pour ne jamais inventer un nom de paramètre. Et j'isole le fournisseur derrière une interface, parce que les services gratuits changent, ferment ou atteignent leur quota. »
 
 ---
 
@@ -758,6 +808,13 @@ stateDiagram-v2
 - **Reprise après redémarrage** : pas de reprise automatique ; une génération `PENDING` ou `RUNNING` passe en `FAILED` (section 6.5) et il faut la relancer.
 - Les modèles **importés** ou **copiés** sont créés directement en `DONE`.
 
+
+> **Un exemple concret.** Le fauteuil blanc photographié sur fond gris est passé par `PENDING` → `RUNNING` → `DONE` en 1 min 33 s, avec un `image_warning` (« La photo est petite… ») : l'avertissement n'a pas bloqué la création. Une tentative pendant que le Space était trop lent est passée de `RUNNING` à `FAILED` avec le message réel du serveur.
+
+> **Une analogie.** 🔁 C'est une machine à états comme le statut d'une commande dans une application Symfony ou Spring : chaque transition est écrite en base, et l'interface Angular ne ferait que lire l'état courant (ici, par interrogation régulière plutôt que par WebSocket).
+
+> **Ce que je réponds si on me demande pourquoi.** « Les quatre états sont enregistrés dans SQLite pour qu'un rechargement de page ou un redémarrage ne perde pas le suivi. Je n'affiche aucun pourcentage inventé : seulement l'état réellement renvoyé par le serveur. »
+
 ---
 
 ## 9. Variables d'environnement
@@ -773,6 +830,17 @@ stateDiagram-v2
 | Qui le lit ? | Les humains | Le serveur, au démarrage |
 
 Ordre de lecture (`config.py`) : `backend/.env` d'abord, puis `.env` à la racine, **sans écraser** une variable déjà définie dans le terminal. 🔁 Comme `application.properties` de Spring, avec les variables système prioritaires.
+
+```mermaid
+flowchart LR
+    T["Variable du terminal<br/>(prioritaire)"] --> V{"Déjà définie ?"}
+    V -->|non| B["backend/.env"]
+    B --> R[".env à la racine"]
+    R --> D["Valeur par défaut<br/>de config.py"]
+    V -->|oui| U["Utilisée telle quelle"]
+```
+
+⚠️ Le fichier `.env` n'est lu qu'**au démarrage** du serveur : après une modification, il faut arrêter puis relancer le serveur (section 15.2).
 
 ### 9.2 Toutes les variables
 
@@ -793,10 +861,13 @@ Les exemples de valeurs ci-dessous sont **faux** et servent seulement à montrer
 | `API_CORS_ORIGINS` | Sites autorisés à appeler l'API en JavaScript (`*` refusé) | vide | `config.py` → `main.py` | Aucun site tiers | `http://boutique-exemple.test` |
 | `EMBED_ALLOWED_ORIGINS` | Sites autorisés à afficher `/embed` dans une iframe (`*` refusé) | vide | `config.py` → `embed.py` | Seul le Studio lui-même | `http://127.0.0.1:8081` |
 | `FORMA3D_OWNER_PASSWORD` | Mot de passe unique de la propriétaire | vide | `services/owner_auth.py` | **Connexion refusée** (503) | `mot-de-passe-exemple-long` |
+| `FORMA3D_SESSION_SECRET` | Clé fixe de signature des sessions (32 caractères minimum) | vide | `owner_auth.py` → `main.py` | Clé aléatoire à chaque démarrage : reconnexion après redémarrage | `exemple-faux-0123456789abcdefghijklmnop` |
 | `IMAGE3D_PROVIDER` | Fournisseur 3D : `triposr` ou `trellis` | `triposr` | `config.py` → `main.py` | TripoSR | `trellis` |
 | `TRELLIS_SPACE_ID` | Space TRELLIS (`propriétaire/nom`, jamais une URL) | `trellis-community/TRELLIS` | `config.py` → `trellis.py` | Space communautaire par défaut | `trellis-community/TRELLIS` |
 
-⚠️ Une valeur invalide (par exemple `IMAGE3D_PROVIDER=meshy` ou une origine `*`) empêche le serveur de démarrer, avec un message clair. ✅
+⚠️ Une valeur invalide (par exemple `IMAGE3D_PROVIDER=meshy`, une origine `*` ou un `FORMA3D_SESSION_SECRET` trop court) empêche le serveur de démarrer, avec un message clair. ✅
+
+`PYTHON_DOTENV_DISABLED=true` n'est pas une variable du projet mais de la bibliothèque python-dotenv : `scripts/dev.ps1` la pose **seulement pendant pytest** (avec `HF_SPACE_ID` vide) pour que les tests ne lisent jamais `backend/.env`, puis la retire avant de démarrer le serveur.
 
 ---
 
@@ -1021,6 +1092,7 @@ Fichiers : `pages/models.js`, `views/gallery.js`. Le GLB importé est vérifié 
 | ② Onglets « IFrame » / « Widget Forma3D » | Choisissent le code affiché ; bloqués tant que l'étape 1 n'est pas faite | local |
 | ③ « Copier » | Copie le code ; « Code copié. Collez-le dans la page produit de votre site. » | presse-papiers |
 | ④ Aperçu | Affiche la vraie page `/embed/{public_id}` dans un cadre | `/embed/...` |
+| « Supprimer ce modèle » (rouge, sous « Télécharger ») | Fenêtre de confirmation (« Cette action est irréversible », avec un avertissement si l'intégration est active), puis suppression de la ligne, du GLB et de la photo, et retour à « Mes modèles ». Caché pour les exemples et pendant une création | `DELETE /models/{id}` |
 
 | État | Ce qu'on voit |
 |---|---|
@@ -1028,6 +1100,7 @@ Fichiers : `pages/models.js`, `views/gallery.js`. Le GLB importé est vérifié 
 | Modèle en cours | « Le modèle est encore en cours de création. » ; la page se met à jour toutes les 2 s |
 | Échec | « La création n'a pas abouti. Aucun fichier n'est disponible. » |
 | Identifiant inconnu | « Ce modèle est introuvable. Il a peut-être été supprimé. » |
+| Suppression refusée | Message sous le bouton (par exemple 409 : « Ce modèle est encore en cours de création… ») |
 
 ⚠️ Les **exemples du catalogue** n'ont pas de section d'intégration : il faut d'abord les copier dans « Mes modèles ». Fichier : `pages/model-detail.js`.
 
@@ -1114,7 +1187,7 @@ flowchart LR
     F --> G["Créer une clé API<br/>si un serveur doit appeler l'API"]
 ```
 
-1. Lancer le serveur, ouvrir `http://127.0.0.1:8000`, se connecter.
+1. Lancer `.\scripts\dev.ps1`, ouvrir `http://127.0.0.1:8001` (ou `8000` si uvicorn est lancé à la main), se connecter.
 2. Aller dans **Créer**, déposer une photo nette, choisir la catégorie, cliquer sur « Créer le modèle 3D → ».
 3. Attendre l'étape « Terminé », puis cliquer sur « Ouvrir la fiche du modèle → ».
 4. Vérifier le modèle avec « Comparer » ; le télécharger si besoin.
@@ -1193,7 +1266,7 @@ flowchart TD
   - **SameSite=Lax** : il n'est pas envoyé par les formulaires d'autres sites ;
   - **Secure** en HTTPS ;
   - durée **8 heures**.
-- Le contenu du cookie est un **jeton signé HMAC-SHA256** : `owner.<expiration>.<signature>`. Sans la clé secrète du serveur, impossible d'en fabriquer un faux. La clé est tirée au hasard à chaque démarrage : un redémarrage déconnecte la propriétaire.
+- Le contenu du cookie est un **jeton signé HMAC-SHA256** : `owner.<expiration>.<signature>`. Sans la clé secrète du serveur, impossible d'en fabriquer un faux. Par défaut, la clé est tirée au hasard à chaque démarrage : un redémarrage déconnecte la propriétaire. Si `FORMA3D_SESSION_SECRET` (32 caractères minimum) est défini dans `backend/.env`, la clé est fixe et la session survit aux redémarrages, toujours 8 h au plus ; changer cette valeur déconnecte tout le monde (étape 24).
 - Limite : **5 tentatives par minute et par adresse IP** (en mémoire).
 
 🔁 **Keycloak** fait la même chose en plus complet (jetons JWT signés, sessions, rôles). Ici, il n'y a qu'un utilisateur et un seul rôle.
@@ -1219,10 +1292,20 @@ Les deux refusent `*`. Le test d'intégration du 12 novembre 2026 l'a vérifié 
 
 - ⚠️ **HTTP en local** : sans HTTPS, le cookie et les clés circulent en clair sur le réseau. Usage local uniquement tant qu'il n'y a pas de déploiement HTTPS.
 - ⚠️ Pas de jeton anti-CSRF dédié (seulement `SameSite=Lax`).
-- ⚠️ Pas de comptes multiples ni de rôles : un seul mot de passe.
+- ⚠️ Pas de comptes multiples ni de rôles : un seul mot de passe (conception de la suite : section 18).
+- ✅ La suppression d'un modèle n'existe que dans le Studio (session propriétaire) ; l'API `/api/v1` n'en propose pas : une clé API volée ne peut rien effacer.
 - ⚠️ La limite de tentatives est en mémoire : elle repart à zéro au redémarrage.
 - ⚠️ `/health/provider` est public (il ne donne qu'un statut, jamais l'adresse du serveur).
 - ⚠️ Tout le monde qui connaît le `public_id` d'un modèle activé peut le voir ; désactiver l'intégration coupe l'accès.
+
+
+### 12.6 Encadrés
+
+> **Un exemple concret.** Trois essais avec PowerShell montrent le rôle de la clé API : sans en-tête `X-API-Key` → **401** ; avec une fausse clé → **401** ; avec la vraie clé → **200** et l'état du modèle. Après révocation dans « Clés API », le même appel repasse à **401**. Côté Studio, si le serveur redémarre sans `FORMA3D_SESSION_SECRET`, le cookie n'est plus reconnu et l'écran de connexion réapparaît.
+
+> **Une analogie.** 🔁 Keycloak émet des jetons JWT signés et gère utilisateurs et rôles ; ici, un seul utilisateur, un jeton signé HMAC dans un cookie HttpOnly, et une dépendance FastAPI `require_owner` qui joue le rôle d'un filtre Spring Security sur les routes du Studio. Les clés API ressemblent aux « client credentials » d'un client OAuth, stockées seulement sous forme d'empreinte, comme un mot de passe haché.
+
+> **Ce que je réponds si on me demande pourquoi.** « J'ai séparé trois portes : la session de la propriétaire pour le Studio, une clé API pour les programmes, et un accès public limité aux modèles explicitement activés sur des sites autorisés. Aucun secret n'est stocké en clair, et tout est fermé par défaut. »
 
 ---
 
@@ -1265,11 +1348,34 @@ Les erreurs ont toujours la forme `{"error": {"code": "...", "message": "..."}}`
 
 `examples/integration.html` est un faux site de boutique : on y saisit l'adresse de Forma3D et un `public_id`, puis la page charge le widget. Mode d'emploi complet : `docs/INTEGRATION.md` et la page `#/guide`.
 
+
+### 13.5 Ce qui se passe quand un visiteur ouvre la page produit
+
+```mermaid
+sequenceDiagram
+    participant V as Navigateur du visiteur
+    participant B as Site vitrine (port 8081)
+    participant F as Forma3D (port 8001)
+    V->>B: GET /ma-vitrine.html
+    B-->>V: page HTML avec iframe ou widget
+    V->>F: GET /embed/{public_id}
+    F->>F: modèle DONE et embed_enabled ? origine autorisée ?
+    F-->>V: page du viewer + en-tête CSP frame-ancestors
+    V->>F: GET /public/models/{public_id}/glb
+    F-->>V: fichier GLB affiché par model-viewer
+```
+
+> **Un exemple concret.** Sur le PC de l'étudiante : terminal 1, `dev.ps1` (Forma3D sur 8001) ; terminal 2, `python -m http.server 8081` (le « site vitrine »). Avec `EMBED_ALLOWED_ORIGINS=http://127.0.0.1:8081` dans `backend/.env`, la page `examples/integration.html` affiche le fauteuil vert. Le port fait partie de l'origine : pour le navigateur, 8001 et 8081 sont deux sites différents.
+
+> **Une analogie.** 🔁 C'est comme intégrer une vidéo YouTube : on colle une balise, la vidéo reste hébergée chez YouTube, et YouTube décide quels sites ont le droit de l'afficher. Le widget `<forma3d-viewer>` est un Web Component, comparable à un composant Angular exporté en « Angular Elements » utilisable dans n'importe quelle page.
+
+> **Ce que je réponds si on me demande pourquoi.** « L'intégration n'a besoin d'aucune clé : le visiteur ne voit jamais de secret. La clé API sert seulement au serveur de la boutique. L'adresse `127.0.0.1` ne fonctionne que sur mon PC ; un vrai site en ligne demanderait un hébergement HTTPS, prévu dans l'architecture cible. »
+
 ---
 
 ## 14. Tests et CI/CD
 
-**En une phrase :** 145 tests automatiques vérifient le backend et les fichiers du frontend, et GitHub les relance à chaque envoi de code.
+**En une phrase :** 159 tests automatiques (au 15 novembre 2026) vérifient le backend et les fichiers du frontend, et GitHub les relance à chaque envoi de code.
 
 ### 14.1 Ce que prouvent les tests
 
@@ -1281,8 +1387,17 @@ Lancer les tests (Windows, depuis la racine du dépôt) :
 
 ```powershell
 cd backend
+$env:PYTHON_DOTENV_DISABLED = "true"; $env:HF_SPACE_ID = ""
 .venv\Scripts\python.exe -m pytest -q
 ```
+
+**Isolation des tests** (corrigée le 15 novembre 2026) : un test ne doit jamais dépendre de la machine de la développeuse.
+
+| Problème rencontré | Cause | Correction |
+|---|---|---|
+| Avec `IMAGE3D_PROVIDER=trellis` et `HF_TOKEN` dans `backend/.env`, deux tests de `test_health.py` recevaient « ONLINE » | Le test remplaçait `main_module.provider`, mais la route lit `app.state.generation_provider` (TRELLIS), qui interrogeait le vrai Space | Le test remplace l'objet réellement lu par la route |
+| Après une vraie génération, deux tests de `test_demo_gallery.py` échouaient | Ils lisaient la vraie base `backend/data/forma3d.sqlite3` | Le service est remplacé par un faux service vide pendant ces tests |
+| `dev.ps1` dépendait du `.env` réel pendant pytest | python-dotenv chargeait `backend/.env` | pytest tourne avec `PYTHON_DOTENV_DISABLED=true` et `HF_SPACE_ID` vide ; le serveur, lui, lit toujours `.env` |
 
 ### 14.2 CI et CD en mots simples
 
@@ -1318,6 +1433,15 @@ flowchart LR
 
 ⚠️ Le résultat de la CI se lit dans l'onglet **Actions** du dépôt GitHub ; il n'a pas été vérifié pour ce document (**à vérifier**).
 
+
+### 14.4 Encadrés
+
+> **Un exemple concret.** Le 15 novembre 2026, `dev.ps1` refusait de démarrer : « Les tests ont échoué ». Les tests de santé lisaient le vrai `.env` de l'étudiante (TRELLIS + jeton) et interrogeaient le vrai Space. Correction : le test remplace l'objet que la route utilise vraiment, et pytest tourne sans `.env`. Preuve : les tests passent avec l'environnement par défaut **et** avec des variables factices (`IMAGE3D_PROVIDER=trellis`, `HF_TOKEN=jeton-factice-pour-test`).
+
+> **Une analogie.** 🔁 C'est l'équivalent de JUnit avec Mockito : les fournisseurs 3D sont remplacés par des faux objets (`FakeClient`, `SuccessfulProvider`), et `app.dependency_overrides` de FastAPI joue le rôle de `@MockBean` dans un test Spring Boot.
+
+> **Ce que je réponds si on me demande pourquoi.** « Un test doit donner le même résultat sur toutes les machines. Mes tests n'appellent jamais un service d'IA, n'utilisent pas ma vraie base et ne lisent pas mon `.env` ; ils prouvent les règles du code, pas la qualité visuelle, que je vérifie à la main. »
+
 ---
 
 ## 15. Installer, configurer, lancer, dépanner
@@ -1342,7 +1466,18 @@ cd C:\chemin\vers\forma3d-kit-codex
 backend\.venv\Scripts\python.exe -m uvicorn app.main:app --app-dir backend --port 8000
 ```
 
-Ouvrez `http://127.0.0.1:8000`. Variante automatique : `.\scripts\dev.ps1` (lance d'abord les tests, puis le serveur sur le port **8001**).
+Ouvrez `http://127.0.0.1:8000`. Variante automatique, recommandée : `.\scripts\dev.ps1` (lance d'abord les tests isolés, puis le serveur sur le port **8001**, et ouvre Edge).
+
+| Lancement | Port | Lit `backend/.env` ? |
+|---|---|---|
+| `.\scripts\dev.ps1` | **8001** | Oui pour le serveur, non pour les tests |
+| `uvicorn … --port 8000` à la main | **8000** (ou le port choisi) | Oui |
+
+⚠️ Si un serveur répond déjà sur le port, `dev.ps1` affiche « API prête » **sans le redémarrer** : après une modification de `backend/.env`, arrêtez d'abord l'ancien serveur. Le serveur tourne en arrière-plan et ne s'arrête pas quand on ferme le terminal :
+
+```powershell
+Get-NetTCPConnection -LocalPort 8001 -State Listen | ForEach-Object { Stop-Process -Id $_.OwningProcess }
+```
 
 ### 15.3 Erreurs fréquentes
 
@@ -1352,7 +1487,11 @@ Ouvrez `http://127.0.0.1:8000`. Variante automatique : `.\scripts\dev.ps1` (lanc
 | Mes modèles ou mes réglages ont « disparu » | Serveur lancé depuis le mauvais dossier (une copie de travail au lieu du dépôt principal) | Lancer depuis la racine du dépôt principal, celle qui contient votre `backend/.env` et `backend/data/` |
 | « Connexion impossible : définissez FORMA3D_OWNER_PASSWORD… » | Mot de passe absent de `backend/.env` (ou mis par erreur dans `.env.example`) | L'ajouter dans `backend/.env`, redémarrer |
 | `error while attempting to bind on address … 8000` | Port déjà utilisé par un autre serveur | Arrêter l'autre serveur (Ctrl+C) ou utiliser `--port 8001` |
-| Badge « Serveur 3D : hors ligne » | `HF_SPACE_ID` vide ou lien Colab expiré | Utiliser les exemples et l'import, ou configurer un fournisseur |
+| Badge « Serveur 3D : hors ligne » | Voir la section 17 (fournisseur non configuré, ancien serveur, quota, Colab expiré…) | Lire `/health/provider`, puis suivre la section 17 |
+| « Les tests ont échoué ; le serveur n'a pas été démarré » | Un test a échoué : `dev.ps1` refuse alors de démarrer le serveur | Lire le nom du test en rouge ; mettre le dépôt à jour (`git pull`) |
+| « API prête » mais l'ancienne configuration reste active | Un ancien serveur occupait déjà le port | Arrêter l'ancien serveur (commande ci-dessus), relancer |
+| « The read operation timed out » | Space TRELLIS très lent (ancien délai de 5 s) | Corrigé (120 s par requête) ; mettre le dépôt à jour |
+| Le bouton « Supprimer ce modèle » n'apparaît pas | Ancienne version de `model-detail.js` en cache | **Ctrl+F5**, ou F12 puis « Vider le cache et effectuer une actualisation forcée » |
 | « Quota GPU gratuit du Space TRELLIS atteint » | Quota journalier épuisé | Réessayer plus tard ; ajouter un jeton gratuit `HF_TOKEN` |
 | Le modèle paraît noir | Matériau métallique par défaut (ancien fichier) | Déjà corrigé à l'affichage et pour les nouveaux fichiers ; recharger avec Ctrl+F5 |
 | Un site partenaire n'affiche rien | Origine absente de `EMBED_ALLOWED_ORIGINS`, ou intégration non activée | Ajouter l'origine exacte, redémarrer, activer l'interrupteur sur la fiche |
@@ -1367,12 +1506,15 @@ Ouvrez `http://127.0.0.1:8000`. Variante automatique : `.\scripts\dev.ps1` (lanc
 
 - **Qualité 3D** : une seule photo ne montre pas l'arrière ; TripoSR a des couleurs approximatives, TRELLIS invente parfois des parties (exemple observé : une table en demi-lune devenue ovale).
 - **Fiabilité** : Colab expire, les Spaces gratuits ont des quotas journaliers et des mises en veille.
-- **Génération TRELLIS depuis le Studio** : la chaîne est branchée et a joint le Space, mais une génération complète par l'interface reste à obtenir (quota épuisé lors de la tentative du 11 novembre 2026).
+- **Génération TRELLIS depuis le Studio** : obtenue le 15 novembre 2026 (fauteuil rétro vert : GLB affiché, intégré et visible sur une page de test), après la correction du délai HTTP. Elle reste dépendante du quota quotidien et de la disponibilité du Space.
+- **Qualité selon la photo** : un fauteuil blanc sur fond gris clair, en petite capture d'écran, a donné un modèle posé sur une « dalle » : le détourage n'a pas séparé l'objet du sol (contraste trop faible, ombre, image de moins de 512 px).
 - **Sécurité** : usage local, HTTP, un seul mot de passe (section 12.5).
 - **Données** : SQLite et disque local, sans sauvegarde automatique.
 - **Pas de déploiement** ni de CD.
 
 ### 16.2 La deuxième partie du projet (proposée, non commencée)
+
+Décision du 15 novembre 2026 : option C (rester mono-propriétaire pour la soutenance). L'architecture détaillée est dans `docs/ARCHITECTURE-CIBLE.md` et résumée en section 18. La suppression d'un modèle existe désormais, en version définitive avec confirmation (étape 23).
 
 | Étape | Contenu |
 |---|---|
@@ -1384,7 +1526,129 @@ Ouvrez `http://127.0.0.1:8000`. Variante automatique : `.\scripts\dev.ps1` (lanc
 
 ---
 
-## 17. Glossaire A–Z
+## 17. Pourquoi le serveur 3D affiche « hors ligne »
+
+**En une phrase :** le badge rouge signifie que Forma3D ne peut pas joindre son fournisseur 3D ; la cause se lit sur `/health/provider`, et tout le reste du Studio continue de fonctionner.
+
+### 17.1 Lire le diagnostic
+
+Ouvrez `http://127.0.0.1:8001/health/provider` (ou `8000` si uvicorn est lancé à la main). La réponse ne contient jamais l'adresse du serveur ni le jeton :
+
+```json
+{"status": "OFFLINE", "message": "Le serveur 3D (Colab) est arrêté ou son lien a expiré (72 h)…"}
+```
+
+| `status` | Message | Ce que ça veut dire |
+|---|---|---|
+| `ONLINE` | « Le serveur 3D est joignable. » | Tout va bien |
+| `UNCONFIGURED` | « HF_SPACE_ID est vide… » | Fournisseur TripoSR sans adresse : `IMAGE3D_PROVIDER` n'est pas `trellis` et `HF_SPACE_ID` est vide |
+| `OFFLINE` + « Colab » | « Le serveur 3D (Colab) est arrêté ou son lien a expiré… » | Le serveur utilise **TripoSR** : soit le lien Colab a expiré, soit `IMAGE3D_PROVIDER=trellis` n'a pas été pris en compte |
+| `OFFLINE` + « TRELLIS » | « Le Space TRELLIS est en veille, en panne ou indisponible… » | TRELLIS est bien configuré, mais le Space ne répond pas « RUNNING » |
+
+### 17.2 Les causes, dans l'ordre où les chercher
+
+```mermaid
+flowchart TD
+    A["Badge rouge"] --> B{"/health/provider"}
+    B -->|UNCONFIGURED| C["Fournisseur non configuré :<br/>IMAGE3D_PROVIDER ou HF_SPACE_ID"]
+    B -->|OFFLINE + Colab| D{"Le serveur a-t-il été<br/>relancé après la<br/>modification de .env ?"}
+    D -->|non| E["Arrêter l'ancien serveur<br/>puis relancer dev.ps1"]
+    D -->|oui| F["Lancé depuis le bon dossier ?<br/>Ligne IMAGE3D_PROVIDER correcte ?<br/>Sinon : lien Colab expiré"]
+    B -->|OFFLINE + TRELLIS| G["Space en veille ou en panne :<br/>réessayer plus tard"]
+    B -->|ONLINE mais création en échec| H["Lire le message d'échec :<br/>quota épuisé, délai, contrat changé"]
+```
+
+| Cause | Comment la reconnaître | Que faire |
+|---|---|---|
+| **Fournisseur non configuré** | `UNCONFIGURED` | Dans `backend/.env` : `IMAGE3D_PROVIDER=trellis` (ou une adresse `HF_SPACE_ID` pour TripoSR), puis redémarrer |
+| **Ancien serveur encore actif** | Message « Colab » alors que `.env` dit `trellis` ; `dev.ps1` affiche « API prête » sans redémarrer | Arrêter le serveur sur le port 8001 (section 15.2), relancer |
+| **Serveur lancé depuis le mauvais dossier** | Par exemple depuis `.claude\worktrees\…`, qui n'a pas de `backend/.env` | Lancer depuis la racine du dépôt principal |
+| **Jeton absent** | Pas d'erreur immédiate, mais quota anonyme très petit | Ajouter `HF_TOKEN` (gratuit) dans `backend/.env` |
+| **Quota épuisé** | Badge parfois vert, mais création en échec : « Quota GPU gratuit du Space TRELLIS atteint… » | Attendre la recharge quotidienne ; ne pas relancer en boucle |
+| **Lien Colab expiré** (TripoSR) | `OFFLINE` + « Colab » | Relancer le notebook, copier la nouvelle adresse dans `HF_SPACE_ID`, redémarrer |
+| **Space lent ou en veille** | `OFFLINE` + « TRELLIS », ou création longue | Réessayer plus tard |
+
+⚠️ Le badge est rafraîchi toutes les 30 s (`main.js`) ; au chargement il peut être jaune quelques secondes (vérification en cours).
+
+### 17.3 Ce qui reste utilisable sans fournisseur
+
+- ✅ Exemples du catalogue, et « Ajouter à mes modèles »
+- ✅ Import d'un `.glb` existant
+- ✅ Fiches, comparaison photo/modèle, téléchargement, suppression
+- ✅ Activation de l'intégration, iframe, widget, page `/embed`
+- ✅ Clés API et routes `/api/v1` de lecture
+- ❌ Seule la **création à partir d'une photo** est bloquée (bouton désactivé)
+
+> **Ce que je réponds si on me demande pourquoi.** « Le fournisseur est un service gratuit externe : il peut dormir ou atteindre son quota. J'ai donc rendu son état visible, sans jamais exposer d'adresse ni de jeton, et j'ai gardé tout le reste du Studio utilisable hors ligne. »
+
+---
+
+## 18. Du Studio privé au SaaS
+
+**En une phrase :** pour la soutenance, Forma3D reste une console privée (option C) ; le passage à un SaaS multi-clients est conçu en détail dans `docs/ARCHITECTURE-CIBLE.md`, mais pas codé.
+
+| Thème | Aujourd'hui | Demain (cible) |
+|---|---|---|
+| Rôles | Propriétaire seule | Visiteur, client inscrit, administrateur |
+| Isolation | Sans objet | `owner_id` sur modèles, clés API et sites autorisés ; chaque requête vérifie le propriétaire (sinon : faille IDOR) |
+| Base | SQLite local | PostgreSQL hébergé, avec Row Level Security |
+| Fichiers | `backend/storage/` | Stockage d'objets séparé |
+| Authentification | Mot de passe unique | Supabase Auth recommandé (option A) plutôt qu'une authentification maison (option B) |
+| Goulot | Quota GPU gratuit | Le même quota, partagé par tous les clients : c'est la vraie limite |
+| Données personnelles | Aucune inscription | RGPD : consentement, export, suppression de compte |
+
+```mermaid
+flowchart LR
+    C["Option C<br/>soutenance<br/>(choisie)"] --> A["Option A<br/>Supabase<br/>(recommandée ensuite)"]
+    C -.-> B["Option B<br/>PostgreSQL + auth maison<br/>(déconseillée)"]
+```
+
+Pourquoi la migration est possible : le service dépend de l'interface `GenerationRepository`, pas de SQLite (section 6.6). Le vrai travail serait d'ajouter l'`owner_id` à chaque méthode et à chaque route.
+
+👉 Lire `docs/ARCHITECTURE-CIBLE.md` : schéma des tables, comparaison des options avec les liens officiels, plan en étapes, et dix phrases prêtes pour l'oral.
+
+---
+
+## 19. Comment travailler avec Git sur ce projet
+
+**En une phrase :** chaque changement est fait sur une branche, proposé dans une pull request, fusionné dans `main` sur GitHub, puis récupéré sur le PC avec `git pull`.
+
+```mermaid
+sequenceDiagram
+    participant W as Copie de travail (branche)
+    participant G as GitHub
+    participant M as Dossier principal (main)
+    W->>W: modifications + tests + commit
+    W->>G: git push (nouvelle branche)
+    G->>G: pull request, relecture, CI
+    G->>G: Merge dans main
+    M->>G: git pull
+    G-->>M: main à jour
+    M->>M: arrêter l'ancien serveur, relancer dev.ps1
+```
+
+| Mot | Sens | Commande |
+|---|---|---|
+| **Branche** | Une ligne de travail séparée de `main` | `git switch -c ma-branche` |
+| **Commit** | Une photo enregistrée des modifications | `git commit -m "message"` |
+| **Push** | Envoyer ses commits sur GitHub | `git push -u origin ma-branche` |
+| **Pull request (PR)** | Demande de fusion d'une branche dans `main`, avec relecture et CI | bouton « Create pull request » sur GitHub |
+| **Merge** | Fusionner la PR dans `main` | bouton « Merge » sur GitHub |
+| **Pull** | Récupérer sur son PC ce qui a été fusionné | `git pull` |
+
+**Pourquoi un assistant peut travailler dans un worktree séparé.** Un *worktree* est un **deuxième dossier** relié au même dépôt Git, sur une autre branche (ici sous `.claude\worktrees\…`). L'assistant y travaille sans toucher au dossier où la propriétaire lance le site. Conséquences vécues le 15 novembre 2026 :
+
+- une correction faite dans le worktree n'est **pas** active chez soi tant que la PR n'est pas fusionnée et que `git pull` n'est pas fait ;
+- le worktree n'a **pas** de `backend/.env` ni de base `backend/data/` : un serveur lancé depuis ce dossier affiche « hors ligne » et une bibliothèque vide ;
+- après `git pull`, il faut **redémarrer** le serveur, et parfois faire **Ctrl+F5** dans le navigateur (fichiers JavaScript en cache).
+
+> **Une analogie.** 🔁 C'est le même flux que sur GitLab ou GitHub avec un projet Angular ou Spring Boot en équipe : une branche par fonctionnalité, une *merge request*, la CI, puis la fusion.
+
+> **Ce que je réponds si on me demande pourquoi.** « Chaque changement passe par une pull request : il est relu et testé par la CI avant d'arriver dans `main`. L'historique montre exactement quand et pourquoi chaque fonctionnalité a été ajoutée. »
+
+---
+
+## 20. Glossaire A–Z
 
 | Terme | Définition |
 |---|---|
@@ -1402,17 +1666,23 @@ Ouvrez `http://127.0.0.1:8000`. Variante automatique : `.\scripts\dev.ps1` (lanc
 | **Gradio** | Bibliothèque qui crée une page web autour d'un modèle d'IA |
 | **HMAC** | Signature calculée avec une clé secrète ; prouve qu'un jeton n'a pas été modifié |
 | **Hugging Face Space** | Démonstration d'IA hébergée gratuitement sur huggingface.co |
+| **IDOR** | Faille où l'on accède à la ressource d'un autre en changeant un identifiant, faute de vérifier le propriétaire |
 | **iframe** | Cadre qui affiche une page web à l'intérieur d'une autre page |
 | **Maillage (mesh)** | Ensemble des triangles qui forment la surface d'un objet 3D |
 | **Matériau** | Description de la réaction d'une surface à la lumière (couleur, métal, rugosité) |
 | **Migration** | Modification de la structure d'une base de données sans perdre les données |
 | **model-viewer** | Composant HTML de Google qui affiche un fichier 3D |
 | **Module ES** | Fichier JavaScript qui exporte et importe des fonctions (`import` / `export`) |
+| **Multi-tenant** | Une seule application et une seule base servent plusieurs clients, dont les données sont séparées |
 | **Normale** | Direction perpendiculaire à une surface, utilisée pour l'éclairage |
+| **owner_id** | Colonne qui indique à quel client appartient une ligne (modèle, clé API, site autorisé) |
 | **Pré-entraîné** | Modèle d'IA déjà appris par une autre équipe ; on l'utilise sans l'entraîner |
+| **Pull request (PR)** | Demande de fusion d'une branche dans `main`, relue et testée avant la fusion |
 | **Pydantic** | Bibliothèque Python qui valide la forme des données JSON |
 | **Quota** | Limite d'utilisation (par jour ou par minute) |
+| **RGPD** | Règlement européen sur la protection des données personnelles (consentement, accès, effacement) |
 | **Révoquer** | Désactiver définitivement une clé tout en gardant sa trace |
+| **RLS (Row Level Security)** | Règle PostgreSQL qui filtre les lignes selon l'utilisateur, même si le code oublie le filtre |
 | **Routeur** | Code qui associe une adresse à une page (frontend) ou une route à une fonction (backend) |
 | **SPA** | Application à page unique : le contenu change sans recharger la page |
 | **SQLite** | Base de données SQL contenue dans un seul fichier |
@@ -1422,6 +1692,7 @@ Ouvrez `http://127.0.0.1:8000`. Variante automatique : `.\scripts\dev.ps1` (lanc
 | **TripoSR** | Modèle d'IA de Stability AI et Tripo qui produit un modèle 3D à couleurs de sommets |
 | **UUID** | Identifiant unique de 36 caractères, impossible à deviner en pratique |
 | **uvicorn** | Serveur qui exécute une application FastAPI |
+| **Worktree** | Deuxième dossier de travail relié au même dépôt Git, sur une autre branche |
 | **Web Component** | Balise HTML personnalisée créée en JavaScript (`<forma3d-viewer>`) |
 | **Widget** | Petit composant intégrable dans un autre site |
-| **ZeroGPU** | GPU gratuit partagé des Spaces Hugging Face, limité par un quota journalier |
+| **ZeroGPU** | GPU gratuit partagé des Spaces Hugging Face, limité par un quota journalier attaché au compte (environ 2 min sans compte, 5 min avec un compte gratuit : à vérifier) |
