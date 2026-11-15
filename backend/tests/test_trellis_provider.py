@@ -83,6 +83,14 @@ def test_generate_follows_the_observed_trellis_sequence_and_returns_glb(tmp_path
     assert data[:4] == b"glTF"
 
 
+def test_client_uses_a_long_http_timeout_for_a_slow_free_space(tmp_path: Path) -> None:
+    """Le délai httpx par défaut (5 s) provoquait un ReadTimeout quand le Space était chargé."""
+    provider, photo = _provider(tmp_path)
+    provider.generate(photo)
+
+    assert FakeClient.instances[0].kwargs["httpx_kwargs"] == {"timeout": 120.0}
+
+
 def test_contract_change_stops_before_sending_the_photo(tmp_path: Path) -> None:
     provider, photo = _provider(tmp_path, endpoints={"/start_session": {}})
     with pytest.raises(ProviderError, match="contrat du Space TRELLIS a changé"):
