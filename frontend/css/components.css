@@ -2158,6 +2158,19 @@ model-viewer {
   width: 100%;
 }
 
+/* Suppression d'un modèle : action secondaire et rouge, placée sous le téléchargement. */
+.detail-delete {
+  width: 100%;
+  margin-top: var(--space-3);
+}
+
+.detail-delete-feedback {
+  min-height: 1.25em;
+  margin: var(--space-2) 0 0;
+  font-size: 0.85rem;
+  color: var(--danger);
+}
+
 .integration-guide {
   margin-top: var(--section-gap);
 }

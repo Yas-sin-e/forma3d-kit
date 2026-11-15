@@ -352,6 +352,12 @@ class SQLiteGenerationRepository:
             row = connection.execute("SELECT * FROM api_keys WHERE id = ?", (key_id,)).fetchone()
         return self._api_key_from_row(row) if row is not None else None
 
+    def delete_generation(self, generation_id: str) -> bool:
+        """Efface la ligne de la génération ; aucune autre table ne la référence."""
+        with self._connection() as connection:
+            cursor = connection.execute("DELETE FROM generations WHERE id = ?", (generation_id,))
+        return cursor.rowcount > 0
+
     def delete_revoked_api_key(self, key_id: str) -> str:
         """Efface définitivement une clé révoquée et ses compteurs, dans une seule transaction."""
         with self._connection() as connection:

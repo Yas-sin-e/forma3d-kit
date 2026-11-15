@@ -100,6 +100,16 @@ export async function setModelIntegrationEnabled(modelId, enabled) {
   return readResponse(response, "Impossible de modifier l’intégration de ce modèle.");
 }
 
+/* Supprime définitivement un modèle du Studio : ligne, GLB et photo source (204 sans contenu). */
+export async function deleteModel(modelId) {
+  const response = await fetch(`/models/${encodeURIComponent(modelId)}`, {
+    method: "DELETE",
+    headers: { Accept: "application/json" },
+  });
+  if (response.status === 204) return null;
+  return readResponse(response, "Impossible de supprimer ce modèle.");
+}
+
 export async function getProviderHealth() {
   const response = await fetch("/health/provider", {
     cache: "no-store",

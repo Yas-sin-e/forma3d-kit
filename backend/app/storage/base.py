@@ -20,3 +20,7 @@ class Storage(Protocol):
     def get_model_path(self, generation_id: str) -> Path | None:
         """Renvoie le modèle présent, ou None si aucun modèle n'est enregistré."""
         ...
+
+    def delete_files(self, generation_id: str) -> None:
+        """Supprime le GLB et la photo source d'une génération, s'ils existent."""
+        ...
