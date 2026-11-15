@@ -521,3 +521,279 @@ Règle vérifiée par un test (`test_frontend.py`) : **seul `api.js` contient `f
 | 11 | Dépôt | `save_generation()` | Statut `DONE`, chemin du GLB, durée |
 | 12 | Page | `create.js` → `refreshStatus()` toutes les 1,5 s | `GET /models/{id}` jusqu'à `DONE`, puis affiche le modèle dans le viewer |
 
+
+---
+
+## 6. Base de données
+
+**En une phrase :** une base SQLite (un seul fichier, `backend/data/forma3d.sqlite3`) garde les catégories, l'historique des modèles et les clés API ; les fichiers eux-mêmes restent sur le disque.
+
+### 6.1 Schéma entité-relation
+
+```mermaid
+erDiagram
+    CATEGORIES ||--o{ GENERATIONS : "classe"
+    API_KEYS ||--o{ API_USAGE_DAILY : "compte par jour"
+    API_KEYS ||--o{ API_RATE_EVENTS : "trace les appels"
+
+    CATEGORIES {
+        INTEGER id PK
+        TEXT slug UK
+        TEXT label
+        INTEGER is_active
+        TEXT created_at
+    }
+    GENERATIONS {
+        TEXT id PK
+        INTEGER category_id FK
+        TEXT status
+        TEXT filename
+        TEXT content_type
+        TEXT source_photo_path
+        TEXT glb_path
+        REAL duration_seconds
+        TEXT error_message
+        TEXT image_warning
+        TEXT origin
+        TEXT public_id
+        INTEGER embed_enabled
+        TEXT created_at
+        TEXT updated_at
+    }
+    API_KEYS {
+        TEXT id PK
+        TEXT name
+        TEXT prefix
+        TEXT fingerprint UK
+        TEXT created_at
+        INTEGER revoked
+    }
+    API_USAGE_DAILY {
+        TEXT api_key_id FK
+        TEXT usage_date
+        INTEGER generation_count
+    }
+    API_RATE_EVENTS {
+        INTEGER id PK
+        TEXT api_key_id FK
+        TEXT occurred_at
+    }
+```
+
+### 6.2 Les tables et leurs colonnes
+
+**`categories`** — les catégories de produits.
+
+| Colonne | Sens |
+|---|---|
+| `id` | Numéro automatique |
+| `slug` | Identifiant technique unique (`chair`, `stool`, `side-table`) |
+| `label` | Nom affiché (« Chaise », « Tabouret », « Table d'appoint ») |
+| `is_active` | 1 = proposée pour les nouvelles créations ; 0 = désactivée |
+| `created_at` | Date de création |
+
+Au premier démarrage, les trois catégories initiales sont créées si elles n'existent pas. ✅
+
+**`generations`** — chaque modèle : généré, importé ou copié depuis un exemple.
+
+| Colonne | Sens |
+|---|---|
+| `id` | UUID (identifiant unique) interne, utilisé par le Studio |
+| `category_id` | Lien vers `categories` (clé étrangère) |
+| `status` | `PENDING`, `RUNNING`, `DONE` ou `FAILED` (contrôle `CHECK`) |
+| `filename` | Nom affiché du fichier ou titre |
+| `content_type` | Type de la photo (`image/jpeg`…) |
+| `source_photo_path` | Chemin de la photo source sur le disque |
+| `glb_path` | Chemin du GLB (vide tant que le modèle n'est pas terminé) |
+| `duration_seconds` | Durée de génération mesurée |
+| `error_message` | Cause d'un échec, sans secret |
+| `image_warning` | Avertissement non bloquant (photo petite ou floue) |
+| `origin` | `generated`, `imported` ou `example` |
+| `public_id` | UUID **public**, utilisé par `/embed` et le widget (différent de `id`) |
+| `embed_enabled` | 1 = intégration autorisée sur un site ; 0 par défaut |
+| `created_at`, `updated_at` | Dates |
+
+**`api_keys`** — les clés API. ⚠️ La clé complète n'est **jamais** enregistrée : seule son **empreinte** (`fingerprint`, un hachage SHA-256) l'est, plus un `prefix` lisible (`f3d_live_xxx…`).
+
+**`api_usage_daily`** — nombre de créations par clé et par jour (quota quotidien).
+
+**`api_rate_events`** — horodatage des appels récents de chaque clé (limite par minute ; les événements de plus de 60 s sont nettoyés).
+
+Les exemples du catalogue ne sont **pas** dans la base : ils sont décrits par une liste fixe dans `demo_gallery.py`.
+
+### 6.3 Pourquoi SQLite ?
+
+- Un seul fichier, aucun serveur à installer : parfait pour un prototype local.
+- SQL standard : 🔁 vous retrouvez `CREATE TABLE`, `REFERENCES`, `CHECK` comme dans Oracle.
+- Limite : un seul écrivain à la fois, pas de comptes utilisateurs de base de données, pas adapté à plusieurs serveurs.
+
+### 6.4 Migrations
+
+**Une migration** est une modification de la structure d'une base existante sans perdre les données. Le projet utilise des migrations **simples et non destructives** dans `SQLiteGenerationRepository.initialize()` :
+
+1. `CREATE TABLE IF NOT EXISTS …` crée les tables absentes.
+2. Le code lit les colonnes existantes (`PRAGMA table_info(generations)`).
+3. Il ajoute les colonnes manquantes avec `ALTER TABLE … ADD COLUMN` : `image_warning`, `origin`, `public_id`, `embed_enabled`.
+
+🔁 C'est l'équivalent très simplifié de Flyway (Spring) ou des migrations Doctrine (Symfony), sans numéro de version. ⚠️ Il n'existe pas de retour arrière automatique.
+
+### 6.5 Au redémarrage du serveur
+
+Les générations restées `PENDING` ou `RUNNING` (le serveur s'est arrêté au milieu) passent à `FAILED` avec le message « Génération interrompue au redémarrage du serveur. » ✅ Une génération n'est donc jamais bloquée pour toujours en « en cours ».
+
+### 6.6 Passer plus tard à PostgreSQL (sans le faire)
+
+Les services ne parlent jamais à SQLite directement : ils utilisent le **contrat** `GenerationRepository` (`backend/app/repositories/base.py`). Ce contrat liste les opérations : `initialize`, `save_generation`, `get_generation`, `get_generation_by_public_id`, `set_embed_enabled`, `list_completed_generations`, `list_categories`, `create_category`, `update_category`, `delete_category`, `create_api_key`, `list_api_keys`, `find_api_keys_by_prefix`, `revoke_api_key`, `delete_revoked_api_key`, `consume_api_rate_limit`, `consume_api_daily_quota`…
+
+🔁 C'est une **interface Java** : pour passer à PostgreSQL, il suffirait d'écrire une classe `PostgreSQLGenerationRepository` qui implémente les mêmes méthodes, puis de la choisir dans `main.py`. Les routes et services ne changeraient pas. Il faudrait aussi un script qui copie les données et des migrations versionnées. **Ce n'est pas fait.**
+
+---
+
+## 7. Fournisseurs 3D
+
+**En une phrase :** un « fournisseur » est la classe qui envoie la photo à un service d'IA et rapporte un GLB ; le projet en contient deux, TripoSR (par défaut) et TRELLIS.
+
+### 7.1 Le contrat commun
+
+```python
+class Image3DProvider(Protocol):
+    def generate(self, image_path: Path) -> bytes: ...
+```
+
+Une image entre, des octets GLB sortent. 🔁 Comme une interface Spring avec deux implémentations, choisies au démarrage.
+
+### 7.2 Les deux fournisseurs
+
+| | TripoSR — `HuggingFaceSpaceProvider` | TRELLIS — `TrellisSpaceProvider` |
+|---|---|---|
+| Fichier | `backend/app/providers/huggingface.py` | `backend/app/providers/trellis.py` |
+| Où tourne l'IA | Un Space Hugging Face **ou** un serveur Gradio temporaire sur Google Colab (`HF_SPACE_ID`) | Le Space public `trellis-community/TRELLIS` (`TRELLIS_SPACE_ID`) |
+| Enchaînement | Lit le contrat (`view_api()`), choisit la fonction disponible, envoie la photo | `view_api()` → `/start_session` → `/preprocess_image` (détourage du fond) → `/generate_and_extract_glb` |
+| Résultat | GLB à couleurs de sommets | GLB texturé |
+| Relance | Oui si le Space démarre (`HF_MAX_ATTEMPTS`, 1 ou 2) | Non |
+| Délai maximal | `HF_TIMEOUT_SECONDS` (300 s par défaut) | Même valeur |
+| Compatibilité en plus | Sait aussi lire le contrat de Stable Fast 3D (`/run_button`) | — |
+
+Après le fournisseur, **le même traitement** s'applique : vérification GLB 2.0, puis finition (`glb_finisher.py`) qui ajoute un matériau mat et des normales. ✅
+
+### 7.3 Lequel est utilisé par défaut ?
+
+**TripoSR**, car `IMAGE3D_PROVIDER` vaut `triposr` par défaut (`backend/app/config.py`). ✅
+
+```mermaid
+flowchart LR
+    A["Démarrage de main.py"] --> B{"IMAGE3D_PROVIDER ?"}
+    B -->|"triposr (défaut)"| C["HuggingFaceSpaceProvider<br/>utilise HF_SPACE_ID"]
+    B -->|trellis| D["TrellisSpaceProvider<br/>utilise TRELLIS_SPACE_ID"]
+```
+
+**Comment vérifier :** ouvrez `http://127.0.0.1:8000/health/provider`. Quand le service est hors ligne, le message parle de « Colab » pour TripoSR et de « Space TRELLIS » pour TRELLIS.
+
+**Comment changer :** dans `backend/.env`, mettez `IMAGE3D_PROVIDER=trellis`, puis redémarrez le serveur. Ou lancez le serveur depuis un terminal où la variable est définie (elle a alors priorité sur `.env`).
+
+### 7.4 Le jeton `HF_TOKEN`
+
+- C'est un **mot de passe pour programme** fourni gratuitement par Hugging Face (*Settings → Access Tokens*, type « Read »).
+- Il augmente le **quota GPU gratuit** de TRELLIS.
+- Où le ranger : **uniquement** dans `backend/.env` (ignoré par Git) ou dans la variable d'un terminal. **Jamais** dans `.env.example`, dans le code ou dans une conversation.
+- Sécurité : le code ne l'envoie qu'à Hugging Face. `TRELLIS_SPACE_ID` doit être un identifiant `propriétaire/nom`, jamais une URL, et le fournisseur TripoSR refuse d'envoyer le jeton à une URL Gradio externe. Il est masqué dans les messages d'erreur. ✅
+
+### 7.5 Quotas, erreurs et mode hors ligne
+
+| Situation | Ce que voit la propriétaire |
+|---|---|
+| `HF_SPACE_ID` vide (TripoSR) | Badge « Serveur 3D : hors ligne » ; bouton « Créer » désactivé ; statut `UNCONFIGURED` |
+| Lien Colab expiré (72 h maximum) | Badge hors ligne ; message « Le serveur 3D (Colab) est arrêté ou son lien a expiré » |
+| Quota TRELLIS épuisé | La création échoue avec « Quota GPU gratuit du Space TRELLIS atteint pour aujourd'hui… » |
+| Space TRELLIS en veille | « Le Space TRELLIS est en veille, en panne ou indisponible » |
+| Contrat du Space modifié | La génération s'arrête avant l'envoi de la photo (« Le contrat … a changé ») |
+
+Quand le fournisseur est hors ligne, le reste du Studio fonctionne : exemples, import GLB, fiches, intégration.
+
+### 7.6 Les notebooks Google Colab
+
+- Le dépôt contient **un seul** notebook : `tools/colab/triposr_server.ipynb`. Il vérifie le GPU, installe TripoSR et documente le dépannage. Sa dernière cellule **empêche** de lancer un service web public sur un Colab gratuit géré (règle de la FAQ Colab).
+- Vos notebooks de test **TRELLIS v1, SF3D et comparaison** ne sont **pas** dans le dépôt Git (**à vérifier** : probablement sur votre Google Drive).
+- **Ils ne font pas partie de l'application** : le serveur ne les lit jamais.
+- **Quand les garder** : comme preuves d'expérimentation pour la soutenance (captures, résultats). **Quand les supprimer** : quand leurs résultats sont recopiés dans `docs/QUALITE-3D.md` et qu'ils ne servent plus. N'y laissez jamais un jeton en clair.
+
+### 7.7 Licences à vérifier
+
+| Élément | Licence | À vérifier |
+|---|---|---|
+| TripoSR | MIT | Droits des photos utilisées |
+| TRELLIS (code et poids) | MIT | Usage commercial des modèles générés via le Space (question ouverte) |
+| Stable Fast 3D | Stability AI Community License | Gratuit sous un seuil de chiffre d'affaires |
+| Hunyuan3D-2 | Licence Tencent | Exclut l'Union européenne, le Royaume-Uni et la Corée du Sud : non retenu |
+| model-viewer | Apache 2.0 | — |
+
+Détails et essais : `docs/ALTERNATIVES-3D.md` et `docs/QUALITE-3D.md`.
+
+---
+
+## 8. Cycle de vie d'un modèle
+
+**En une phrase :** un modèle généré passe par quatre états, enregistrés dans SQLite et lus par la page toutes les 1,5 seconde.
+
+```mermaid
+stateDiagram-v2
+    [*] --> PENDING : POST /models (photo acceptée)
+    PENDING --> RUNNING : la tâche de fond démarre
+    RUNNING --> DONE : GLB reçu, vérifié, fini et enregistré
+    RUNNING --> FAILED : erreur, quota ou délai dépassé
+    PENDING --> FAILED : redémarrage du serveur
+    DONE --> [*]
+    FAILED --> [*]
+```
+
+| État | Sens | Ce que montre la page Créer |
+|---|---|---|
+| `PENDING` | Photo reçue, en attente | Étape « En file » active |
+| `RUNNING` | Le fournisseur travaille | Étape « Création du modèle » active, chronomètre |
+| `DONE` | GLB prêt | Modèle affiché, lien « Ouvrir la fiche du modèle → » |
+| `FAILED` | Échec | Message renvoyé par le serveur, bouton « Réessayer avec cette photo » |
+
+- **Tâche de fond** : FastAPI répond tout de suite `202 Accepted`, puis exécute `GenerationService.run()` avec `BackgroundTasks`. 🔁 Comme une méthode `@Async` de Spring.
+- **Aucun pourcentage inventé** : la page n'affiche que les états réellement renvoyés.
+- **Reprise après redémarrage** : pas de reprise automatique ; une génération `PENDING` ou `RUNNING` passe en `FAILED` (section 6.5) et il faut la relancer.
+- Les modèles **importés** ou **copiés** sont créés directement en `DONE`.
+
+---
+
+## 9. Variables d'environnement
+
+**En une phrase :** les réglages et secrets sont lus dans des variables d'environnement, rangées dans un fichier `.env` local que Git ignore.
+
+### 9.1 `.env` contre `.env.example`
+
+| | `.env.example` | `backend/.env` (ou `.env` à la racine) |
+|---|---|---|
+| Contient | La **liste** des variables, avec des valeurs vides ou par défaut | Vos **vraies** valeurs (mot de passe, jeton) |
+| Suivi par Git ? | ✅ oui | ❌ non (ignoré) |
+| Qui le lit ? | Les humains | Le serveur, au démarrage |
+
+Ordre de lecture (`config.py`) : `backend/.env` d'abord, puis `.env` à la racine, **sans écraser** une variable déjà définie dans le terminal. 🔁 Comme `application.properties` de Spring, avec les variables système prioritaires.
+
+### 9.2 Toutes les variables
+
+Les exemples de valeurs ci-dessous sont **faux** et servent seulement à montrer le format.
+
+| Variable | Rôle | Défaut | Lue par | Effet si absente | Exemple (faux) |
+|---|---|---|---|---|---|
+| `HF_SPACE_ID` | Adresse du serveur TripoSR : identifiant de Space ou URL Gradio | vide | `config.py` → `huggingface.py` | TripoSR non configuré, statut `UNCONFIGURED` | `https://exemple-faux.gradio.live` |
+| `HF_TOKEN` | Jeton Hugging Face (quota plus élevé, Space privé) | vide | `config.py`, outils `tools/trials/` | Accès anonyme, quota plus faible | `hf_EXEMPLEFAUX123` |
+| `HF_TIMEOUT_SECONDS` | Délai maximal d'une génération | `300` | `config.py` | 300 s | `300` |
+| `HF_MAX_ATTEMPTS` | Nombre de tentatives TripoSR (1 ou 2) | `2` | `config.py` | 2 | `2` |
+| `HF_RETRY_DELAY_SECONDS` | Attente avant relance | `5` | `config.py` | 5 s | `5` |
+| `FOREGROUND_RATIO` | Réglage TripoSR, utilisé seulement s'il existe dans le contrat du serveur | vide | `config.py` | Valeur du serveur | `0.85` |
+| `MC_RESOLUTION` | Résolution TripoSR, même règle | vide | `config.py` | Valeur du serveur | `256` |
+| `MAX_GLB_UPLOAD_MB` | Taille maximale d'un GLB importé (1 à 512) | `30` | `config.py` | 30 Mo | `30` |
+| `API_DAILY_GENERATION_LIMIT` | Créations par clé et par jour | `20` | `config.py` | 20 | `20` |
+| `API_RATE_LIMIT_PER_MINUTE` | Requêtes `/api/v1` par clé et par minute | `10` | `config.py` | 10 | `10` |
+| `API_CORS_ORIGINS` | Sites autorisés à appeler l'API en JavaScript (`*` refusé) | vide | `config.py` → `main.py` | Aucun site tiers | `http://boutique-exemple.test` |
+| `EMBED_ALLOWED_ORIGINS` | Sites autorisés à afficher `/embed` dans une iframe (`*` refusé) | vide | `config.py` → `embed.py` | Seul le Studio lui-même | `http://127.0.0.1:8081` |
+| `FORMA3D_OWNER_PASSWORD` | Mot de passe unique de la propriétaire | vide | `services/owner_auth.py` | **Connexion refusée** (503) | `mot-de-passe-exemple-long` |
+| `IMAGE3D_PROVIDER` | Fournisseur 3D : `triposr` ou `trellis` | `triposr` | `config.py` → `main.py` | TripoSR | `trellis` |
+| `TRELLIS_SPACE_ID` | Space TRELLIS (`propriétaire/nom`, jamais une URL) | `trellis-community/TRELLIS` | `config.py` → `trellis.py` | Space communautaire par défaut | `trellis-community/TRELLIS` |
+
+⚠️ Une valeur invalide (par exemple `IMAGE3D_PROVIDER=meshy` ou une origine `*`) empêche le serveur de démarrer, avec un message clair. ✅
