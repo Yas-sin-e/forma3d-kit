@@ -4,8 +4,10 @@
  * Refonte : bascule Vue 3D / Photo source / Comparer, squelette de chargement, et intégration
  * guidée en 4 étapes (interrupteur, choix iframe/widget, code à copier, aperçu réel via /embed).
  * Sous-étape A : matériau mat pour les GLB sans matériau, recadrage et rotation en pause en mode Comparer.
+ * Suppression : bouton « Supprimer ce modèle » avec confirmation, puis retour à Mes modèles.
  */
-import { getGenerationStatus, listCategories, listGalleryModels, setModelIntegrationEnabled } from "../api.js?v=20261112-d1";
+import { deleteModel, getGenerationStatus, listCategories, listGalleryModels, setModelIntegrationEnabled } from "../api.js?v=20261112-d1";
+import { confirmDialog } from "../views/confirm-dialog.js?v=20261112-d1";
 import { exampleGenerationSeconds, exampleProviders, formatDuration, formatLongDate } from "../format.js?v=20261112-d1";
 import { refitCamera, watchProductAppearance } from "../views/model-appearance.js?v=20261112-d1";
 
@@ -47,6 +49,8 @@ export function render(route) {
             <div><dt>Durée de génération</dt><dd id="detail-duration">—</dd></div>
           </dl>
           <a class="button button-primary button-large detail-download" id="detail-download" href="#" download hidden>Télécharger le modèle (.glb)</a>
+          <button class="button button-danger detail-delete" id="detail-delete" type="button" hidden>Supprimer ce modèle</button>
+          <p class="detail-delete-feedback" id="detail-delete-feedback" role="status" aria-live="polite"></p>
         </aside>
       </div>
 
@@ -136,8 +140,12 @@ export function mount(route) {
   const previewFrame = $("#detail-preview-frame");
   const previewUrl = $("#detail-preview-url");
   const enableStep = $("#guide-step-enable");
+  const deleteButton = $("#detail-delete");
+  const deleteFeedback = $("#detail-delete-feedback");
   const tabs = [...document.querySelectorAll(".tab[data-method]")];
   let pollTimer = null;
+  // Vrai seulement si la fiche vient de l'historique SQLite (pas d'un exemple de démonstration).
+  let storedInHistory = false;
   let generation = null;
   let model = null;
   let labels = [];
@@ -230,6 +238,7 @@ export function mount(route) {
     duration.textContent = formatDuration(measured);
     error.hidden = true;
     renderIntegration();
+    deleteButton.hidden = !storedInHistory || ["PENDING", "RUNNING"].includes(record.status);
 
     const modelUrl = nextModel?.model_url || record.model_url;
     if (modelUrl) {
@@ -327,6 +336,30 @@ export function mount(route) {
     }
   });
 
+  deleteButton.addEventListener("click", async () => {
+    const displayName = name.textContent || "ce modèle";
+    const embedWarning = model?.embed_enabled
+      ? " L’intégration est activée : l’iframe ou le widget affiché sur vos sites cessera de fonctionner."
+      : "";
+    const confirmed = await confirmDialog({
+      title: "Supprimer définitivement ce modèle ?",
+      message: `« ${displayName} » : le modèle 3D et sa photo source seront effacés. Cette action est irréversible.${embedWarning}`,
+      confirmLabel: "Supprimer définitivement",
+      danger: true,
+    });
+    if (!confirmed) return;
+    deleteButton.disabled = true;
+    deleteFeedback.textContent = "Suppression en cours…";
+    try {
+      await deleteModel(route.id);
+      if (pollTimer !== null) window.clearInterval(pollTimer);
+      window.location.hash = "#/modeles";
+    } catch (deleteError) {
+      deleteFeedback.textContent = deleteError.message || "Impossible de supprimer ce modèle.";
+      deleteButton.disabled = false;
+    }
+  });
+
   async function load() {
     try {
       const [galleryResponse, categoryResponse] = await Promise.all([
@@ -337,6 +370,7 @@ export function mount(route) {
       labels = categoryResponse.items ?? [];
       try {
         generation = await getGenerationStatus(`/models/${encodeURIComponent(route.id)}`);
+        storedInHistory = true;
       } catch (statusError) {
         if (!model) {
           showError(statusError.message.includes("Génération introuvable")

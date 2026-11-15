@@ -43,6 +43,10 @@ class GenerationRepository(Protocol):
         """Active ou désactive l'intégration d'un modèle terminé."""
         ...
 
+    def delete_generation(self, generation_id: str) -> bool:
+        """Supprime la ligne d'une génération ; renvoie False si elle est inconnue."""
+        ...
+
     def list_completed_generations(self) -> list[GenerationRecord]:
         """Retourne les générations terminées, de la plus récente à la plus ancienne."""
         ...

@@ -49,6 +49,14 @@ class LocalStorage:
         path = self.models_dir / f"{generation_id}.glb"
         return path if path.is_file() else None
 
+    def delete_files(self, generation_id: str) -> None:
+        """Efface le GLB et la photo source ; les noms sont reconstruits par le serveur, jamais reçus du client."""
+        self._validate_generation_id(generation_id)
+        candidates = [self.models_dir / f"{generation_id}.glb"]
+        candidates += [self.images_dir / f"{generation_id}{extension}" for extension in sorted(_ALLOWED_IMAGE_EXTENSIONS)]
+        for path in candidates:
+            path.unlink(missing_ok=True)
+
     @staticmethod
     def _validate_generation_id(generation_id: str) -> None:
         """Refuse toute valeur qui n'est pas un UUID généré par l'application."""

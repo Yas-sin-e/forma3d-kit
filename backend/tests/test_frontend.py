@@ -372,3 +372,15 @@ def test_confirm_dialog_settles_without_relying_on_the_close_event() -> None:
     assert 'confirm.addEventListener("click", () => finish(true))' in dialog
     assert 'cancel.addEventListener("click", () => finish(false))' in dialog
     assert "if (settled) return;" in dialog and "dialog.remove();" in dialog
+
+
+def test_model_detail_offers_a_confirmed_permanent_delete() -> None:
+    client = TestClient(app)
+    detail = client.get("/static/js/pages/model-detail.js").text
+    api = client.get("/static/js/api.js").text
+    assert 'id="detail-delete"' in detail and "Supprimer ce modèle" in detail
+    assert "confirmDialog(" in detail and "Cette action est irréversible" in detail
+    # Le bouton n'apparaît que pour un modèle de l'historique, jamais pendant la création.
+    assert "storedInHistory = true" in detail and '["PENDING", "RUNNING"].includes(record.status)' in detail
+    assert "deleteModel(route.id)" in detail and 'window.location.hash = "#/modeles"' in detail
+    assert "export async function deleteModel" in api and 'method: "DELETE"' in api

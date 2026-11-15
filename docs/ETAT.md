@@ -1,6 +1,6 @@
 # État du projet — Forma3D Studio
 
-Dernière mise à jour : 11 novembre 2026.
+Dernière mise à jour : 15 novembre 2026.
 
 ## Avenant au cahier des charges v1.0
 
@@ -12,6 +12,13 @@ Les Sprints 3 (comptes publics) et 4 (vitrine/catalogue public) sont retirés du
 - Livrable vérifiable : modèle activable individuellement, clé révocable non stockée en clair, routes versionnées authentifiées, iframe/widget intégrable et guide d'intégration.
 - Étapes 0 et 5a à 5f (étapes 13 à 18) terminées, plus la refonte visuelle 16b. Le Sprint 6 reste à valider.
 - Le Sprint 6 reste non démarré et nécessite un OK explicite.
+
+## Corrections et ajouts du 15 novembre 2026
+
+- Tests rendus indépendants de `backend/.env` et de la base SQLite locale (`test_health.py`, `test_demo_gallery.py`) ; `scripts/dev.ps1` lance pytest avec `PYTHON_DOTENV_DISABLED=true` et `HF_SPACE_ID` vide, sans changer le démarrage du serveur.
+- TRELLIS : délai HTTP de 120 s par requête (`trellis.py`) ; le délai httpx par défaut (5 s) provoquait des `ReadTimeout` quand le Space gratuit était chargé. Génération réelle vérifiée : GLB obtenu en 117 s.
+- Exemple d'intégration et guide alignés sur le port 8001 de `dev.ps1`.
+- Étape 23 : suppression confirmée d'un modèle depuis sa fiche (`DELETE /models/{id}`), ligne SQLite, GLB et photo source effacés ; refus pendant la création et pour les exemples. Détails : `docs/etapes/etape-23.md`. Bouton non vérifié visuellement dans le navigateur par l'assistant.
 
 ## Sprint 2 — Qualité et fiabilité (terminé)
 

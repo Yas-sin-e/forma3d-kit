@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 
 from app.models import GenerationRecord, GenerationStatus, ModelOrigin
 from app.schemas import (
@@ -136,6 +136,21 @@ def update_model_integration(
     if record is None:
         raise HTTPException(status_code=404, detail="Modèle introuvable.")
     return _to_response(record)
+
+
+@router.delete("/{generation_id}", status_code=204)
+def delete_model(
+    generation_id: str,
+    service: Annotated[GenerationService, Depends(get_generation_service)],
+) -> Response:
+    """Supprime définitivement un modèle du Studio : ligne SQLite, GLB et photo source."""
+    try:
+        deleted = service.delete_generation(generation_id)
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Modèle introuvable.")
+    return Response(status_code=204)
 
 
 def _get_enabled_public_model(

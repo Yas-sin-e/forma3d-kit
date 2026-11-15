@@ -95,6 +95,23 @@ class GenerationService:
                 raise ValueError("Seuls les modèles terminés avec un GLB disponible peuvent être intégrés.")
             return self._repository.set_embed_enabled(generation_id, enabled)
 
+    def delete_generation(self, generation_id: str) -> bool:
+        """Supprime définitivement une génération terminée ou échouée, puis ses fichiers.
+
+        Renvoie False si l'identifiant est inconnu. Une génération PENDING ou RUNNING est refusée :
+        la tâche de fond écrirait sinon un GLB pour une ligne disparue.
+        """
+        with self._lock:
+            record = self._repository.get_generation(generation_id)
+            if record is None:
+                return False
+            if record.status in {GenerationStatus.PENDING, GenerationStatus.RUNNING}:
+                raise ValueError("Ce modèle est encore en cours de création ; attendez la fin avant de le supprimer.")
+            self._repository.delete_generation(generation_id)
+        # La ligne est retirée d'abord : le modèle disparaît du Studio et de /embed même si un fichier résiste.
+        self._storage.delete_files(generation_id)
+        return True
+
     def get_model_path(self, generation_id: str) -> Path | None:
         """Retourne uniquement un modèle lié à une génération DONE."""
         record = self.get_generation(generation_id)
