@@ -32,7 +32,7 @@ from app.services.api_key_service import APIKeyService
 from app.services.category_service import CategoryService
 from app.services.demo_gallery import DemoGallery
 from app.services.generation_service import GenerationService
-from app.services.owner_auth import OwnerAuthService
+from app.services.owner_auth import OwnerAuthService, session_key_from_environment
 from app.storage.local_storage import LocalStorage
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -85,7 +85,7 @@ app.state.embed_allowed_origins = provider.settings.embed_allowed_origins
 app.state.generation_provider = generation_provider
 app.state.max_glb_upload_bytes = provider.settings.max_glb_upload_mb * 1024 * 1024
 app.state.demo_gallery = DemoGallery()
-app.state.owner_auth = OwnerAuthService()
+app.state.owner_auth = OwnerAuthService(signing_key=session_key_from_environment())
 
 # Routes du Studio : protégées par la session de la propriétaire (cookie signé, étape 5f).
 studio_protection = [Depends(require_owner)]
