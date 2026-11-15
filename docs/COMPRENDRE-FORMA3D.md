@@ -16,6 +16,8 @@
 - **Si le badge « Serveur 3D » est rouge :** section 17.
 - **Pour la suite du projet (SaaS) :** section 18 et `docs/ARCHITECTURE-CIBLE.md`.
 - **Pour Git, les branches et les pull requests :** section 19.
+- **Pour le détail de chaque fichier du backend :** section 20 ; **du frontend, des tests et de la CI :** section 21.
+- **Pour comprendre la façon d'écrire le code (techniques Python, JavaScript, CSS, tests) :** section 22.
 - Les sections importantes se terminent par trois encadrés : **Un exemple concret**, **Une analogie** et **Ce que je réponds si on me demande pourquoi**.
 - Les schémas sont écrits en **Mermaid** (un langage texte que GitHub transforme en dessin). Sur GitHub, ils s'affichent automatiquement.
 - Des **analogies** avec ce que vous connaissez déjà (Angular, Spring Boot, Keycloak, Oracle PL/SQL, Symfony) sont signalées par 🔁.
@@ -1648,7 +1650,388 @@ sequenceDiagram
 
 ---
 
-## 20. Glossaire A–Z
+## 20. Le backend en détail, fichier par fichier
+
+**En une phrase :** cette section ouvre chaque fichier important du serveur, montre un vrai extrait, l'explique ligne par ligne et prépare la question probable du jury.
+
+Comment lire chaque fiche : **Rôle** → **Extrait réel** (copié du code, raccourci à 25 lignes maximum) → **Ligne par ligne** → **Technologie** → **Pourquoi ce choix** → **Question du jury**.
+
+```mermaid
+flowchart TD
+    REQ["Requête HTTP"] --> MW["Middleware CORS<br/>main.py"]
+    MW --> DEP{"Dépendance de sécurité"}
+    DEP -->|Studio| RO["require_owner<br/>routers/auth.py"]
+    DEP -->|/api/v1| RK["require_api_key + débit<br/>routers/api_v1.py"]
+    DEP -->|public| PUB["aucune, mais modèle activé<br/>routers/models.py, embed.py"]
+    RO --> ROUTE["Fonction de route"]
+    RK --> ROUTE
+    PUB --> ROUTE
+    ROUTE --> SVC["Service"]
+    SVC --> REPO["Dépôt SQLite"]
+    SVC --> STO["Stockage disque"]
+    SVC --> PROV["Fournisseur 3D"]
+    ROUTE -->|HTTPException| EH["Gestionnaire d'erreurs<br/>main.py"]
+```
+
+### 20.1 `main.py` — l'assemblage de l'application
+
+**Rôle :** créer l'application FastAPI, choisir le fournisseur, créer les services une seule fois, brancher les routeurs avec leur protection.
+
+```python
+# backend/app/main.py, lignes 40-46 et 88-99
+provider = HuggingFaceSpaceProvider()
+generation_provider = (
+    TrellisSpaceProvider(provider.settings)
+    if provider.settings.image3d_provider == "trellis"
+    else provider
+)
+...
+app.state.owner_auth = OwnerAuthService(signing_key=session_key_from_environment())
+
+studio_protection = [Depends(require_owner)]
+app.include_router(auth_router)
+app.include_router(models_router, dependencies=studio_protection)
+app.include_router(categories_router, dependencies=studio_protection)
+app.include_router(api_keys_router, dependencies=studio_protection)
+app.include_router(public_models_router)
+app.include_router(api_v1_router)
+app.include_router(embed_router)
+```
+
+**Ligne par ligne :**
+- `HuggingFaceSpaceProvider()` lit la configuration (`Settings`) au démarrage.
+- L'expression `A if condition else B` est un **opérateur ternaire** Python : TRELLIS si `IMAGE3D_PROVIDER=trellis`, sinon TripoSR.
+- `app.state` est un **sac d'objets partagés** attaché à l'application : les routes y retrouvent les services. 🔁 C'est le conteneur de beans de Spring, en très simple.
+- `dependencies=studio_protection` ajoute `require_owner` à **toutes** les routes d'un routeur d'un coup. 🔁 Comme une règle `requestMatchers("/models/**").authenticated()` de Spring Security.
+- Les trois derniers routeurs n'ont pas cette protection : ils ont leur propre règle (modèle activé, clé API).
+
+Autres éléments du même fichier :
+
+| Lignes | Élément | Ce qu'il fait |
+|---|---|---|
+| 54-65 | `lifespan` (gestionnaire de contexte asynchrone) | Au démarrage : initialise la base, écrit des avertissements si `backend/.env`, le mot de passe ou `HF_SPACE_ID` manquent. Ne bloque pas le démarrage. |
+| 100-108 | `CORSMiddleware` | Autorise seulement les origines de `API_CORS_ORIGINS`, les méthodes GET/POST/OPTIONS et l'en-tête `X-API-Key` ; pas de cookies (`allow_credentials=False`). |
+| 111-133 | `@app.exception_handler` | Sur `/api/v1`, transforme toute erreur en `{"error": {"code": "...", "message": "..."}}` ; ailleurs, garde `{"detail": "..."}`. |
+| 136-140 | `app.mount("/static", StaticFiles(...))` | Sert le dossier `frontend/` sous `/static`. |
+| 143-146 | `GET /` | Renvoie `frontend/index.html`. |
+| 155-177 | `GET /health/provider` | Statut du fournisseur + message lisible, jamais l'adresse (section 17). |
+
+**Pourquoi ce choix :** tout est créé **une seule fois** au même endroit ; les tests peuvent remplacer un objet (`app.dependency_overrides`) sans toucher au reste.
+
+**Question du jury :** « Où se fait l'injection de dépendances ? » → « Les objets sont créés dans `main.py` et rangés dans `app.state` ; chaque route les reçoit par `Depends(...)`. C'est l'équivalent de l'injection par constructeur de Spring, sans annotations. »
+
+### 20.2 `config.py` — la configuration validée au démarrage
+
+**Rôle :** lire les variables d'environnement, leur donner un type, et **refuser** une valeur dangereuse avant que le serveur ne démarre.
+
+```python
+# backend/app/config.py, lignes 18-24 et 65-69
+@dataclass(frozen=True)
+class Settings:
+    hf_space_id: str = ""
+    hf_token: str | None = None
+    hf_timeout_seconds: int = 300
+    ...
+    def __post_init__(self) -> None:
+        if self.image3d_provider not in {"triposr", "trellis"}:
+            raise ValueError("IMAGE3D_PROVIDER doit valoir « triposr » ou « trellis ».")
+        if not _SPACE_ID_PATTERN.fullmatch(self.trellis_space_id):
+            raise ValueError("TRELLIS_SPACE_ID doit être un identifiant de Space « propriétaire/nom », pas une URL.")
+```
+
+**Ligne par ligne :**
+- `@dataclass(frozen=True)` fabrique automatiquement le constructeur ; `frozen` rend l'objet **non modifiable** après création.
+- `str | None` veut dire « une chaîne ou rien ».
+- `__post_init__` est appelé **juste après** le constructeur : c'est l'endroit des vérifications.
+- `_SPACE_ID_PATTERN.fullmatch` vérifie avec une **expression régulière** (motif de texte) que la valeur ressemble à `propriétaire/nom`.
+
+Les règles complètes de `__post_init__` (lignes 38-97) : délai positif, 1 ou 2 tentatives, origines CORS et iframe en HTTP(S) **précis** (jamais `*`, pas de chemin, pas d'identifiants), taille GLB entre 1 et 512 Mo, quotas au moins 1. `get_settings()` (ligne 110) charge `backend/.env` puis `.env`, sans écraser l'environnement.
+
+**Pourquoi ce choix :** une erreur de configuration doit se voir **au démarrage**, pas au milieu d'une démo.
+
+**Question du jury :** « Pourquoi refuser `*` dans CORS ? » → « `*` autoriserait n'importe quel site à appeler l'API depuis le navigateur ; on veut une liste précise et fermée par défaut. »
+
+### 20.3 `models.py` et `schemas.py` — objets internes contre JSON
+
+**Rôle :** `models.py` décrit les objets **internes** (ce que le service manipule) ; `schemas.py` décrit le **JSON** échangé avec le navigateur.
+
+```python
+# backend/app/models.py, lignes 22-28 et 47-65 (extrait)
+class GenerationStatus(StrEnum):
+    PENDING = "PENDING"
+    RUNNING = "RUNNING"
+    DONE = "DONE"
+    FAILED = "FAILED"
+
+@dataclass(frozen=True, slots=True)
+class GenerationRecord:
+    id: str
+    status: GenerationStatus
+    image_path: Path | None
+    model_path: Path | None = None
+    public_id: str | None = None
+    embed_enabled: bool = False
+```
+
+```python
+# backend/app/schemas.py, lignes 11-22 (extrait)
+class GenerationResponse(BaseModel):
+    id: str = Field(description="Identifiant de suivi créé par le serveur.")
+    status: Literal["PENDING", "RUNNING", "DONE", "FAILED"]
+    status_url: str
+    model_url: str | None = None
+```
+
+**Ligne par ligne :**
+- `StrEnum` : une **énumération** dont chaque valeur est aussi une chaîne. 🔁 Un `enum` Java.
+- `slots=True` : l'objet n'accepte que les attributs déclarés (moins de mémoire, pas de faute de frappe silencieuse).
+- `GenerationRecord` contient des **chemins disque** (`image_path`, `model_path`) : ils ne doivent jamais sortir du serveur.
+- `GenerationResponse` hérite de `BaseModel` (Pydantic) : FastAPI vérifie et convertit automatiquement en JSON. `Literal[...]` limite les valeurs possibles.
+- La conversion de l'un vers l'autre se fait dans `routers/models.py`, fonction `_to_response` (ligne 41) : elle construit `status_url` et `model_url` et **n'expose aucun chemin local**.
+
+**Pourquoi ce choix :** séparer l'objet interne du DTO empêche de publier par erreur un champ privé.
+
+**Question du jury :** « Quelle différence entre `models.py` et `schemas.py` ? » → « `models.py`, ce sont mes entités internes ; `schemas.py`, mes DTO JSON. Comme une entité JPA et un DTO dans Spring. »
+
+### 20.4 `routers/auth.py` — connexion et protection du Studio
+
+```python
+# backend/app/routers/auth.py, lignes 30-33 et 55-63
+def require_owner(request: Request) -> None:
+    if not _service(request).validate_token(request.cookies.get(SESSION_COOKIE_NAME)):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Connexion requise.")
+
+    response.set_cookie(
+        SESSION_COOKIE_NAME,
+        service.issue_token(),
+        max_age=service.ttl_seconds,
+        httponly=True,
+        samesite="lax",
+        secure=request.url.scheme == "https",
+        path="/",
+    )
+```
+
+**Ligne par ligne :**
+- `require_owner` est une **dépendance** : FastAPI l'exécute avant la route. Si elle lève `HTTPException`, la route n'est jamais appelée.
+- `request.cookies.get(...)` lit le cookie `forma3d_session` (ou `None`).
+- `set_cookie(...)` : `httponly` (illisible par JavaScript), `samesite="lax"` (non envoyé par les formulaires d'autres sites), `secure` seulement en HTTPS, `max_age` = 8 h.
+
+Ordre dans `login` (lignes 36-64) : 1) limite de tentatives par IP → 429 avec `Retry-After` ; 2) mot de passe non configuré → 503 ; 3) mot de passe faux → 401 ; 4) cookie posé. `GET /auth/me` renvoie `{"authenticated": …, "configured": …}` ; le frontend l'appelle au démarrage.
+
+**Question du jury :** « Pourquoi un cookie et pas un jeton dans le `localStorage` ? » → « Un cookie HttpOnly ne peut pas être lu par un script injecté ; un jeton dans `localStorage` le pourrait. »
+
+### 20.5 `services/owner_auth.py` — le jeton signé
+
+Déjà décrit en section 12.2. Points de code à connaître :
+- `issue_token()` construit `owner.<expiration>.<signature>` ; `validate_token()` refuse un format inattendu, compare la signature avec `hmac.compare_digest`, puis vérifie l'expiration.
+- `LoginAttemptLimiter` garde, **en mémoire**, une file (`deque`) des tentatives par IP sur 60 s, protégée par un verrou (`threading.Lock`).
+- `session_key_from_environment()` (étape 24) : clé fixe si `FORMA3D_SESSION_SECRET` fait au moins 32 caractères, sinon clé aléatoire.
+
+**Question du jury :** « Que se passe-t-il si quelqu'un modifie la date d'expiration dans son cookie ? » → « La signature HMAC ne correspond plus : le jeton est refusé. »
+
+### 20.6 `routers/api_keys.py` et `services/api_key_service.py` — les clés API
+
+```python
+# backend/app/services/api_key_service.py, lignes 38-39 et 77-92 (extrait)
+secret = _KEY_PREFIX + secrets.token_urlsafe(32)
+prefix = secret[: len(_KEY_PREFIX) + _PREFIX_RANDOM_LENGTH]
+
+def authenticate(self, candidate: str | None) -> APIKeyRecord | None:
+    supplied = candidate or ""
+    prefix = supplied[:prefix_length] if supplied.startswith(_KEY_PREFIX) else ""
+    fingerprint = self._fingerprint(supplied)
+    matches = self._repository.find_api_keys_by_prefix(prefix) if prefix else []
+    if not matches:
+        hmac.compare_digest(fingerprint, _DUMMY_FINGERPRINT)
+        return None
+    accepted: APIKeyRecord | None = None
+    for record in matches:
+        if hmac.compare_digest(fingerprint, record.fingerprint):
+            accepted = record
+    return accepted
+```
+
+**Ligne par ligne :**
+- `secrets.token_urlsafe(32)` : 32 octets aléatoires **cryptographiques** (module `secrets`, pas `random`).
+- Le **préfixe** (`f3d_live_` + 8 caractères) est stocké en clair pour retrouver vite les candidates ; le reste n'est connu que par son **empreinte SHA-256**.
+- Si aucune clé ne correspond, on fait quand même une comparaison factice (`_DUMMY_FINGERPRINT`) : le temps de réponse est le même que pour une clé existante. Un attaquant ne peut pas deviner les préfixes en mesurant le temps.
+- La boucle ne s'arrête pas au premier succès, toujours pour garder un temps constant.
+
+Côté routes : `POST /api-keys` répond avec `Cache-Control: no-store` (le secret ne doit pas rester en cache) ; `require_api_key` (ligne 83) lit l'en-tête avec `Header(alias="X-API-Key")` et répond 401 avec `WWW-Authenticate: ApiKey`.
+
+**Question du jury :** « Si votre base fuit, peut-on utiliser les clés ? » → « Non : la base ne contient que des empreintes SHA-256, à sens unique. »
+
+### 20.7 `routers/api_v1.py` — l'API externe, quotas et erreurs
+
+```python
+# backend/app/routers/api_v1.py, création d'un modèle (extrait)
+reason = key_service.consume_daily_quota(_key, request.app.state.api_daily_generation_limit)
+if reason == "revoked":
+    raise HTTPException(status_code=401, detail="Clé API absente, invalide ou révoquée.")
+if reason == "daily_quota":
+    now = datetime.now(UTC)
+    tomorrow = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+    wait_seconds = max(1, int((tomorrow - now).total_seconds()))
+    raise HTTPException(status_code=429,
+        detail="Quota quotidien de créations atteint pour cette clé.",
+        headers={"Retry-After": str(wait_seconds)})
+```
+
+**Ligne par ligne :**
+- Chaque route `/api/v1` passe d'abord par `require_api_v1_key` : clé valide **et** limite par minute (429 + `Retry-After: 60`).
+- La création consomme en plus **le quota du jour** (jour UTC). Dépassement → **429** avec le nombre de secondes jusqu'à minuit UTC.
+- Catégorie inconnue ou désactivée → 403.
+- Ensuite, le **même** `GenerationService` que le Studio est utilisé : aucune logique dupliquée.
+
+Correspondance des codes (gestionnaire de `main.py`) : 400 `bad_request`, 401 `unauthorized`, 403 `forbidden`, 404 `not_found`, 409 `conflict`, 413 `payload_too_large`, 415 `unsupported_media_type`, 422 `invalid_request`, 429 `rate_limited`.
+
+**Question du jury :** « Comment évitez-vous qu'une clé lance 1 000 générations ? » → « Deux limites par clé, stockées en base : 10 requêtes par minute et 20 créations par jour par défaut, réglables dans `.env`. »
+
+### 20.8 `repositories/sqlite_repository.py` — connexions et transactions
+
+```python
+# backend/app/repositories/sqlite_repository.py, lignes 31-44
+@contextmanager
+def _connection(self) -> Iterator[sqlite3.Connection]:
+    connection = sqlite3.connect(self.database_path, timeout=5.0)
+    try:
+        connection.row_factory = sqlite3.Row
+        connection.execute("PRAGMA foreign_keys = ON")
+        yield connection
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
+```
+
+**Ligne par ligne :**
+- `@contextmanager` transforme la fonction en **gestionnaire de contexte** utilisable avec `with self._connection() as connection:`.
+- `row_factory = sqlite3.Row` : on lit les colonnes par leur nom (`row["status"]`).
+- `PRAGMA foreign_keys = ON` : SQLite n'applique les clés étrangères que si on le demande.
+- `yield` « prête » la connexion au bloc `with` ; à la fin : `commit` si tout va bien, `rollback` en cas d'erreur, et **toujours** `close`.
+- Une connexion **par opération** : pas de connexion partagée entre la requête HTTP et la tâche de fond.
+
+La limite par minute (`consume_api_rate_limit`, ligne 292) commence par `BEGIN IMMEDIATE` : la transaction réserve l'écriture tout de suite, donc deux requêtes simultanées ne peuvent pas dépasser la limite ensemble.
+
+🔁 C'est l'équivalent d'une méthode `@Transactional` de Spring, ou d'un bloc `BEGIN … COMMIT; EXCEPTION WHEN OTHERS THEN ROLLBACK;` en PL/SQL.
+
+**Question du jury :** « Que se passe-t-il si une erreur survient au milieu d'une écriture ? » → « Le gestionnaire de contexte annule toute la transaction (`rollback`) : la base reste cohérente. »
+
+### 20.9 `routers/models.py` — envoi d'une photo et routes publiques
+
+```python
+# backend/app/routers/models.py, lignes 64-90 (extrait)
+@router.post("", response_model=GenerationResponse, status_code=202)
+async def create_model_generation(
+    file: Annotated[UploadFile, File(description="Photo JPG, PNG ou WebP, jusqu'à 10 Mo.")],
+    category: Annotated[str, Form(description="Slug d'une catégorie active du catalogue.")],
+    background_tasks: BackgroundTasks,
+    service: Annotated[GenerationService, Depends(get_generation_service)],
+) -> GenerationResponse:
+    try:
+        content = await file.read(MAX_UPLOAD_BYTES + 1)
+        validated = UploadValidator.validate(filename=file.filename,
+            content_type=file.content_type, content=content)
+    except UploadValidationError as error:
+        raise HTTPException(status_code=error.status_code, detail=error.detail) from error
+    finally:
+        await file.close()
+    record = service.create_generation(validated, content, category)
+    background_tasks.add_task(service.run, record.id)
+    return _to_response(record)
+```
+
+**Ligne par ligne :**
+- `status_code=202` : « accepté, traitement en cours ».
+- `File(...)` et `Form(...)` : lecture d'un formulaire `multipart/form-data` (fichier + champ texte).
+- `file.read(MAX_UPLOAD_BYTES + 1)` : on lit **au plus** 10 Mo + 1 octet. Si on obtient plus de 10 Mo, le fichier est trop gros, sans jamais charger un fichier énorme en mémoire.
+- `finally: await file.close()` : le fichier temporaire est fermé même en cas d'erreur.
+- `background_tasks.add_task(service.run, record.id)` : la génération démarre **après** l'envoi de la réponse.
+
+Les routes **publiques** (`/public/models/{public_id}` et `/glb`) passent toutes par `_get_enabled_public_model` (ligne ~155) : 404 si le modèle n'existe pas, n'est pas `DONE`, n'est pas activé ou n'a plus de fichier. La même réponse 404 dans tous les cas : on ne révèle pas pourquoi.
+
+Autres routes du fichier : `POST /models/import` (GLB local, extension `.glb`, taille ≤ `MAX_GLB_UPLOAD_MB`, format GLB 2.0), `POST /models/examples/{id}/copy`, `GET /models/gallery`, `PATCH /models/{id}/integration`, `DELETE /models/{id}` (étape 23), `GET /models/{id}`, `/glb`, `/source-image`.
+
+**Question du jury :** « Pourquoi 202 et pas 200 ? » → « Le modèle n'existe pas encore au moment de la réponse ; 202 dit "accepté, en cours", et la réponse donne l'adresse de suivi. »
+
+### 20.10 `routers/embed.py` — la page affichée dans l'iframe
+
+```python
+# backend/app/routers/embed.py, lignes 19-22 et 65-70
+def _frame_ancestors(request: Request) -> str:
+    allowed_origins = tuple(request.app.state.embed_allowed_origins)
+    return "frame-ancestors 'self'" + (" " + " ".join(allowed_origins) if allowed_origins else "")
+
+    headers = {
+        "Content-Security-Policy": _frame_ancestors(request),
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+        "Referrer-Policy": "strict-origin-when-cross-origin",
+    }
+```
+
+**Ligne par ligne :**
+- `frame-ancestors` dit au **navigateur** quels sites ont le droit d'afficher cette page dans une iframe ; `'self'` = Forma3D lui-même.
+- `nosniff` : le navigateur ne doit pas deviner un autre type de contenu.
+- `Referrer-Policy` : limite l'adresse transmise aux autres sites.
+- La page HTML est construite à la main (`_viewer_page`), et le titre passe par `html.escape(...)` : un nom de fichier contenant `<script>` ne peut pas s'exécuter (protection contre le **XSS**, l'injection de script).
+- Modèle indisponible → page d'erreur 404 avec les **mêmes** en-têtes.
+
+**Question du jury :** « Qui bloque un site non autorisé : votre serveur ou le navigateur ? » → « Le navigateur, en lisant l'en-tête CSP envoyé par mon serveur. »
+
+### 20.11 Les services de traitement
+
+| Service | Rôle | Point clé du code |
+|---|---|---|
+| `upload_validator.py` | Valide la photo | Extension, type MIME, **signature** (premiers octets : `FF D8 FF` JPEG, `89 50 4E 47` PNG, `RIFF…WEBP`), 10 Mo. Un fichier renommé (AVIF en `.jpg`) est refusé. |
+| `image_preparer.py` | Prépare une copie carrée | `ImageOps.exif_transpose` (redresse selon l'appareil photo), fond uni, carré d'au moins 512 px avec 12 % de marge, `LANCZOS` (agrandissement de qualité), PNG. Avertissement si un côté < 512 px ou si la **variance des contours** est trop faible (photo floue). |
+| `glb_finisher.py` | Complète le GLB | Lit l'en-tête et les chunks, ajoute des normales (moyenne pondérée par l'aire des triangles), un matériau mat, met `metallicFactor` à 0 quand il manque. **Ne lève jamais d'exception** : en cas de doute, renvoie le fichier d'origine. |
+| `demo_gallery.py` | Les 5 exemples | Liste fixe de noms autorisés ; `is_valid_glb_2` vérifie octet par octet : `glTF`, version 2, longueur totale, chunk JSON multiple de 4, `asset.version == "2.0"`. |
+| `category_service.py` | Règles des catégories | Slug en minuscules, chiffres et tirets (64 caractères max), libellé non vide (100 max), `require_active` pour les envois. |
+| `generation_service.py` | Orchestration | Machine à états, verrou `RLock` autour des lectures/écritures, masquage du jeton dans les erreurs, suppression (étape 23). |
+
+```python
+# backend/app/services/image_preparer.py, cœur du cadrage (extrait)
+canvas_side = max(_MINIMUM_SIDE, original_width, original_height)
+content_side = max(1, round(canvas_side * (1 - _MARGIN_RATIO)))
+contained = ImageOps.contain(rgb, (content_side, content_side), method=Image.Resampling.LANCZOS)
+canvas = Image.new("RGB", (canvas_side, canvas_side), _CANVAS_COLOR)
+offset = ((canvas_side - contained.width) // 2, (canvas_side - contained.height) // 2)
+canvas.paste(contained, offset)
+```
+
+- La toile fait au moins 512 px de côté ; l'objet occupe 88 % (12 % de marge) ; `//` est la division entière, pour centrer.
+
+**Question du jury :** « Pourquoi préparer la photo avant l'IA ? » → « Les modèles image→3D attendent un objet centré dans une image carrée ; je le fais localement avec Pillow, sans IA, et je garde la photo originale intacte. »
+
+### 20.12 Les fournisseurs : relance, délais et jeton
+
+```python
+# backend/app/providers/huggingface.py, lignes 333-342
+def _client_token(self) -> str | bool:
+    """N'envoie un jeton HF qu'à HF, jamais à un serveur public tiers."""
+    if not self.settings.hf_token:
+        return False
+    if not self._is_http_url(self.settings.hf_space_id):
+        return self.settings.hf_token
+    host = (urlsplit(self.settings.hf_space_id).hostname or "").casefold()
+    if host in {"huggingface.co", "www.huggingface.co"}:
+        return self.settings.hf_token
+    return False
+```
+
+- Le jeton part seulement si la cible est un identifiant de Space ou une adresse `huggingface.co` ; jamais vers une adresse Colab `gradio.live`.
+- `generate()` (ligne 54) : boucle de **1 ou 2 tentatives** dans un **délai global** (`time.monotonic()`, une horloge qui ne recule jamais). `_is_retryable` (ligne 987) ne relance que pour des messages passagers (« starting », « sleeping », « 503 »…).
+- `TrellisSpaceProvider._call` (ligne 122) soumet chaque étape avec le temps restant ; le client Gradio reçoit `httpx_kwargs={"timeout": 120.0}` (ligne 91) depuis le 15 novembre 2026.
+
+**Question du jury :** « Pourquoi ne pas relancer à chaque erreur ? » → « Une erreur permanente (quota, contrat changé) ne guérit pas en relançant ; on gaspillerait le quota. On ne relance que les erreurs de réveil ou de réseau. »
+
+---
+
+## 23. Glossaire A–Z
 
 | Terme | Définition |
 |---|---|
