@@ -63,7 +63,9 @@ generation_provider = (
     else provider
 )
 # PostgreSQL est la seule base : DATABASE_URL (postgresql://...) est obligatoire, sinon erreur claire.
-generation_repository = create_repository()
+# Un seul dossier de stockage partagé : le dépôt y enregistre des chemins relatifs (portables Windows/Linux).
+local_storage = LocalStorage()
+generation_repository = create_repository(storage_root=local_storage.root)
 # Le schéma existe aussi pour les tests qui utilisent TestClient sans cycle lifespan.
 generation_repository.initialize()
 
@@ -99,7 +101,7 @@ app = FastAPI(
 # (voir les fonctions get_... des routeurs). C'est notre conteneur d'injection, en très simple.
 app.state.generation_service = GenerationService(
     provider=generation_provider,
-    storage=LocalStorage(),
+    storage=local_storage,
     repository=generation_repository,
 )
 app.state.generation_repository = generation_repository

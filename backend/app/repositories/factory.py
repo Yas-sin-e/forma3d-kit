@@ -13,6 +13,7 @@ fonctionne partout, seule la variable change.
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
 from app.repositories.base import GenerationRepository
@@ -57,12 +58,13 @@ def normalize_database_url(database_url: str | None) -> str:
     return urlunsplit(("postgresql", parts.netloc, parts.path, parts.query, parts.fragment))
 
 
-def create_repository(database_url: str | None = None) -> GenerationRepository:
-    """Crée le dépôt PostgreSQL ; sans argument, lit DATABASE_URL dans l'environnement.
+def create_repository(database_url: str | None = None, *, storage_root: Path | None = None) -> GenerationRepository:
+    """Crée le dépôt PostgreSQL ; sans URL, lit DATABASE_URL dans l'environnement.
 
+    storage_root : dossier des photos et GLB, pour enregistrer des chemins relatifs portables.
     Aucune connexion n'est ouverte ici : la première a lieu dans initialize().
     """
     from app.repositories.postgres_repository import PostgresGenerationRepository
 
     url = os.getenv("DATABASE_URL") if database_url is None else database_url
-    return PostgresGenerationRepository(normalize_database_url(url))
+    return PostgresGenerationRepository(normalize_database_url(url), storage_root=storage_root)

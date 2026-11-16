@@ -7,7 +7,9 @@ Choix techniques, invisibles pour les services :
 - types natifs : BOOLEAN, TIMESTAMPTZ (date avec fuseau), BIGINT GENERATED ALWAYS AS IDENTITY ;
 - migrations idempotentes avec « ADD COLUMN IF NOT EXISTS » ;
 - atomicité des quotas par verrou de ligne « SELECT ... FOR UPDATE » ;
-- initialize() protégée par un verrou consultatif (pg_advisory_xact_lock) si deux API démarrent ensemble.
+- initialize() protégée par un verrou consultatif (pg_advisory_xact_lock) si deux API démarrent ensemble ;
+- chemins de fichiers PORTABLES : sous storage_root, on enregistre « models/x.glb » (relatif) ; la même base
+  sert alors au conteneur Linux (/app/backend/storage) et au poste Windows (dossier backend/storage du dépôt).
 """
 
 from __future__ import annotations
@@ -47,13 +49,36 @@ _GENERATION_SELECT = """
 class PostgresGenerationRepository:
     """Lit et écrit les données avec une connexion PostgreSQL par opération."""
 
-    def __init__(self, database_url: str, *, connect_timeout: int = 5) -> None:
-        """Mémorise l'URL de connexion ; aucune connexion n'est ouverte ici.
+    def __init__(self, database_url: str, *, storage_root: Path | None = None, connect_timeout: int = 5) -> None:
+        """Mémorise l'URL de connexion et le dossier de stockage ; aucune connexion n'est ouverte ici.
 
         L'URL contient le mot de passe : elle n'est jamais journalisée (voir factory.mask_database_url).
+        storage_root : dossier des photos et GLB ; les chemins situés dessous sont stockés en relatif.
         """
         self._database_url = database_url
+        self._storage_root = storage_root.resolve() if storage_root is not None else None
         self._connect_timeout = connect_timeout
+
+    def _path_to_db(self, path: Path | None) -> str | None:
+        """Convertit un chemin de fichier en texte à enregistrer (relatif au stockage si possible).
+
+        Exemple : /app/backend/storage/models/a.glb -> « models/a.glb ». Hors du stockage : chemin absolu.
+        """
+        if path is None:
+            return None
+        absolute = path.resolve()
+        if self._storage_root is not None and absolute.is_relative_to(self._storage_root):
+            return absolute.relative_to(self._storage_root).as_posix()
+        return str(absolute)
+
+    def _path_from_db(self, value: str | None) -> Path | None:
+        """Reconstruit le chemin réel : un chemin relatif est rattaché au dossier de stockage courant."""
+        if not value:
+            return None
+        path = Path(value)
+        if not path.is_absolute() and self._storage_root is not None:
+            return self._storage_root / path
+        return path
 
     @contextmanager
     def _connection(self) -> Iterator[psycopg.Connection[dict[str, Any]]]:
@@ -227,8 +252,8 @@ class PostgresGenerationRepository:
                     record.status.value,
                     record.filename,
                     record.content_type,
-                    str(record.image_path.resolve()) if record.image_path is not None else "",
-                    str(record.model_path.resolve()) if record.model_path is not None else None,
+                    self._path_to_db(record.image_path) or "",
+                    self._path_to_db(record.model_path),
                     record.duration_seconds,
                     record.error_message,
                     record.image_warning,
@@ -500,8 +525,7 @@ class PostgresGenerationRepository:
             revoked=bool(row["revoked"]),
         )
 
-    @staticmethod
-    def _record_from_row(row: dict[str, Any]) -> GenerationRecord:
+    def _record_from_row(self, row: dict[str, Any]) -> GenerationRecord:
         """Convertit une ligne PostgreSQL en génération métier typée."""
         return GenerationRecord(
             id=row["id"],
@@ -509,10 +533,10 @@ class PostgresGenerationRepository:
             filename=row["filename"],
             content_type=row["content_type"],
             category=row["category_slug"],
-            image_path=Path(row["source_photo_path"]) if row["source_photo_path"] else None,
+            image_path=self._path_from_db(row["source_photo_path"]),
             created_at=row["created_at"],
             updated_at=row["updated_at"],
-            model_path=Path(row["glb_path"]) if row["glb_path"] is not None else None,
+            model_path=self._path_from_db(row["glb_path"]),
             error_message=row["error_message"],
             duration_seconds=row["duration_seconds"],
             image_warning=row["image_warning"],
