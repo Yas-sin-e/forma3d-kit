@@ -2,6 +2,8 @@
 .env
 .env.*
 !.env.example
+# Modèles de configuration DevOps sans secret (compose, staging) : versionnés.
+!.env.*.example
 
 # Python
 __pycache__/
