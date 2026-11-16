@@ -1,5 +1,5 @@
 # Rôle : vérifie les routes CRUD catégorie et le refus des uploads non autorisés.
-# Exécution : TestClient utilise un dépôt SQLite temporaire et aucun fournisseur réel.
+# Exécution : TestClient utilise la base PostgreSQL de test et aucun fournisseur réel.
 """Tests HTTP de l'administration des catégories."""
 
 from pathlib import Path
@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.repositories.sqlite_repository import SQLiteGenerationRepository
+from pg_support import make_repository
 from app.routers.categories import get_category_service
 from app.routers.models import get_generation_service
 from app.services.category_service import CategoryService
@@ -24,8 +24,8 @@ class UnavailableProvider:
 
 
 def _client(tmp_path: Path) -> TestClient:
-    """Prépare un client de test relié à une base SQLite temporaire."""
-    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    """Prépare un client de test relié à la base PostgreSQL de test."""
+    repository = make_repository()
     repository.initialize()
     service = GenerationService(
         UnavailableProvider(), LocalStorage(tmp_path / "storage"), repository

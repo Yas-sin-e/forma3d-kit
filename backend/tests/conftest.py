@@ -1,12 +1,23 @@
-# Rôle : configuration pytest partagée ; ouvre la session propriétaire pour les tests du Studio.
+# Rôle : configuration pytest partagée ; base PostgreSQL de test et session propriétaire du Studio.
 # Exécution : chargé automatiquement par pytest avant chaque module de tests.
-"""Surcharge la dépendance require_owner sauf pour les tests marqués « real_auth »."""
+"""Prépare la base PostgreSQL de test et surcharge require_owner sauf pour les tests « real_auth »."""
+
+import os
 
 # pytest : outil de tests automatiques du projet (équivalent de JUnit).
 # conftest.py est lu automatiquement : ses « fixtures » (préparations) servent à tous les tests.
 import pytest
 
-from app.main import app
+import pg_support
+
+# L'application lit DATABASE_URL dès son import : on la fait pointer vers la base de TEST AVANT
+# d'importer app.main. Sans TEST_DATABASE_URL valide, pytest s'arrête avec un message clair.
+try:
+    os.environ["DATABASE_URL"] = pg_support.test_database_url()
+except RuntimeError as error:
+    pytest.exit(str(error), returncode=4)
+
+from app.main import app  # noqa: E402  (import volontairement placé après la configuration)
 from app.routers.auth import require_owner
 
 
@@ -30,3 +41,12 @@ def owner_session_override(request: pytest.FixtureRequest):
     app.dependency_overrides[require_owner] = lambda: None
     yield
     app.dependency_overrides.pop(require_owner, None)
+
+
+# autouse=True : chaque test part d'une base PostgreSQL vierge et initialisée (tables + 3 catégories),
+# pour que les tests restent indépendants les uns des autres.
+@pytest.fixture(autouse=True)
+def clean_database():
+    """Supprime puis recrée le schéma de la base de test avant chaque test."""
+    pg_support.reset_database()
+    yield

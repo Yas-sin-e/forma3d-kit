@@ -1,6 +1,24 @@
 # État du projet — Forma3D Studio
 
-Dernière mise à jour : 15 novembre 2026.
+Dernière mise à jour : 16 novembre 2026.
+
+## Projet DevOps (actif depuis le 16 novembre 2026)
+
+- Référence : `docs/devops/CAHIER-DEVOPS.md` ; suivi des phases : `docs/devops/README.md`.
+- P0 (diagnostic et cadrage) : diagnostic observé — arbre Git propre, aucun `.env` ni jeton `hf_`/`ghp_` dans tout l'historique, ports 8080/5432/5433 libres, Docker Compose v5.0.2 présent mais **moteur Docker Desktop non démarré** au moment du diagnostic. Exception Docker/PostgreSQL tracée dans `AGENTS.md`. Détails : `docs/devops/phase-00.md`.
+- Ordre retenu : P0 → P3a (dépôt PostgreSQL) → P1 → P2 → P3b → P4 à P9. SQLite reste le défaut tant que `DATABASE_URL` est vide.
+- P3a (dépôt PostgreSQL) : `postgres_repository.py` implémente les 19 méthodes de `GenerationRepository` ; `factory.py` choisit le moteur selon `DATABASE_URL` (vide = SQLite inchangé). `psycopg[binary]` ajouté avec l'accord de l'étudiante. Observé le 16/11/2026 : `169 passed, 7 skipped` en SQLite, `176 passed` contre `postgres:17-alpine` ; API de bout en bout sur PostgreSQL (`/health` OK, catégorie créée et relue par `psql`). Détails : `docs/devops/phase-03a.md`.
+- P1 (script de contrôle) : `scripts/check-project.sh` (exécutable `100755`, LF par `.gitattributes`). Observé : succès code 0, `--strict` sale code 1, fichier requis manquant code 1. Détails : `docs/devops/phase-01.md`.
+- P2 (image Docker) : `Dockerfile` + `.dockerignore`. Observé : image `forma3d:1.0` de 312 Mo, `healthy`, `/health` OK, utilisateur `appuser`, aucun `.env` dans l'image ; incident `Exited (3)` diagnostiqué par `docker logs`. Détails : `docs/devops/phase-02.md`.
+- P3b (Compose) : `compose.yaml` api + `postgres:17-alpine`. Observé : deux services healthy, 5432 non publié, `getent hosts db` résolu, catégorie conservée après `down`/`up`, DBeaver-like sur 127.0.0.1:5433 via `compose.debug.yaml`, Adminer HTTP 200 en profil `debug`, incident `localhost` → `Connection refused` diagnostiqué et corrigé. Détails : `docs/devops/phase-03b.md`.
+- P4 (CI) : `ci.yml` réécrit (`test` avec service PostgreSQL et artefact `rapport-tests` → `docker-build` avec test de fumée). Observé en local : 176 tests sous Python 3.12 + PostgreSQL, YAML valide. **Exécution GitHub non observée** (branche non poussée). Branche locale `test/failing-demo` prête pour la PR rouge. Détails : `docs/devops/phase-04.md`.
+- P5 (release) : `release.yml` (tag `v*.*.*` → tests → publication GHCR avec `GITHUB_TOKEN`). YAML validé ; **tag et image non publiés** (fusion dans `main` et push du tag à faire par l'étudiante). Détails : `docs/devops/phase-05.md`.
+- P6 (staging) : `compose.staging.yaml`, `wait-healthy.sh`, `deploy.sh` (rollback automatique). Répétition locale observée avec une image **étiquetée localement** (non publiée) : `v1.0.0` saine à la 2e tentative. Détails : `docs/devops/phase-06.md`.
+- P7 (incident) : v1.1.0 défectueuse (port 8000, branche `chore/align-port-8000`), retour arrière automatique vers v1.0.0 en 39 s, correction v1.1.1 (branche `fix/port-contract`) avec contrôle « contrat de port » dans `check-project.sh`. Répétition locale avec images étiquetées localement, non publiées. Détails : `docs/devops/phase-07.md`, `docs/devops/INCIDENT-v1.1.0.md`.
+- P8–P9 (documentation) : README « Démarrer en une commande », `FICHE-PROJET.md`, `PREUVES.md` (✅ observé / ⏳ à produire), `QUIZ.md`, `SOUTENANCE.md`.
+- P3c (suppression de SQLite, décision D5) : `sqlite_repository.py` supprimé, `DATABASE_URL` obligatoire, tests sur base `forma3d_test` remise à zéro par `TRUNCATE`, `dev.ps1` démarre PostgreSQL par Compose (127.0.0.1:5433), CI et release avec service PostgreSQL. Observé : `177 passed`, pile Compose healthy, erreur claire sans `DATABASE_URL`. L'ancien fichier SQLite local n'est ni supprimé ni migré (plus lu). Détails : `docs/devops/phase-03c.md`. Plan de lecture : `docs/devops/PLAN-LECTURE.md`.
+- P3d (migration et test complet) : un script de reprise (supprimé ensuite, plus aucun code SQLite dans le projet) a copié tes données (5 catégories dont `canape` et `autre`, 17 générations, 1 clé API) ; rejoué sans doublon. Chemins rendus relatifs (`models/…glb`). Photos et GLB copiés dans le volume `storage`. Test navigateur sur http://localhost:8080 : Accueil (3 modèles, 1 clé, 5 catégories), viewer 3D, CRUD catégories, clés API, `/api/v1`, routes publiques, import/suppression GLB, persistance après redémarrage. Non testé : génération 3D réelle. Détails : `docs/devops/phase-03d.md`.
+- **Reste à faire par l'étudiante :** pousser les branches et fusionner les PR dans l'ordre de `docs/devops/README.md`, observer la CI verte puis rouge, taguer et pousser `v1.0.0`, `v1.1.0`, `v1.1.1`, rejouer staging et rollback avec les images GHCR, remplir les ⏳ de `PREUVES.md`. Bonus B1–B3 non commencés.
 
 ## Avenant au cahier des charges v1.0
 

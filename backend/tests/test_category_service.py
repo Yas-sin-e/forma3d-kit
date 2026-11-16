@@ -1,18 +1,18 @@
 # Rôle : couvre les validations métier des slugs et libellés de catégorie.
-# Exécution : Pytest exerce CategoryService avec un SQLite temporaire.
+# Exécution : Pytest exerce CategoryService avec la base PostgreSQL de test.
 """Tests du service de gestion des catégories."""
 
 from pathlib import Path
 
 import pytest
 
-from app.repositories.sqlite_repository import SQLiteGenerationRepository
+from pg_support import make_repository
 from app.services.category_service import CategoryService, CategoryValidationError
 
 
 def test_service_trims_values_and_rejects_empty_or_invalid_values(tmp_path: Path) -> None:
     """Prouve que le service nettoie les espaces et refuse un libellé vide ou un slug invalide."""
-    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    repository = make_repository()
     repository.initialize()
     service = CategoryService(repository)
 
@@ -27,7 +27,7 @@ def test_service_trims_values_and_rejects_empty_or_invalid_values(tmp_path: Path
 
 def test_service_renames_and_preserves_slug_for_optional_updates(tmp_path: Path) -> None:
     """Prouve qu'un renommage partiel garde le slug inchangé."""
-    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    repository = make_repository()
     repository.initialize()
     service = CategoryService(repository)
 

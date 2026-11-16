@@ -1,5 +1,5 @@
-# Rôle : prépare l'environnement local, vérifie les tests, démarre FastAPI et ouvre Edge.
-# Exécution : lancer depuis la racine du dépôt avec `./scripts/dev.ps1`.
+# Rôle : prépare l'environnement local, démarre PostgreSQL (Docker), vérifie les tests, démarre FastAPI et ouvre Edge.
+# Exécution : lancer depuis la racine du dépôt avec `./scripts/dev.ps1` (Docker Desktop doit être démarré).
 param(
     [int]$Port = 8001
 )
@@ -28,6 +28,39 @@ if ($LASTEXITCODE -ne 0) {
         throw "L'installation des dépendances a échoué. Consultez le message pip ci-dessus."
     }
 }
+
+# --- PostgreSQL : seule base du projet, fournie par le service « db » de compose.yaml ---
+# compose.debug.yaml publie la base sur 127.0.0.1:5433 (ce poste uniquement) pour Uvicorn, pytest et DBeaver.
+$composeEnv = Join-Path $projectRoot ".env.compose"
+if (-not (Test-Path -LiteralPath $composeEnv)) {
+    Copy-Item -LiteralPath (Join-Path $projectRoot ".env.compose.example") -Destination $composeEnv
+    Write-Host "Fichier .env.compose créé depuis le modèle (valeurs fictives de démonstration)."
+}
+# Lecture des identifiants PostgreSQL dans .env.compose (lignes CLE=valeur).
+$pg = @{}
+foreach ($line in Get-Content -LiteralPath $composeEnv) {
+    if ($line -match '^\s*(POSTGRES_USER|POSTGRES_PASSWORD|POSTGRES_DB)=(.*)$') { $pg[$Matches[1]] = $Matches[2].Trim() }
+}
+Push-Location $projectRoot   # docker compose cherche compose.yaml dans le dossier courant
+docker info *> $null
+if ($LASTEXITCODE -ne 0) {
+    throw "Docker ne répond pas : démarrez Docker Desktop, puis relancez ce script."
+}
+Write-Host "Démarrage de PostgreSQL (service db, 127.0.0.1:5433)..."
+docker compose -f (Join-Path $projectRoot "compose.yaml") -f (Join-Path $projectRoot "compose.debug.yaml") up -d --wait db
+if ($LASTEXITCODE -ne 0) {
+    throw "PostgreSQL n'a pas démarré. Consultez : docker compose logs db"
+}
+# Base séparée pour les tests : ils vident leurs tables à chaque test, la base de travail n'est jamais touchée.
+$testDb = "$($pg.POSTGRES_DB)_test"
+$exists = docker compose exec -T db psql -U $pg.POSTGRES_USER -d $pg.POSTGRES_DB -tAc "SELECT 1 FROM pg_database WHERE datname = '$testDb'"
+if ("$exists".Trim() -ne "1") {
+    docker compose exec -T db psql -U $pg.POSTGRES_USER -d $pg.POSTGRES_DB -c "CREATE DATABASE $testDb" | Out-Null
+}
+$pgBase = "postgresql://$($pg.POSTGRES_USER):$($pg.POSTGRES_PASSWORD)@127.0.0.1:5433"
+$env:DATABASE_URL = "$pgBase/$($pg.POSTGRES_DB)"
+$env:TEST_DATABASE_URL = "$pgBase/$testDb"
+Pop-Location
 
 Write-Host "Exécution de la suite pytest (environnement isolé de backend/.env)..."
 # Les tests ne doivent pas dépendre du .env réel : on désactive python-dotenv et on vide

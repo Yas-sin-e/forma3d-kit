@@ -1,9 +1,9 @@
-# Rôle : définit le contrat des catégories et générations sans imposer SQLite au métier.
+# Rôle : définit le contrat des catégories et générations sans imposer de technologie de base au métier.
 # Exécution : les services dépendent de cette interface pour lire et modifier l'historique.
 """Interface de dépôt utilisée par le service de génération."""
 
 from datetime import datetime
-# typing.Protocol (standard) : interface du dépôt. Les services dépendent de ce contrat, pas de SQLite
+# typing.Protocol (standard) : interface du dépôt. Les services dépendent de ce contrat, pas de la base
 # (patron Repository) : on pourrait écrire une version PostgreSQL sans toucher aux services.
 from typing import Protocol
 

@@ -19,6 +19,24 @@ Le frontend reste sans framework : CSS et JavaScript séparés en modules, sans 
 
 Le Sprint 1 a établi le trajet photo vers GLB, viewer et téléchargement, avec essais sur petit mobilier opaque. Les limites et résultats historiques sont décrits dans docs/ETAT.md. Les Sprints 3 (comptes) et 4 (vitrine) sont retirés. Le Sprint 5, validé le 10 novembre 2026, construit l'API et le widget intégrables ; le Sprint 6 attend un OK explicite.
 
+## Démarrer en une commande (Docker)
+
+Prérequis : Docker Desktop avec intégration WSL2 (ou Docker Engine + Compose v2), port 8080 libre.
+
+```bash
+cp .env.compose.example .env.compose
+docker compose up -d --build
+```
+
+Puis ouvrir http://localhost:8080 (mot de passe fictif du Studio : celui de `.env.compose`). La pile
+contient l'API et une base PostgreSQL 17 dans un conteneur séparé, avec des données conservées dans des
+volumes. `docker compose down` arrête sans effacer ; `docker compose down -v` efface les données.
+PostgreSQL est la seule base de données. `scripts/dev.ps1` démarre lui-même le conteneur PostgreSQL (Docker Desktop requis) puis lance les tests et le serveur en local.
+
+Chaîne DevOps (contrôle, image, Compose, CI, release GHCR, staging, rollback) : voir
+[docs/devops/README.md](docs/devops/README.md) et la fiche d'une page
+[docs/devops/FICHE-PROJET.md](docs/devops/FICHE-PROJET.md).
+
 ## Répertoires et documents
 
 - backend/app : application FastAPI, validation, service de génération, fournisseur, stockage et catalogue limité de modèles de démonstration.

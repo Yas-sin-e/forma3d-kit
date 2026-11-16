@@ -1,5 +1,5 @@
 # Rôle : décrit les catégories et les générations conservées par l'application.
-# Exécution : le dépôt SQLite reconstruit ces objets pour GenerationService et les routes.
+# Exécution : le dépôt PostgreSQL reconstruit ces objets pour GenerationService et les routes.
 """Modèles métier des catégories et des générations image-vers-GLB."""
 
 # dataclasses (standard) : classes de données générées (constructeur, égalité). Équivalent d'un record Java.

@@ -2,6 +2,8 @@
 .env
 .env.*
 !.env.example
+# Modèles de configuration DevOps sans secret (compose, staging) : versionnés.
+!.env.*.example
 
 # Python
 __pycache__/
@@ -20,8 +22,6 @@ dist/
 
 # Bases locales et fichiers générés
 *.db
-*.sqlite
-*.sqlite3
 backend/data/
 backend/storage/
 /backend/.dev-server*.log
@@ -37,3 +37,6 @@ extension-debug.log
 # Matériel local de Codex
 .agents/
 PROMPT-1.md
+
+# Dernier tag sain en staging (écrit par scripts/deploy.sh)
+.last-good-tag

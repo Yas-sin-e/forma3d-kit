@@ -1,4 +1,4 @@
-# Rôle : applique les règles métier aux catégories partagées stockées dans SQLite.
+# Rôle : applique les règles métier aux catégories partagées stockées dans PostgreSQL.
 # Exécution : les routes /categories et l'upload appellent ce service.
 """Service de gestion et de validation des catégories de produits."""
 

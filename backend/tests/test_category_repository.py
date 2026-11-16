@@ -1,6 +1,6 @@
 # Rôle : vérifie les règles SQL du CRUD catégorie et la conservation des références.
-# Exécution : Pytest utilise des bases SQLite temporaires, sans service externe.
-"""Tests du dépôt SQLite des catégories partagées."""
+# Exécution : Pytest utilise la base PostgreSQL de test, sans service externe.
+"""Tests du dépôt PostgreSQL des catégories partagées."""
 
 from pathlib import Path
 
@@ -8,15 +8,15 @@ import pytest
 
 from app.models import GenerationStatus, ProductCategory
 from app.repositories.base import CategoryConflictError, CategoryInUseError
-from app.repositories.sqlite_repository import SQLiteGenerationRepository
+from pg_support import make_repository
 from app.services.generation_service import GenerationService
 from app.services.upload_validator import ValidatedUpload
 from app.storage.local_storage import LocalStorage
 
 
 def test_category_crud_and_active_listing(tmp_path: Path) -> None:
-    """Prouve le CRUD des catégories dans SQLite et la liste limitée aux catégories actives."""
-    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    """Prouve le CRUD des catégories dans PostgreSQL et la liste limitée aux catégories actives."""
+    repository = make_repository()
     repository.initialize()
 
     created = repository.create_category("lamp", "Lampe")
@@ -41,7 +41,7 @@ def test_category_crud_and_active_listing(tmp_path: Path) -> None:
 
 def test_repository_rejects_duplicate_slug_and_deleting_used_category(tmp_path: Path) -> None:
     """Prouve que le dépôt refuse un slug en double et la suppression d'une catégorie utilisée."""
-    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    repository = make_repository()
     repository.initialize()
     with pytest.raises(CategoryConflictError, match="slug.*existe déjà"):
         repository.create_category("chair", "Autre chaise")

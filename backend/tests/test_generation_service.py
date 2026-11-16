@@ -1,5 +1,5 @@
 # Rôle : teste les états persistés et les erreurs sans faux résultat de génération.
-# Exécution : Pytest lance ces tests avec un dépôt SQLite temporaire et sans réseau.
+# Exécution : Pytest lance ces tests avec la base PostgreSQL de test et sans réseau.
 """Tests du cycle de génération indépendant d'un Space Hugging Face."""
 
 from pathlib import Path
@@ -10,7 +10,7 @@ from PIL import Image
 
 from app.models import GenerationStatus, ProductCategory
 from app.providers.base import ProviderError
-from app.repositories.sqlite_repository import SQLiteGenerationRepository
+from pg_support import make_repository
 from app.services.generation_service import GenerationService
 from app.services.upload_validator import ValidatedUpload
 from app.storage.local_storage import LocalStorage
@@ -35,7 +35,7 @@ def _validated_upload() -> ValidatedUpload:
 
 def test_create_generation_stores_image_and_starts_pending(tmp_path: Path) -> None:
     """Prouve que create_generation enregistre la photo et crée un modèle PENDING."""
-    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    repository = make_repository()
     repository.initialize()
     service = GenerationService(UnavailableProvider(), LocalStorage(tmp_path), repository)
     image_content = b"\xff\xd8\xffvalidated test photo"
@@ -50,7 +50,7 @@ def test_create_generation_stores_image_and_starts_pending(tmp_path: Path) -> No
 def test_run_records_provider_failure_without_creating_a_model(tmp_path: Path) -> None:
     """Prouve qu'un échec du fournisseur donne FAILED sans créer de fichier GLB."""
     storage = LocalStorage(tmp_path)
-    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    repository = make_repository()
     repository.initialize()
     service = GenerationService(UnavailableProvider(), storage, repository)
     record = service.create_generation(_validated_upload(), b"\xff\xd8\xffphoto", ProductCategory.CHAIR)
@@ -77,7 +77,7 @@ def test_run_sends_prepared_copy_and_preserves_original_photo(tmp_path: Path) ->
             raise ProviderError("Arrêt volontaire après vérification de la photo préparée.")
 
     provider = InspectingProvider()
-    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    repository = make_repository()
     repository.initialize()
     service = GenerationService(provider, LocalStorage(tmp_path), repository)
     source = tmp_path / "upload.png"
@@ -117,7 +117,7 @@ def test_run_logs_provider_cause_while_masking_remote_credentials(
                 "écriture en échec pour https://temporary-space.gradio.live"
             )
 
-    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    repository = make_repository()
     repository.initialize()
     service = GenerationService(DetailedUnavailableProvider(), LocalStorage(tmp_path), repository)
     record = service.create_generation(_validated_upload(), b"\xff\xd8\xffphoto", ProductCategory.CHAIR)
@@ -137,7 +137,7 @@ def test_run_logs_provider_cause_while_masking_remote_credentials(
 
 def test_run_ignores_unknown_generation_ids(tmp_path: Path) -> None:
     """Prouve que run() ignore un identifiant inconnu sans erreur."""
-    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    repository = make_repository()
     repository.initialize()
     service = GenerationService(UnavailableProvider(), LocalStorage(tmp_path), repository)
 
@@ -146,7 +146,7 @@ def test_run_ignores_unknown_generation_ids(tmp_path: Path) -> None:
 
 def test_integration_cannot_be_enabled_before_a_glb_is_done(tmp_path: Path) -> None:
     """Prouve qu'on ne peut pas activer l'intégration d'un modèle non terminé."""
-    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    repository = make_repository()
     repository.initialize()
     service = GenerationService(UnavailableProvider(), LocalStorage(tmp_path), repository)
     record = service.create_generation(

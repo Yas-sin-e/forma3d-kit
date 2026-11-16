@@ -1,5 +1,7 @@
 # Comprendre Forma3D Studio — le guide complet
 
+> **Mise à jour du 16 novembre 2026 (projet DevOps) :** SQLite a été retiré du code. PostgreSQL est désormais la seule base (`backend/app/repositories/postgres_repository.py`, variable `DATABASE_URL` obligatoire). Les sections 3 à 6, 20 et 22 ont été mises à jour ; les données ont été migrées (`docs/devops/phase-03d.md`).
+
 > Document pédagogique pour comprendre **tout** le projet et l'expliquer à un jury.
 > Il décrit uniquement ce qui existe dans le dépôt au 15 novembre 2026 (dernier commit lu : `95f2d86`, après l'ajout de la suppression des modèles, de la session persistante facultative et de l'architecture cible).
 > Quand une information n'a pas pu être vérifiée dans le code, elle est marquée **« à vérifier »**.
@@ -149,7 +151,7 @@ Les fichiers 3D et la base sont **locaux** : ils ne partent jamais sur GitHub.
 
 ## 3. Architecture
 
-**En une phrase :** un navigateur parle à un serveur FastAPI, qui range les informations dans SQLite, les fichiers sur le disque, et demande les modèles 3D à un service d'IA externe.
+**En une phrase :** un navigateur parle à un serveur FastAPI, qui range les informations dans PostgreSQL, les fichiers sur le disque, et demande les modèles 3D à un service d'IA externe.
 
 ### 3.1 Les composants
 
@@ -164,7 +166,7 @@ flowchart LR
         S["Services<br/>logique métier"]
         P["Fournisseurs 3D<br/>TripoSR ou TRELLIS"]
     end
-    DB[("SQLite<br/>backend/data/forma3d.sqlite3")]
+    DB[("PostgreSQL<br/>conteneur db, volume pgdata")]
     FS[("Disque<br/>backend/storage/")]
     HF["Service IA externe<br/>Hugging Face Space ou Colab"]
     Site["Site d'une boutique<br/>iframe ou widget"]
@@ -191,7 +193,7 @@ flowchart LR
     B --> C["3. Préparation<br/>carré, marges, 512 px min"]
     C --> D["4. Génération<br/>TripoSR ou TRELLIS"]
     D --> E["5. Finition GLB<br/>matériau mat + normales"]
-    E --> F["6. Stockage<br/>disque + SQLite"]
+    E --> F["6. Stockage<br/>disque + PostgreSQL"]
     F --> G["7. Viewer<br/>fiche du modèle"]
     G --> H["8. Activation<br/>de l'intégration"]
     H --> I["9. Site client<br/>iframe ou widget"]
@@ -206,7 +208,7 @@ sequenceDiagram
     participant A as FastAPI
     participant G as GenerationService
     participant F as Fournisseur 3D
-    participant D as SQLite et disque
+    participant D as PostgreSQL et disque
 
     P->>N: dépose une photo et clique « Créer le modèle 3D »
     N->>A: POST /models (photo + catégorie)
@@ -240,7 +242,7 @@ Le 15 novembre 2026, la propriétaire a envoyé `fauteuil-retro-sur-fond-blanc�
 |---|---|---|
 | 1 | Le navigateur envoie la photo : `POST /models` | `frontend/js/api.js` → `createGeneration()` |
 | 2 | Le serveur vérifie extension, type, **signature** (premiers octets) et taille ≤ 10 Mo | `services/upload_validator.py` |
-| 3 | La photo est rangée dans `backend/storage/images/{uuid}.webp` ; une ligne `PENDING` est créée dans SQLite | `generation_service.create_generation()` |
+| 3 | La photo est rangée dans `backend/storage/images/{uuid}.webp` ; une ligne `PENDING` est créée dans PostgreSQL | `generation_service.create_generation()` |
 | 4 | Réponse immédiate `202 Accepted` ; la génération continue en tâche de fond (`RUNNING`) | `routers/models.py`, `BackgroundTasks` |
 | 5 | Une copie carrée à marges est préparée (512 px minimum) | `services/image_preparer.py` |
 | 6 | TRELLIS : connexion au Space, `/start_session`, détourage `/preprocess_image`, puis `/generate_and_extract_glb` | `providers/trellis.py` |
@@ -269,7 +271,7 @@ Le 15 novembre 2026, la propriétaire a envoyé `fauteuil-retro-sur-fond-blanc�
 | **Pydantic** | Validation des données JSON | Intégré à FastAPI | Bean Validation (Java) | `backend/app/schemas.py` |
 | **python-multipart** | Lecture des formulaires avec fichier | Nécessaire pour l'upload | — | upload `POST /models` |
 | **python-dotenv** | Lecture du fichier `.env` | Garde les secrets hors du code | variables système | `backend/app/config.py` |
-| **SQLite** | Base de données | Un seul fichier, aucun serveur à installer | PostgreSQL, Oracle | `repositories/sqlite_repository.py` |
+| **PostgreSQL 17** (+ pilote `psycopg`) | Base de données | Vrai serveur SQL, conteneur séparé, verrous par ligne | MySQL, Oracle | `repositories/postgres_repository.py` |
 | **Pillow** | Traitement d'image | Léger, sans IA | OpenCV | `services/image_preparer.py` |
 | **gradio_client** | Appel des services IA Gradio | Bibliothèque officielle | requêtes HTTP à la main | `providers/huggingface.py`, `providers/trellis.py` |
 | **httpx2** | Requêtes HTTP (contrôle de santé du fournisseur) | Client HTTP moderne | requests | `providers/huggingface.py`, `providers/trellis.py` |
@@ -288,7 +290,7 @@ Le 15 novembre 2026, la propriétaire a envoyé `fauteuil-retro-sur-fond-blanc�
 - **FastAPI** : on écrit une fonction Python et on la décore avec `@router.get("/chemin")`. FastAPI la transforme en route HTTP, vérifie les données et génère une documentation interactive sur `/docs`. 🔁 C'est un `@GetMapping` de Spring Boot.
 - **uvicorn** : le programme qui écoute sur un port (ex. 8000) et transmet les requêtes à FastAPI. 🔁 Tomcat pour Spring Boot.
 - **Pydantic** : des classes qui décrivent la forme d'un JSON (`class LoginRequest(BaseModel): password: str`). Si le JSON reçu ne correspond pas, FastAPI répond 422. 🔁 DTO + `@Valid`.
-- **SQLite** : une base SQL complète dans **un seul fichier**. Pas de serveur à installer. 🔁 Comme Oracle, mais sans instance ni utilisateur.
+- **PostgreSQL** : un serveur de base de données SQL, lancé dans son propre conteneur Docker ; `psycopg` est le pilote Python qui lui parle. 🔁 Comme Oracle, avec un utilisateur et une base dédiés. (SQLite, un simple fichier, a servi jusqu'au 16 novembre 2026.)
 - **Pillow** : ouvre une image, la redimensionne, ajoute des marges, mesure la netteté.
 - **gradio_client** : **Gradio** est une bibliothèque qui crée une page web autour d'un modèle IA. `gradio_client` permet d'appeler cette page **depuis un programme**. Le projet appelle toujours `view_api()` d'abord pour lire les fonctions réellement disponibles (le « contrat »).
 - **Hugging Face Spaces** : un site qui héberge gratuitement des démonstrations IA. Le GPU gratuit (**ZeroGPU**) a un **quota par jour**.
@@ -337,7 +339,8 @@ Le 15 novembre 2026, la propriétaire a envoyé `fauteuil-retro-sur-fond-blanc�
 | `backend/app/providers/trellis.py` | Fournisseur **TRELLIS** (Space public, détourage puis GLB texturé) |
 | `backend/app/repositories/__init__.py` | Paquet des dépôts (vide) |
 | `backend/app/repositories/base.py` | Contrat `GenerationRepository` : toutes les opérations de base de données |
-| `backend/app/repositories/sqlite_repository.py` | Implémentation SQLite : tables, migrations, requêtes |
+| `backend/app/repositories/postgres_repository.py` | Implémentation PostgreSQL : tables, migrations, requêtes, verrous |
+| `backend/app/repositories/factory.py` | Lit `DATABASE_URL` (obligatoire) et crée le dépôt PostgreSQL |
 | `backend/app/routers/__init__.py` | Paquet des routeurs (vide) |
 | `backend/app/routers/auth.py` | Connexion : `/auth/login`, `/auth/logout`, `/auth/me`, dépendance `require_owner` |
 | `backend/app/routers/models.py` | Modèles du Studio : création, galerie, import, copie, intégration, fichiers ; routes `/public` |
@@ -368,12 +371,14 @@ Le 15 novembre 2026, la propriétaire a envoyé `fauteuil-retro-sur-fond-blanc�
 | `test_api_v1.py` | API externe : clé, statuts, erreurs, quota |
 | `test_auth.py` | Connexion : 401 sans cookie, mot de passe faux, limite, routes publiques ouvertes, clé de session fixe facultative |
 | `test_categories_api.py` | Routes des catégories |
-| `test_category_repository.py` | Catégories dans SQLite |
+| `test_category_repository.py` | Catégories en base PostgreSQL |
 | `test_category_service.py` | Règles des catégories |
-| `test_demo_gallery.py` | Catalogue d'exemples : seuls les fichiers connus et valides (isolé de la vraie base SQLite) |
+| `test_demo_gallery.py` | Catalogue d'exemples : seuls les fichiers connus et valides (isolé de la base de travail) |
 | `test_embed.py` | Page `/embed` et politique de sécurité CSP |
 | `test_frontend.py` | Fichiers du frontend : présence des éléments, `fetch` seulement dans `api.js` |
-| `test_generation_repository.py` | Historique des générations dans SQLite, redémarrage |
+| `test_generation_repository.py` | Historique des générations en base, redémarrage, migrations |
+| `test_postgres_repository.py` | Dépôt PostgreSQL : cas limites, chemins portables, concurrence |
+| `pg_support.py` | Outils des tests : base `forma3d_test`, remise à zéro, requêtes |
 | `test_generation_service.py` | États PENDING → DONE ou FAILED, photo préparée |
 | `test_glb_finisher.py` | Finition des GLB sans modifier la géométrie |
 | `test_health.py` | Routes `/health` et `/health/provider` (indépendant de `backend/.env`) |
@@ -430,7 +435,7 @@ Le 15 novembre 2026, la propriétaire a envoyé `fauteuil-retro-sur-fond-blanc�
 | `docs/ARCHITECTURE-CIBLE.md` | Conception du futur SaaS multi-clients (rien n'est codé) |
 | `docs/ETAT.md` | État d'avancement, étape par étape |
 | `docs/STRUCTURE.md` | Rôle de chaque fichier et dossier |
-| `docs/STOCKAGE.md` | Base SQLite, fichiers, intégration |
+| `docs/STOCKAGE.md` | Persistance (historique SQLite, aujourd'hui PostgreSQL), fichiers, intégration |
 | `docs/INTEGRATION.md` | Guide pour le développeur d'une boutique |
 | `docs/ALTERNATIVES-3D.md` | Comparaison des fournisseurs 3D gratuits |
 | `docs/QUALITE-3D.md` | Grille de qualité et résultats d'essais |
@@ -443,7 +448,7 @@ Le 15 novembre 2026, la propriétaire a envoyé `fauteuil-retro-sur-fond-blanc�
 | `docs/etapes/etape-06.md` | Essais TripoSR réels |
 | `docs/etapes/etape-06-colab.md` | TripoSR, Colab et limites du serveur public |
 | `docs/etapes/etape-07.md` | Fiabilité et qualité |
-| `docs/etapes/etape-08.md` | SQLite et historique persistant |
+| `docs/etapes/etape-08.md` | Historique persistant (SQLite à l'époque) |
 | `docs/etapes/etape-09.md` | CRUD des catégories |
 | `docs/etapes/etape-10.md` | Préparation locale de la photo |
 | `docs/etapes/etape-11.md` | Refonte de la navigation |
@@ -484,7 +489,7 @@ flowchart TD
     main["main.py"] --> config["config.py"]
     main --> hf["providers/huggingface.py"]
     main --> tr["providers/trellis.py"]
-    main --> repo["repositories/sqlite_repository.py"]
+    main --> repo["repositories/postgres_repository.py"]
     main --> rauth["routers/auth.py"]
     main --> rmodels["routers/models.py"]
     main --> rcat["routers/categories.py"]
@@ -545,7 +550,7 @@ Règle vérifiée par un test (`test_frontend.py`) : **seul `api.js` contient `f
 | 3 | Appel HTTP | `frontend/js/api.js` → `createGeneration(photo, category)` | `POST /models` avec un `FormData` |
 | 4 | Route | `backend/app/routers/models.py` → route `POST /models` | Protégée par `require_owner` ; valide le fichier avec `UploadValidator` |
 | 5 | Service | `GenerationService.create_generation()` | Enregistre la photo, crée l'enregistrement `PENDING` |
-| 6 | Dépôt | `SQLiteGenerationRepository.save_generation()` | Insère la ligne dans `generations` |
+| 6 | Dépôt | `PostgresGenerationRepository.save_generation()` | Insère la ligne dans `generations` (upsert) |
 | 7 | Tâche de fond | `GenerationService.run()` | Passe en `RUNNING`, prépare la photo (`ImagePreparer`) |
 | 8 | Fournisseur | `HuggingFaceSpaceProvider.generate()` ou `TrellisSpaceProvider.generate()` | Appelle le service IA et vérifie le GLB reçu |
 | 9 | Service | `_finish_generated_model()` → `glb_finisher.finish_glb()` | Ajoute matériau mat et normales |
@@ -558,7 +563,9 @@ Règle vérifiée par un test (`test_frontend.py`) : **seul `api.js` contient `f
 
 ## 6. Base de données
 
-**En une phrase :** une base SQLite (un seul fichier, `backend/data/forma3d.sqlite3`) garde les catégories, l'historique des modèles et les clés API ; les fichiers eux-mêmes restent sur le disque.
+**En une phrase :** une base **PostgreSQL** (un serveur, dans le conteneur `db` de Docker Compose) garde les catégories, l'historique des modèles et les clés API ; les fichiers eux-mêmes (photos, GLB) restent sur le disque, dans le volume `storage`.
+
+> Historique : de l'étape 8 (Sprint 2) au 16 novembre 2026, la base était un fichier SQLite (`backend/data/forma3d.sqlite3`). Le projet DevOps l'a remplacée par PostgreSQL (décision D5) et les données ont été copiées par un script de reprise, supprimé ensuite. Voir `docs/devops/phase-03a.md`, `phase-03c.md` et `phase-03d.md`.
 
 ### 6.1 Schéma entité-relation
 
@@ -569,46 +576,46 @@ erDiagram
     API_KEYS ||--o{ API_RATE_EVENTS : "trace les appels"
 
     CATEGORIES {
-        INTEGER id PK
+        BIGINT id PK "IDENTITY"
         TEXT slug UK
         TEXT label
-        INTEGER is_active
-        TEXT created_at
+        BOOLEAN is_active
+        TIMESTAMPTZ created_at
     }
     GENERATIONS {
         TEXT id PK
-        INTEGER category_id FK
+        BIGINT category_id FK
         TEXT status
         TEXT filename
         TEXT content_type
         TEXT source_photo_path
         TEXT glb_path
-        REAL duration_seconds
+        DOUBLE duration_seconds
         TEXT error_message
         TEXT image_warning
         TEXT origin
         TEXT public_id
-        INTEGER embed_enabled
-        TEXT created_at
-        TEXT updated_at
+        BOOLEAN embed_enabled
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
     }
     API_KEYS {
         TEXT id PK
         TEXT name
         TEXT prefix
         TEXT fingerprint UK
-        TEXT created_at
-        INTEGER revoked
+        TIMESTAMPTZ created_at
+        BOOLEAN revoked
     }
     API_USAGE_DAILY {
         TEXT api_key_id FK
-        TEXT usage_date
+        DATE usage_date
         INTEGER generation_count
     }
     API_RATE_EVENTS {
-        INTEGER id PK
+        BIGINT id PK
         TEXT api_key_id FK
-        TEXT occurred_at
+        TIMESTAMPTZ occurred_at
     }
 ```
 
@@ -618,13 +625,13 @@ erDiagram
 
 | Colonne | Sens |
 |---|---|
-| `id` | Numéro automatique |
+| `id` | Numéro automatique (`GENERATED ALWAYS AS IDENTITY`) |
 | `slug` | Identifiant technique unique (`chair`, `stool`, `side-table`) |
 | `label` | Nom affiché (« Chaise », « Tabouret », « Table d'appoint ») |
-| `is_active` | 1 = proposée pour les nouvelles créations ; 0 = désactivée |
-| `created_at` | Date de création |
+| `is_active` | `true` = proposée pour les nouvelles créations ; `false` = désactivée |
+| `created_at` | Date de création, avec fuseau horaire (`TIMESTAMPTZ`, relue en UTC) |
 
-Au premier démarrage, les trois catégories initiales sont créées si elles n'existent pas. ✅
+Au premier démarrage, les trois catégories initiales sont créées si elles n'existent pas. ✅ Les numéros peuvent présenter des « trous » (1, 2, 3, puis 10…) : PostgreSQL garantit l'unicité, pas la continuité.
 
 **`generations`** — chaque modèle : généré, importé ou copié depuis un exemple.
 
@@ -635,58 +642,77 @@ Au premier démarrage, les trois catégories initiales sont créées si elles n'
 | `status` | `PENDING`, `RUNNING`, `DONE` ou `FAILED` (contrôle `CHECK`) |
 | `filename` | Nom affiché du fichier ou titre |
 | `content_type` | Type de la photo (`image/jpeg`…) |
-| `source_photo_path` | Chemin de la photo source sur le disque |
-| `glb_path` | Chemin du GLB (vide tant que le modèle n'est pas terminé) |
+| `source_photo_path` | Chemin de la photo, **relatif** au dossier de stockage (`images/{uuid}.webp`) |
+| `glb_path` | Chemin du GLB, relatif (`models/{uuid}.glb`) ; vide tant que le modèle n'est pas terminé |
 | `duration_seconds` | Durée de génération mesurée |
 | `error_message` | Cause d'un échec, sans secret |
 | `image_warning` | Avertissement non bloquant (photo petite ou floue) |
 | `origin` | `generated`, `imported` ou `example` |
 | `public_id` | UUID **public**, utilisé par `/embed` et le widget (différent de `id`) |
-| `embed_enabled` | 1 = intégration autorisée sur un site ; 0 par défaut |
-| `created_at`, `updated_at` | Dates |
+| `embed_enabled` | `true` = intégration autorisée sur un site ; `false` par défaut |
+| `created_at`, `updated_at` | Dates avec fuseau horaire |
+
+Pourquoi des chemins **relatifs** ? La même base sert au conteneur Linux (`/app/backend/storage`) et au poste Windows (dossier `backend/storage` du dépôt). On enregistre `models/a.glb`, et chaque environnement le rattache à son propre dossier de stockage (`PostgresGenerationRepository._path_to_db()` et `_path_from_db()`).
 
 **`api_keys`** — les clés API. ⚠️ La clé complète n'est **jamais** enregistrée : seule son **empreinte** (`fingerprint`, un hachage SHA-256) l'est, plus un `prefix` lisible (`f3d_live_xxx…`).
 
-**`api_usage_daily`** — nombre de créations par clé et par jour (quota quotidien).
+**`api_usage_daily`** — nombre de créations par clé et par jour UTC (quota quotidien).
 
 **`api_rate_events`** — horodatage des appels récents de chaque clé (limite par minute ; les événements de plus de 60 s sont nettoyés).
 
 Les exemples du catalogue ne sont **pas** dans la base : ils sont décrits par une liste fixe dans `demo_gallery.py`.
 
-### 6.3 Pourquoi SQLite ?
+### 6.3 Pourquoi PostgreSQL ?
 
-- Un seul fichier, aucun serveur à installer : parfait pour un prototype local.
-- SQL standard : 🔁 vous retrouvez `CREATE TABLE`, `REFERENCES`, `CHECK` comme dans Oracle.
-- Limite : un seul écrivain à la fois, pas de comptes utilisateurs de base de données, pas adapté à plusieurs serveurs.
+- **Un vrai serveur** dans son propre conteneur, comme l'exige le projet DevOps (« application + base de données » dans Compose).
+- **Plusieurs écrivains en même temps** : les verrous portent sur une ligne (`SELECT … FOR UPDATE`), pas sur toute la base comme SQLite.
+- **Types stricts** : `BOOLEAN`, `TIMESTAMPTZ`, `DATE` au lieu de nombres et de textes.
+- **Même base partout** (développement, tests, CI, staging) : un bug lié à la base apparaît tout de suite, pas seulement en production.
+- 🔁 SQL standard : vous retrouvez `CREATE TABLE`, `REFERENCES`, `CHECK`, comme dans Oracle ; avec un utilisateur (`forma3d`) et une base (`forma3d`).
 
-### 6.4 Migrations
+### 6.4 Où se trouve la base, et comment la voir
 
-**Une migration** est une modification de la structure d'une base existante sans perdre les données. Le projet utilise des migrations **simples et non destructives** dans `SQLiteGenerationRepository.initialize()` :
+| Situation | Adresse | Qui l'utilise |
+|---|---|---|
+| Docker Compose (`docker compose up -d`) | hôte `db`, port 5432, **non publié** | le conteneur `api` uniquement |
+| Debug (`compose.debug.yaml`) | `127.0.0.1:5433` | DBeaver, HeidiSQL, `scripts/dev.ps1` |
+| Tests | base séparée `forma3d_test` | pytest (vidée avant chaque test) |
+| CI GitHub | service `postgres:17-alpine` jetable | jobs `test` et `docker-build` |
+
+La variable **`DATABASE_URL`** (`postgresql://utilisateur:motdepasse@hôte:port/base`) dit à l'application où se connecter. Elle est **obligatoire** : sans elle, l'application refuse de démarrer avec un message clair (`repositories/factory.py`). Le mot de passe n'est jamais écrit dans les journaux (`mask_database_url()` le remplace par `***`).
+
+Pour voir les tables : `docker compose -f compose.yaml -f compose.debug.yaml up -d`, puis DBeaver → PostgreSQL → `127.0.0.1:5433`, base `forma3d`, utilisateur `forma3d`. Pas à pas complet : `docs/devops/phase-03d.md`.
+
+### 6.5 Migrations
+
+**Une migration** est une modification de la structure d'une base existante sans perdre les données. `PostgresGenerationRepository.initialize()` les applique à chaque démarrage, sans danger :
 
 1. `CREATE TABLE IF NOT EXISTS …` crée les tables absentes.
-2. Le code lit les colonnes existantes (`PRAGMA table_info(generations)`).
-3. Il ajoute les colonnes manquantes avec `ALTER TABLE … ADD COLUMN` : `image_warning`, `origin`, `public_id`, `embed_enabled`.
+2. `ALTER TABLE generations ADD COLUMN IF NOT EXISTS …` ajoute les colonnes apparues au fil des étapes : `image_warning`, `origin`, `public_id`, `embed_enabled`.
+3. Les modèles terminés sans `public_id` en reçoivent un.
+4. Un **verrou consultatif** (`pg_advisory_xact_lock`) garantit que deux API démarrant ensemble n'appliquent pas les migrations en même temps.
 
 🔁 C'est l'équivalent très simplifié de Flyway (Spring) ou des migrations Doctrine (Symfony), sans numéro de version. ⚠️ Il n'existe pas de retour arrière automatique.
 
-### 6.5 Au redémarrage du serveur
+**Migration de données** (une seule fois, 16 novembre 2026) : un script de reprise a copié les anciennes données vers PostgreSQL, en lecture seule côté source, dans une seule transaction, en transformant les chemins Windows absolus en chemins relatifs. Il a été supprimé après usage : aucun code SQLite ne reste dans le projet (historique : `docs/devops/phase-03d.md`).
+
+### 6.6 Au redémarrage du serveur
 
 Les générations restées `PENDING` ou `RUNNING` (le serveur s'est arrêté au milieu) passent à `FAILED` avec le message « Génération interrompue au redémarrage du serveur. » ✅ Une génération n'est donc jamais bloquée pour toujours en « en cours ».
 
-### 6.6 Passer plus tard à PostgreSQL (sans le faire)
+### 6.7 Le patron Repository : pourquoi le passage à PostgreSQL n'a touché aucun service
 
-Les services ne parlent jamais à SQLite directement : ils utilisent le **contrat** `GenerationRepository` (`backend/app/repositories/base.py`). Ce contrat liste les opérations : `initialize`, `save_generation`, `get_generation`, `get_generation_by_public_id`, `set_embed_enabled`, `delete_generation`, `list_completed_generations`, `list_categories`, `create_category`, `update_category`, `delete_category`, `create_api_key`, `list_api_keys`, `find_api_keys_by_prefix`, `revoke_api_key`, `delete_revoked_api_key`, `consume_api_rate_limit`, `consume_api_daily_quota`…
+Les services ne parlent jamais à la base directement : ils utilisent le **contrat** `GenerationRepository` (`backend/app/repositories/base.py`). Ce contrat liste les 19 opérations : `initialize`, `save_generation`, `get_generation`, `get_generation_by_public_id`, `set_embed_enabled`, `delete_generation`, `list_completed_generations`, `get_category`, `list_categories`, `create_category`, `update_category`, `delete_category`, `create_api_key`, `list_api_keys`, `find_api_keys_by_prefix`, `revoke_api_key`, `delete_revoked_api_key`, `consume_api_rate_limit`, `consume_api_daily_quota`.
 
-🔁 C'est une **interface Java** : pour passer à PostgreSQL, il suffirait d'écrire une classe `PostgreSQLGenerationRepository` qui implémente les mêmes méthodes, puis de la choisir dans `main.py`. Les routes et services ne changeraient pas. Il faudrait aussi un script qui copie les données et des migrations versionnées. **Ce n'est pas fait.** Détails, avec le vrai code et la question de l'`owner_id` : `docs/ARCHITECTURE-CIBLE.md`, section 9.
+🔁 C'est une **interface Java** : `PostgresGenerationRepository` (`backend/app/repositories/postgres_repository.py`) implémente ces méthodes ; `factory.py` la crée à partir de `DATABASE_URL`. Les routes et les services n'ont pas changé d'une ligne lors du remplacement de SQLite.
 
+### 6.8 Encadrés
 
-### 6.7 Encadrés
+> **Un exemple concret.** Après la génération du fauteuil vert, la table `generations` contient une ligne : `status = DONE`, `category_id` = celui de « chair », `glb_path = models/4521a7f1-….glb`, `embed_enabled = true` (il a été activé). Quand la propriétaire désactive l'intégration, seule la colonne `embed_enabled` change ; le `public_id` reste le même. Quand elle supprime le modèle (étape 23), la ligne est effacée, puis le GLB et la photo.
 
-> **Un exemple concret.** Après la génération du fauteuil vert, la table `generations` contient une ligne : `status = DONE`, `category_id` = celui de « chair », `source_photo_path` et `glb_path` vers les fichiers du disque, `embed_enabled = 0`. Quand la propriétaire active l'intégration, seule la colonne `embed_enabled` passe à 1 ; le `public_id` ne change pas. Quand elle supprime le modèle (étape 23), la ligne est effacée, puis le GLB et la photo.
+> **Une analogie.** 🔁 Le schéma ressemble à ce que vous écririez en Oracle : clés primaires, clé étrangère `category_id`, contrainte `CHECK` sur le statut, utilisateur et base dédiés. La logique reste dans les services Python, et l'accès passe par un dépôt comme un `@Repository` Spring.
 
-> **Une analogie.** 🔁 Le schéma ressemble à ce que vous écririez en Oracle : clés primaires, clé étrangère `category_id`, contrainte `CHECK` sur le statut. La différence : pas d'instance, pas d'utilisateur de base, pas de PL/SQL ; la logique est dans les services Python, et l'accès passe par un dépôt comme un `@Repository` Spring.
-
-> **Ce que je réponds si on me demande pourquoi.** « SQLite est un vrai moteur SQL, suffisant pour une console mono-propriétaire en local, et il ne demande aucune installation. J'ai isolé tout l'accès derrière l'interface `GenerationRepository` pour pouvoir passer à PostgreSQL le jour où il faudra plusieurs serveurs ou un hébergement : c'est décrit dans `docs/ARCHITECTURE-CIBLE.md`. »
+> **Ce que je réponds si on me demande pourquoi.** « J'ai commencé avec SQLite, suffisant pour un prototype local. Pour le projet DevOps, il fallait une vraie base dans un service séparé : comme tout l'accès passait par l'interface `GenerationRepository`, j'ai écrit une implémentation PostgreSQL sans toucher aux services, puis retiré SQLite pour avoir la même base partout, et migré les données existantes par un script rejouable. »
 
 ---
 
@@ -785,7 +811,7 @@ Détails et essais : `docs/ALTERNATIVES-3D.md` et `docs/QUALITE-3D.md`.
 
 ## 8. Cycle de vie d'un modèle
 
-**En une phrase :** un modèle généré passe par quatre états, enregistrés dans SQLite et lus par la page toutes les 1,5 seconde.
+**En une phrase :** un modèle généré passe par quatre états, enregistrés dans PostgreSQL et lus par la page toutes les 1,5 seconde.
 
 ```mermaid
 stateDiagram-v2
@@ -815,7 +841,7 @@ stateDiagram-v2
 
 > **Une analogie.** 🔁 C'est une machine à états comme le statut d'une commande dans une application Symfony ou Spring : chaque transition est écrite en base, et l'interface Angular ne ferait que lire l'état courant (ici, par interrogation régulière plutôt que par WebSocket).
 
-> **Ce que je réponds si on me demande pourquoi.** « Les quatre états sont enregistrés dans SQLite pour qu'un rechargement de page ou un redémarrage ne perde pas le suivi. Je n'affiche aucun pourcentage inventé : seulement l'état réellement renvoyé par le serveur. »
+> **Ce que je réponds si on me demande pourquoi.** « Les quatre états sont enregistrés en base de données pour qu'un rechargement de page ou un redémarrage ne perde pas le suivi. Je n'affiche aucun pourcentage inventé : seulement l'état réellement renvoyé par le serveur. »
 
 ---
 
@@ -1398,7 +1424,7 @@ $env:PYTHON_DOTENV_DISABLED = "true"; $env:HF_SPACE_ID = ""
 | Problème rencontré | Cause | Correction |
 |---|---|---|
 | Avec `IMAGE3D_PROVIDER=trellis` et `HF_TOKEN` dans `backend/.env`, deux tests de `test_health.py` recevaient « ONLINE » | Le test remplaçait `main_module.provider`, mais la route lit `app.state.generation_provider` (TRELLIS), qui interrogeait le vrai Space | Le test remplace l'objet réellement lu par la route |
-| Après une vraie génération, deux tests de `test_demo_gallery.py` échouaient | Ils lisaient la vraie base `backend/data/forma3d.sqlite3` | Le service est remplacé par un faux service vide pendant ces tests |
+| Après une vraie génération, deux tests de `test_demo_gallery.py` échouaient | Ils lisaient la vraie base locale (SQLite à l'époque) | Le service est remplacé par un faux service vide pendant ces tests |
 | `dev.ps1` dépendait du `.env` réel pendant pytest | python-dotenv chargeait `backend/.env` | pytest tourne avec `PYTHON_DOTENV_DISABLED=true` et `HF_SPACE_ID` vide ; le serveur, lui, lit toujours `.env` |
 
 ### 14.2 CI et CD en mots simples
@@ -1511,7 +1537,7 @@ Get-NetTCPConnection -LocalPort 8001 -State Listen | ForEach-Object { Stop-Proce
 - **Génération TRELLIS depuis le Studio** : obtenue le 15 novembre 2026 (fauteuil rétro vert : GLB affiché, intégré et visible sur une page de test), après la correction du délai HTTP. Elle reste dépendante du quota quotidien et de la disponibilité du Space.
 - **Qualité selon la photo** : un fauteuil blanc sur fond gris clair, en petite capture d'écran, a donné un modèle posé sur une « dalle » : le détourage n'a pas séparé l'objet du sol (contraste trop faible, ombre, image de moins de 512 px).
 - **Sécurité** : usage local, HTTP, un seul mot de passe (section 12.5).
-- **Données** : SQLite et disque local, sans sauvegarde automatique.
+- **Données** : PostgreSQL (volume Docker `pgdata`) et disque local, sans sauvegarde automatique.
 - **Pas de déploiement** ni de CD.
 
 ### 16.2 La deuxième partie du projet (proposée, non commencée)
@@ -1593,7 +1619,7 @@ flowchart TD
 |---|---|---|
 | Rôles | Propriétaire seule | Visiteur, client inscrit, administrateur |
 | Isolation | Sans objet | `owner_id` sur modèles, clés API et sites autorisés ; chaque requête vérifie le propriétaire (sinon : faille IDOR) |
-| Base | SQLite local | PostgreSQL hébergé, avec Row Level Security |
+| Base | PostgreSQL local (Docker) | PostgreSQL hébergé, avec Row Level Security |
 | Fichiers | `backend/storage/` | Stockage d'objets séparé |
 | Authentification | Mot de passe unique | Supabase Auth recommandé (option A) plutôt qu'une authentification maison (option B) |
 | Goulot | Quota GPU gratuit | Le même quota, partagé par tous les clients : c'est la vraie limite |
@@ -1605,7 +1631,7 @@ flowchart LR
     C -.-> B["Option B<br/>PostgreSQL + auth maison<br/>(déconseillée)"]
 ```
 
-Pourquoi la migration est possible : le service dépend de l'interface `GenerationRepository`, pas de SQLite (section 6.6). Le vrai travail serait d'ajouter l'`owner_id` à chaque méthode et à chaque route.
+Pourquoi la migration est possible : le service dépend de l'interface `GenerationRepository`, pas d'une base précise (section 6.7) ; le passage de SQLite à PostgreSQL l'a déjà prouvé. Le vrai travail serait d'ajouter l'`owner_id` à chaque méthode et à chaque route.
 
 👉 Lire `docs/ARCHITECTURE-CIBLE.md` : schéma des tables, comparaison des options avec les liens officiels, plan en étapes, et dix phrases prêtes pour l'oral.
 
@@ -1667,7 +1693,7 @@ flowchart TD
     RK --> ROUTE
     PUB --> ROUTE
     ROUTE --> SVC["Service"]
-    SVC --> REPO["Dépôt SQLite"]
+    SVC --> REPO["Dépôt PostgreSQL"]
     SVC --> STO["Stockage disque"]
     SVC --> PROV["Fournisseur 3D"]
     ROUTE -->|HTTPException| EH["Gestionnaire d'erreurs<br/>main.py"]
@@ -1888,37 +1914,34 @@ Correspondance des codes (gestionnaire de `main.py`) : 400 `bad_request`, 401 `u
 
 **Question du jury :** « Comment évitez-vous qu'une clé lance 1 000 générations ? » → « Deux limites par clé, stockées en base : 10 requêtes par minute et 20 créations par jour par défaut, réglables dans `.env`. »
 
-### 20.8 `repositories/sqlite_repository.py` — connexions et transactions
+### 20.8 `repositories/postgres_repository.py` — connexions et transactions
 
 ```python
-# backend/app/repositories/sqlite_repository.py, lignes 31-44
+# backend/app/repositories/postgres_repository.py, lignes 83-97
 @contextmanager
-def _connection(self) -> Iterator[sqlite3.Connection]:
-    connection = sqlite3.connect(self.database_path, timeout=5.0)
-    try:
-        connection.row_factory = sqlite3.Row
-        connection.execute("PRAGMA foreign_keys = ON")
+def _connection(self) -> Iterator[psycopg.Connection[dict[str, Any]]]:
+    with psycopg.connect(
+        self._database_url,
+        row_factory=dict_row,
+        connect_timeout=self._connect_timeout,
+        options="-c TimeZone=UTC",
+    ) as connection:
         yield connection
-        connection.commit()
-    except Exception:
-        connection.rollback()
-        raise
-    finally:
-        connection.close()
 ```
 
 **Ligne par ligne :**
 - `@contextmanager` transforme la fonction en **gestionnaire de contexte** utilisable avec `with self._connection() as connection:`.
-- `row_factory = sqlite3.Row` : on lit les colonnes par leur nom (`row["status"]`).
-- `PRAGMA foreign_keys = ON` : SQLite n'applique les clés étrangères que si on le demande.
-- `yield` « prête » la connexion au bloc `with` ; à la fin : `commit` si tout va bien, `rollback` en cas d'erreur, et **toujours** `close`.
-- Une connexion **par opération** : pas de connexion partagée entre la requête HTTP et la tâche de fond.
+- `psycopg.connect(...)` ouvre une connexion réseau vers le serveur PostgreSQL désigné par `DATABASE_URL`.
+- `row_factory=dict_row` : on lit les colonnes par leur nom (`row["status"]`).
+- `connect_timeout` : on n'attend pas indéfiniment une base injoignable.
+- `TimeZone=UTC` : toutes les dates relues sont en UTC, quel que soit le réglage du serveur.
+- Le bloc `with` de psycopg fait `commit` si tout va bien, `rollback` en cas d'erreur, et **toujours** ferme la connexion.
+- Une connexion **par opération** : pas de connexion partagée entre la requête HTTP et la tâche de fond (un test le vérifie avec un espion sur `psycopg.connect`).
+- Les valeurs passent par des paramètres `%s`, envoyés **séparément** du texte SQL : pas d'injection SQL possible.
 
-La limite par minute (`consume_api_rate_limit`, ligne 292) commence par `BEGIN IMMEDIATE` : la transaction réserve l'écriture tout de suite, donc deux requêtes simultanées ne peuvent pas dépasser la limite ensemble.
+La limite par minute (`consume_api_rate_limit`, ligne 449) commence par `SELECT … FROM api_keys WHERE id = %s … FOR UPDATE` : la ligne de la clé est **verrouillée** jusqu'à la fin de la transaction, donc deux requêtes simultanées avec la même clé passent l'une après l'autre et ne peuvent pas dépasser la limite ensemble. Un test lance 8 requêtes en parallèle avec une limite de 3 : exactement 3 sont acceptées.
 
-🔁 C'est l'équivalent d'une méthode `@Transactional` de Spring, ou d'un bloc `BEGIN … COMMIT; EXCEPTION WHEN OTHERS THEN ROLLBACK;` en PL/SQL.
-
-**Question du jury :** « Que se passe-t-il si une erreur survient au milieu d'une écriture ? » → « Le gestionnaire de contexte annule toute la transaction (`rollback`) : la base reste cohérente. »
+🔁 C'est l'équivalent d'une méthode `@Transactional` de Spring, ou d'un bloc `BEGIN … COMMIT; EXCEPTION WHEN OTHERS THEN ROLLBACK;` en PL/SQL ; `FOR UPDATE` existe aussi en Oracle.
 
 ### 20.9 `routers/models.py` — envoi d'une photo et routes publiques
 
@@ -2288,7 +2311,7 @@ Les techniques CSS sont expliquées en section 22.4.
 | Famille | Fichiers | Technique principale |
 |---|---|---|
 | Règles métier pures | `test_upload_validator.py`, `test_category_service.py`, `test_image_preparer.py`, `test_glb_finisher.py` | Appel direct des classes avec des données fabriquées en mémoire |
-| Base de données | `test_generation_repository.py`, `test_category_repository.py` | Base SQLite **temporaire** (`tmp_path`), redémarrage simulé en recréant le dépôt |
+| Base de données | `test_generation_repository.py`, `test_category_repository.py` | Base PostgreSQL de test `forma3d_test`, vidée avant chaque test, redémarrage simulé en recréant le dépôt |
 | Routes HTTP | `test_models_api.py`, `test_categories_api.py`, `test_api_keys.py`, `test_api_v1.py`, `test_embed.py`, `test_model_deletion.py`, `test_model_library.py`, `test_health.py`, `test_demo_gallery.py` | `TestClient` + `app.dependency_overrides` pour injecter un service sur base temporaire |
 | Sécurité | `test_auth.py` (marqué `real_auth`), `test_api_settings.py` | Vraie vérification de session, configuration invalide refusée |
 | Fournisseurs | `test_huggingface_provider.py`, `test_trellis_provider.py` | Faux client Gradio (`FakeClient`) : aucun appel réseau |
@@ -2298,11 +2321,11 @@ Les techniques CSS sont expliquées en section 22.4.
 Extrait représentatif (les techniques sont détaillées en section 22.5) :
 
 ```python
-# backend/tests/test_model_deletion.py, lignes 34-43
+# backend/tests/test_model_deletion.py, lignes 35-45
 @pytest.fixture
 def setup(tmp_path: Path):
-    """Service réel sur un dépôt SQLite et un dossier de stockage temporaires."""
-    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    """Service réel sur la base PostgreSQL de test et un dossier de stockage temporaire."""
+    repository = make_repository()   # base forma3d_test, déjà vidée par conftest.py
     repository.initialize()
     storage = LocalStorage(tmp_path / "storage")
     service = GenerationService(SuccessfulProvider(), storage, repository)
@@ -2404,18 +2427,16 @@ with Image.open(source_path) as opened:
     image = ImageOps.exif_transpose(opened)
     image.load()
 ```
-- **Ce que ça fait :** `with` garantit qu'une ressource est **libérée** à la fin du bloc, même en cas d'erreur (ici, le fichier image). Le projet en écrit un lui-même : `_connection()` du dépôt SQLite (section 20.8), et `lifespan` dans `main.py`.
+- **Ce que ça fait :** `with` garantit qu'une ressource est **libérée** à la fin du bloc, même en cas d'erreur (ici, le fichier image). Le projet en écrit un lui-même : `_connection()` du dépôt PostgreSQL (section 20.8), et `lifespan` dans `main.py`.
 - 🔁 **Java :** `try (var in = new FileInputStream(...)) { ... }` (try-with-resources).
 - **Sans :** un fichier ou une connexion pourrait rester ouvert après une erreur.
 
 #### g) `pathlib`
 
 ```python
-# backend/app/main.py, ligne 38 et lignes 47-49
+# backend/app/main.py, ligne 54 et backend/app/storage/local_storage.py, ligne 23
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
-generation_repository = SQLiteGenerationRepository(
-    _PROJECT_ROOT / "backend" / "data" / "forma3d.sqlite3"
-)
+default_root = Path(__file__).resolve().parents[2] / "storage"
 ```
 - **Ce que ça fait :** `Path` représente un chemin ; l'opérateur `/` assemble des morceaux ; `parents[2]` remonte de deux dossiers depuis ce fichier.
 - **Pourquoi :** fonctionne sur Windows (`\`) comme sur Linux (`/`), et ne dépend pas du dossier d'où l'on lance la commande.
@@ -2507,8 +2528,8 @@ flowchart LR
 | Technique | Où | Ce que ça fait | 🔁 Équivalent | Sans elle |
 |---|---|---|---|---|
 | **Couches** routers / services / dépôts / stockage / fournisseurs | `backend/app/*/` | Chaque couche a un seul rôle ; une route ne fait jamais de SQL | `@RestController` / `@Service` / `@Repository` | Une route de 200 lignes mélangeant HTTP, SQL et appels réseau |
-| **Patron Repository** | `repositories/sqlite_repository.py` | Tout le SQL est rangé dans une classe | Spring Data `JpaRepository` | Du SQL dispersé dans les services |
-| **Interface `Protocol`** | `repositories/base.py`, `storage/base.py`, `providers/base.py` | Décrit les méthodes attendues ; toute classe qui les possède convient (**typage structurel**, sans `implements`) | `interface` Java | Le service dépendrait de SQLite ou de TRELLIS directement |
+| **Patron Repository** | `repositories/postgres_repository.py` | Tout le SQL est rangé dans une classe | Spring Data `JpaRepository` | Du SQL dispersé dans les services |
+| **Interface `Protocol`** | `repositories/base.py`, `storage/base.py`, `providers/base.py` | Décrit les méthodes attendues ; toute classe qui les possède convient (**typage structurel**, sans `implements`) | `interface` Java | Le service dépendrait de PostgreSQL ou de TRELLIS directement |
 | **Fournisseur interchangeable** (patron Stratégie) | `main.py` lignes 42-46 | TripoSR ou TRELLIS choisi par une variable | `@ConditionalOnProperty` | Des `if fournisseur == ...` dans tout le service |
 | **Machine à états** | `GenerationStatus` + `generation_service.run()` | `PENDING → RUNNING → DONE/FAILED`, chaque transition enregistrée | `enum` + statut d'une entité | Des états incohérents (un GLB sans statut DONE) |
 | **Schémas Pydantic comme DTO** | `schemas.py` + `_to_response()` | Le JSON public ne contient jamais de chemin disque | DTO + mapper (MapStruct) | Fuite de chemins locaux ou de champs internes |
@@ -2558,7 +2579,7 @@ flowchart LR
 | **Marqueur** | `test_auth.py` | `pytestmark = pytest.mark.real_auth` | Ces tests gardent la vraie vérification de session | `@Tag` |
 | **monkeypatch** | `test_health.py` : 32-33 | `monkeypatch.setattr(main_module.provider, "health_status", lambda: status)` | Remplace un attribut le temps d'un test, puis le restaure | `Mockito.when(...)` |
 | **parametrize** | `test_health.py` : 28 | `@pytest.mark.parametrize("status", ["ONLINE", "OFFLINE", "UNCONFIGURED"])` | Lance le même test avec plusieurs valeurs | `@ParameterizedTest @ValueSource` |
-| **Base temporaire** | `test_model_deletion.py` : 37 | `SQLiteGenerationRepository(tmp_path / "history.sqlite3")` | Chaque test a sa propre base, effacée ensuite | H2 en mémoire, `@DataJpaTest` |
+| **Base de test remise à zéro** | `conftest.py`, `pg_support.py` | `TRUNCATE … RESTART IDENTITY` avant chaque test | Chaque test part de trois catégories, sans dépendre des autres | H2 en mémoire, `@DataJpaTest` |
 | **Surcharge de dépendances** | `test_model_deletion.py` : 41 | `app.dependency_overrides[get_generation_service] = lambda: service` | La route reçoit le service du test au lieu du vrai | `@MockBean` |
 | **TestClient** | partout | `client.delete(f"/models/{generation_id}")` | Appelle l'application en mémoire, sans serveur ni réseau | `MockMvc` |
 | **Faux objets** | `test_trellis_provider.py` (`FakeClient`), `test_models_api.py` (`SuccessfulProvider`) | `class SuccessfulProvider: def generate(...)` | Remplace le service d'IA ; ce n'est jamais une vraie génération | Mock Mockito |
@@ -2586,10 +2607,10 @@ flowchart LR
 | Comment injectez-vous les services ? | `Depends` + `Annotated` | tous les routeurs | Routes simples, services remplaçables dans les tests |
 | Comment protégez-vous toutes les routes du Studio d'un coup ? | `dependencies=[Depends(require_owner)]` | `main.py` : 91-95 | Une seule règle, impossible d'oublier une route |
 | Pourquoi des objets immuables ? | `@dataclass(frozen=True, slots=True)` | `models.py` | Pas de modification accidentelle d'un objet partagé |
-| Comment changez-vous de base de données ? | Patron Repository + `Protocol` | `repositories/base.py` | Le service dépend d'un contrat, pas de SQLite |
+| Comment changez-vous de base de données ? | Patron Repository + `Protocol` | `repositories/base.py` | Le service dépend d'un contrat, pas d'une base : SQLite a été remplacé par PostgreSQL sans toucher aux services |
 | Comment changez-vous de fournisseur 3D ? | Stratégie + `Protocol` | `providers/base.py`, `main.py` : 42-46 | Une variable d'environnement suffit |
-| Comment garantissez-vous la cohérence de la base ? | Gestionnaire de contexte + transaction | `sqlite_repository.py` : 31-44 | `commit` ou `rollback` garanti |
-| Comment évitez-vous les dépassements de quota simultanés ? | `BEGIN IMMEDIATE` | `sqlite_repository.py` : 292 | Réservation atomique |
+| Comment garantissez-vous la cohérence de la base ? | Gestionnaire de contexte + transaction | `postgres_repository.py` : 83-97 | `commit` ou `rollback` garanti |
+| Comment évitez-vous les dépassements de quota simultanés ? | `SELECT … FOR UPDATE` | `postgres_repository.py` : 449 | Verrou de ligne, prouvé par un test de concurrence |
 | Pourquoi la génération ne bloque-t-elle pas ? | `BackgroundTasks` + réponse 202 | `routers/models.py` : 90 | 1 à 2 minutes de calcul |
 | Comment suivez-vous l'avancement ? | Machine à états + interrogation toutes les 1,5 s | `models.py`, `create.js` : 201 | États réels, aucun pourcentage inventé |
 | Comment comparez-vous un secret ? | `hmac.compare_digest` | `api_key_service.py`, `owner_auth.py` | Protection contre les attaques temporelles |
@@ -2647,7 +2668,8 @@ flowchart LR
 | **RLS (Row Level Security)** | Règle PostgreSQL qui filtre les lignes selon l'utilisateur, même si le code oublie le filtre |
 | **Routeur** | Code qui associe une adresse à une page (frontend) ou une route à une fonction (backend) |
 | **SPA** | Application à page unique : le contenu change sans recharger la page |
-| **SQLite** | Base de données SQL contenue dans un seul fichier |
+| **PostgreSQL** | Serveur de base de données SQL, lancé ici dans un conteneur Docker |
+| **SQLite** | Base SQL contenue dans un seul fichier ; utilisée jusqu'au 16 novembre 2026 |
 | **Tâche de fond** | Travail exécuté après la réponse HTTP (ici, la génération) |
 | **Texture** | Image plaquée sur la surface d'un objet 3D |
 | **TRELLIS** | Modèle d'IA de Microsoft qui produit un modèle 3D texturé à partir d'une image |

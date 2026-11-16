@@ -1,9 +1,8 @@
 # Rôle : vérifie le stockage privé, la gestion HTTP et l’authentification des clés d’intégration.
-# Exécution : Pytest utilise SQLite temporaire et TestClient local, sans réseau externe.
+# Exécution : Pytest utilise la base PostgreSQL de test et TestClient local, sans réseau externe.
 """Tests de régression pour les clés API du Sprint 5b."""
 
 import hashlib
-import sqlite3
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Annotated
@@ -13,15 +12,14 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.models import APIKeyRecord
-from app.repositories.sqlite_repository import SQLiteGenerationRepository
+from pg_support import make_repository, query
 from app.routers.api_keys import get_api_key_service, require_api_key
 from app.services.api_key_service import APIKeyService
 
 
 def test_key_creation_persists_only_fingerprint_and_revocation_survives_restart(tmp_path: Path) -> None:
     """Prouve que seule l'empreinte de la clé est enregistrée (jamais le secret) et qu'une révocation survit à un redémarrage."""
-    database = tmp_path / "keys.sqlite3"
-    repository = SQLiteGenerationRepository(database)
+    repository = make_repository()
     repository.initialize()
     service = APIKeyService(repository)
     record, secret = service.create("  Boutique démo  ")
@@ -33,24 +31,23 @@ def test_key_creation_persists_only_fingerprint_and_revocation_survives_restart(
     assert service.authenticate(secret) == record
     assert service.authenticate(secret + "x") is None
 
-    restarted = APIKeyService(SQLiteGenerationRepository(database))
+    restarted = APIKeyService(make_repository())
     assert restarted.list() == [record]
     assert restarted.authenticate(secret) == record
-    with sqlite3.connect(database) as connection:
-        raw_rows = connection.execute("SELECT name, prefix, fingerprint, revoked FROM api_keys").fetchall()
-    assert raw_rows == [("Boutique démo", record.prefix, record.fingerprint, 0)]
+    raw_rows = query("SELECT name, prefix, fingerprint, revoked FROM api_keys")
+    assert raw_rows == [("Boutique démo", record.prefix, record.fingerprint, False)]
     assert secret not in repr(raw_rows)
 
     revoked = restarted.revoke(record.id)
     assert revoked is not None and revoked.revoked is True
     assert restarted.authenticate(secret) is None
-    assert APIKeyService(SQLiteGenerationRepository(database)).list()[0].revoked is True
+    assert APIKeyService(make_repository()).list()[0].revoked is True
     assert restarted.revoke("missing") is None
 
 
 def test_key_management_routes_reveal_secret_once_and_revoke(tmp_path: Path) -> None:
     """Prouve que les routes /api-keys montrent le secret une seule fois, puis savent révoquer la clé."""
-    repository = SQLiteGenerationRepository(tmp_path / "api.sqlite3")
+    repository = make_repository()
     repository.initialize()
     service = APIKeyService(repository)
     app.dependency_overrides[get_api_key_service] = lambda: service
@@ -82,7 +79,7 @@ def test_key_management_routes_reveal_secret_once_and_revoke(tmp_path: Path) -> 
 
 def test_fastapi_key_dependency_accepts_only_active_key(tmp_path: Path) -> None:
     """Prouve que la dépendance require_api_key refuse une clé absente, fausse ou révoquée (401)."""
-    repository = SQLiteGenerationRepository(tmp_path / "auth.sqlite3")
+    repository = make_repository()
     repository.initialize()
     service = APIKeyService(repository)
     record, secret = service.create("Test local")
@@ -107,7 +104,7 @@ def test_fastapi_key_dependency_accepts_only_active_key(tmp_path: Path) -> None:
 
 def test_api_key_quota_and_rate_limit_are_persisted_by_key_and_utc_day(tmp_path: Path) -> None:
     """Prouve que la limite par minute et le quota journalier sont comptés par clé et par jour UTC, en base."""
-    repository = SQLiteGenerationRepository(tmp_path / "limits.sqlite3")
+    repository = make_repository()
     repository.initialize()
     service = APIKeyService(repository)
     key, _secret = service.create("Limites")
@@ -127,7 +124,7 @@ def test_api_key_quota_and_rate_limit_are_persisted_by_key_and_utc_day(tmp_path:
 
 def test_only_revoked_keys_can_be_deleted_permanently_with_their_counters(tmp_path: Path) -> None:
     """Prouve qu'une clé active ne peut pas être supprimée (409) et qu'une clé révoquée l'est avec ses compteurs."""
-    repository = SQLiteGenerationRepository(tmp_path / "api.sqlite3")
+    repository = make_repository()
     repository.initialize()
     service = APIKeyService(repository)
     app.dependency_overrides[get_api_key_service] = lambda: service
@@ -149,6 +146,5 @@ def test_only_revoked_keys_can_be_deleted_permanently_with_their_counters(tmp_pa
     finally:
         app.dependency_overrides.pop(get_api_key_service, None)
 
-    with sqlite3.connect(tmp_path / "api.sqlite3") as connection:
-        assert connection.execute("SELECT COUNT(*) FROM api_rate_events").fetchone()[0] == 0
-        assert connection.execute("SELECT COUNT(*) FROM api_usage_daily").fetchone()[0] == 0
+    assert query("SELECT COUNT(*) FROM api_rate_events") == [(0,)]
+    assert query("SELECT COUNT(*) FROM api_usage_daily") == [(0,)]
