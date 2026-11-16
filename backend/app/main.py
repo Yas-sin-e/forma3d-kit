@@ -1,4 +1,4 @@
-# Rôle : construit l'API FastAPI, initialise le dépôt SQLite et configure les services.
+# Rôle : construit l'API FastAPI, initialise le dépôt (SQLite ou PostgreSQL) et configure les services.
 # Exécution : Uvicorn importe ce module ; FastAPI sert la page, les ressources et les routes.
 """Point d'entrée HTTP et initialisation du dépôt SQLite de Forma3D Studio.
 
@@ -9,6 +9,8 @@ expose le contrôle GET /health et initialise le stockage des métadonnées.
 # logging (bibliothèque standard) : écrit des messages dans le journal du serveur.
 # Ici : avertissements au démarrage. Équivalent de SLF4J / Logback en Java.
 import logging
+# os (standard) : lit DATABASE_URL pour journaliser le type de base utilisée.
+import os
 # contextlib (standard) : fabrique des « gestionnaires de contexte » (blocs with).
 # asynccontextmanager sert au cycle de vie de l'application (démarrage / arrêt).
 from contextlib import asynccontextmanager
@@ -31,7 +33,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.providers.huggingface import HuggingFaceSpaceProvider
 from app.providers.trellis import TrellisSpaceProvider
-from app.repositories.sqlite_repository import SQLiteGenerationRepository
+from app.repositories.factory import create_repository, describe_backend
 from app.routers.api_keys import router as api_keys_router
 from app.routers.auth import require_owner
 from app.routers.auth import router as auth_router
@@ -60,7 +62,8 @@ generation_provider = (
     if provider.settings.image3d_provider == "trellis"
     else provider
 )
-generation_repository = SQLiteGenerationRepository(
+# DATABASE_URL vide -> SQLite (fichier local) ; DATABASE_URL=postgresql://... -> PostgreSQL (projet DevOps).
+generation_repository = create_repository(
     _PROJECT_ROOT / "backend" / "data" / "forma3d.sqlite3"
 )
 # Le schéma existe aussi pour les tests qui utilisent TestClient sans cycle lifespan.
@@ -76,6 +79,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     Équivalent d'un @PostConstruct / ApplicationRunner de Spring Boot.
     """
     generation_repository.initialize()
+    # On journalise le type de base, jamais l'URL (elle contient le mot de passe).
+    logger.info("Base de données utilisée : %s", describe_backend(os.getenv("DATABASE_URL")))
     backend_env = _PROJECT_ROOT / "backend" / ".env"
     if not backend_env.is_file():
         logger.warning("backend/.env est absent ; vérifiez le fichier local avant une génération distante.")
