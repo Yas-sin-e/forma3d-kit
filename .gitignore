@@ -22,8 +22,6 @@ dist/
 
 # Bases locales et fichiers générés
 *.db
-*.sqlite
-*.sqlite3
 backend/data/
 backend/storage/
 /backend/.dev-server*.log

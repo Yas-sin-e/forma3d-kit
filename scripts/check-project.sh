@@ -5,7 +5,7 @@
 #
 # Contrôles :
 #   1. fichiers requis présents ;
-#   2. aucun secret (.env), fichier de base locale (.sqlite3, .db) ni GLB généré suivi par Git ;
+#   2. aucun secret (.env), fichier de base locale (.db) ni GLB généré suivi par Git ;
 #   3. aucun marqueur de conflit de fusion dans les fichiers suivis ;
 #   4. option --strict : l'arbre de travail doit être propre (git status --porcelain vide).
 
@@ -73,8 +73,8 @@ if grep -Eq '(^|/)\.env$' <<<"$TRACKED"; then
 else
   ok "aucun fichier .env suivi"
 fi
-if grep -Eq '\.sqlite3?$|\.db$' <<<"$TRACKED"; then
-  fail "un fichier de base de données locale (.sqlite3, .db) est suivi par Git"
+if grep -Eq '\.db$' <<<"$TRACKED"; then
+  fail "un fichier de base de données locale (.db) est suivi par Git"
 else
   ok "aucun fichier de base locale suivi"
 fi

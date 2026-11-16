@@ -24,10 +24,9 @@
 .pytest_cache/
 **/.pytest_cache/
 
-# Données locales : base SQLite, GLB et photos (montées en volume par Compose, jamais copiées)
+# Données locales : GLB et photos (montés en volume par Compose, jamais copiés dans l'image)
 backend/data/
 backend/storage/
-*.sqlite3
 *.db
 
 # Inutile à l'exécution
