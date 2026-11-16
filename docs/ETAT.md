@@ -1,6 +1,13 @@
 # État du projet — Forma3D Studio
 
-Dernière mise à jour : 15 novembre 2026.
+Dernière mise à jour : 16 novembre 2026.
+
+## Projet DevOps (actif depuis le 16 novembre 2026)
+
+- Référence : `docs/devops/CAHIER-DEVOPS.md` ; suivi des phases : `docs/devops/README.md`.
+- P0 (diagnostic et cadrage) : diagnostic observé — arbre Git propre, aucun `.env` ni jeton `hf_`/`ghp_` dans tout l'historique, ports 8080/5432/5433 libres, Docker Compose v5.0.2 présent mais **moteur Docker Desktop non démarré** au moment du diagnostic. Exception Docker/PostgreSQL tracée dans `AGENTS.md`. Détails : `docs/devops/phase-00.md`.
+- Ordre retenu : P0 → P3a (dépôt PostgreSQL) → P1 → P2 → P3b → P4 à P9. SQLite reste le défaut tant que `DATABASE_URL` est vide.
+- Prochaine action : fusionner la PR P0, démarrer Docker Desktop, puis P3a après accord sur l'ajout de `psycopg[binary]`.
 
 ## Avenant au cahier des charges v1.0
 
