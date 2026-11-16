@@ -6,6 +6,9 @@
 4. **Durée d'indisponibilité mesurée :** 39 s, de 17:09:00 (arrêt de v1.0.0, démarrage de v1.1.0) à 17:09:39 (v1.0.0 de nouveau saine).
 5. **Ce qui empêchera la récidive :** `check-project.sh` vérifie désormais le « contrat de port » (EXPOSE, CMD et HEALTHCHECK de l'image = port publié par `compose.yaml` et `compose.staging.yaml`) et fait échouer le job `test` de la CI ; la santé est toujours vérifiée depuis l'extérieur du conteneur.
 
+> Versions publiées sur GHCR : la version saine de référence est `v1.0.1` (le tag `v1.0.0`, posé avant la
+> fusion, n'a jamais produit d'image). Lors de la répétition ci-dessus, elle portait localement le nom `v1.0.0`.
+>
 > Répétition réalisée en local avec des images étiquetées localement (`ghcr.io/yas-sin-e/forma3d:v1.1.0`
 > et `v1.1.1` construites par `docker build`, non publiées sur GHCR) et `SKIP_PULL=1`. Détails et
 > sorties complètes : [phase-07.md](phase-07.md).

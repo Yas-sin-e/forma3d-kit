@@ -47,25 +47,52 @@ git push origin v1.0.0
 Le dépôt étant privé, le paquet GHCR est **privé** par défaut. Pour le tirer en local :
 ```bash
 docker login ghcr.io -u Yas-sin-e      # coller un jeton personnel « read:packages » quand il est demandé
-docker pull ghcr.io/yas-sin-e/forma3d:v1.0.0
+docker pull ghcr.io/yas-sin-e/forma3d:v1.0.1
 ```
 Le jeton est saisi au terminal, jamais écrit dans un fichier ni dans le dépôt.
 
-## 5. État de vérification
+## 5. Incident de livraison réel : tag `v1.0.0` posé trop tôt (16/11/2026)
+
+1. **Ce qui s'est passé :** le tag `v1.0.0` a été poussé sur `c447aca`, l'ancien `main`, **avant** la fusion de la PR n°13. Ce commit ne contient pas `release.yml`.
+2. **Ce qu'on a observé :** dans *Actions*, le run #97 sur `v1.0.0` est l'**ancien** workflow « Project checks » (un seul job, vert) ; le workflow « Release » n'a pas tourné ; *Packages* est resté vide.
+3. **Cause :** GitHub exécute les workflows **présents dans le commit tagué**. Un tag sur un commit sans `release.yml` ne publie rien.
+4. **Décision :** on **ne déplace pas** `v1.0.0` (règle d'immuabilité, même sans image). On publie `v1.0.1` sur le bon commit.
+5. **Prévention :** taguer seulement après `git switch main && git pull --ff-only`, et vérifier `git cat-file -e HEAD:.github/workflows/release.yml` avant `git push origin vX.Y.Z`.
+
+### Versions retenues
+
+| Tag | Commit | Contenu | Rôle |
+|---|---|---|---|
+| `v1.0.0` | `c447aca` (ancien `main`) | aucun `release.yml` | **posé par erreur avant la fusion : aucune image, jamais déplacé** |
+| `v1.0.1` | `4b2d063` (fin de P6) | image port 8080, staging | version saine de référence |
+| `v1.1.0` | `3552bb5` (port 8000) | version volontairement défectueuse | incident P7 |
+| `v1.1.1` | `a17c181` (`main` après la PR n°13) | correction du port, contrôle du contrat de port, PostgreSQL seule base | correction de l'incident |
+
+```bash
+git fetch origin --tags
+git tag -a v1.0.1 4b2d063 -m "Release 1.0.1 : version saine de reference"
+git tag -a v1.1.0 3552bb5 -m "Release 1.1.0 : version defectueuse pour l'incident P7"
+git tag -a v1.1.1 a17c181 -m "Release 1.1.1 : correction du port et PostgreSQL seule base"
+git push origin v1.0.1 v1.1.0 v1.1.1
+```
+
+## 6. État de vérification
 
 - YAML validé localement (jobs `test` → `publish`, permissions `contents: read`, `packages: write`).
-- **Non observé :** l'exécution du workflow, le tag et l'image sur GHCR — ils nécessitent la fusion dans
-  `main` et le push du tag, qui sont des actions de l'étudiante.
+- Observé (captures de l'étudiante) : tag `v1.0.0` poussé, run #97 « Project checks » vert, aucun « Release ».
+- **Non observé :** les workflows « Release » de `v1.0.1`, `v1.1.0`, `v1.1.1` et les images sur GHCR (tags à pousser par l'étudiante).
 
-## 6. Preuves à conserver
+## 7. Preuves à conserver
 
 Tag visible sur GitHub (*Releases/Tags*), exécution verte du workflow « Release », paquet `forma3d`
-visible dans *Packages* avec le tag `v1.0.0`, sortie de `docker pull`.
+visible dans *Packages* avec les tags `v1.0.1`, `v1.1.0`, `v1.1.1`, sortie de `docker pull`.
 
-## 7. À dire en soutenance
+## 8. À dire en soutenance
 
 > Une version est un tag Git annoté `v1.0.0` ; le pousser déclenche le workflow de release, qui rejoue
 > les tests puis publie l'image sur GHCR avec le même numéro. La connexion utilise uniquement le
 > `GITHUB_TOKEN` temporaire fourni par GitHub, avec la permission minimale `packages: write`. L'image
 > porte des labels OCI qui indiquent le commit d'origine. Un tag publié ne bouge jamais : une correction
-> devient `v1.0.1`, ce qui garantit que revenir à `v1.0.0` redonne exactement la même image.
+> devient `v1.0.1`, ce qui garantit que revenir à une version redonne exactement la même image. Je l'ai
+> appliqué pour de vrai : mon tag `v1.0.0`, posé avant la fusion, ne contenait pas le workflow de release ;
+> je ne l'ai pas déplacé, j'ai publié `v1.0.1`.

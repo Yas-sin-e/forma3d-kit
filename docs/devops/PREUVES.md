@@ -54,9 +54,10 @@ Aucune ligne ⏳ ne doit être présentée comme faite en soutenance avant d'avo
 | Preuve | État | Référence |
 |---|---|---|
 | Répétition locale `deploy.sh v1.0.0` → staging sain | ✅ (image étiquetée localement) | `phase-06.md` §4 |
-| Tag `v1.0.0` visible sur GitHub | ⏳ | après fusion dans `main` |
+| Tag `v1.0.0` poussé trop tôt : run #97 « Project checks » vert, aucune image | ✅ (captures) | `phase-05.md` §5 |
+| Tags `v1.0.1`, `v1.1.0`, `v1.1.1` visibles sur GitHub | ⏳ | après `git push origin v1.0.1 v1.1.0 v1.1.1` |
 | Workflow « Release » vert, paquet visible dans *Packages* | ⏳ | URL |
-| `docker pull ghcr.io/yas-sin-e/forma3d:v1.0.0` | ⏳ | sortie |
+| `docker pull ghcr.io/yas-sin-e/forma3d:v1.0.1` | ⏳ | sortie |
 
 ## 7. Retour arrière (1 pt)
 

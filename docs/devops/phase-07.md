@@ -36,7 +36,8 @@ depuis l'endroit où se trouvent les utilisateurs, ce que fait `wait-healthy.sh`
 ## 4. Déroulé observé le 16/11/2026 (répétition locale)
 
 Images construites localement et étiquetées `ghcr.io/yas-sin-e/forma3d:v1.1.0` et `:v1.1.1` (non publiées),
-déploiement avec `SKIP_PULL=1`. Point de départ : `v1.0.0` en service et saine (P6).
+déploiement avec `SKIP_PULL=1`. Point de départ : `v1.0.0` en service et saine (P6). Dans les versions
+**publiées**, cette version saine s'appelle `v1.0.1` (voir `phase-05.md` §5).
 
 **1. Mise en service de v1.1.0 → échec de santé (code 1)**
 ```
@@ -80,19 +81,20 @@ La PR de v1.1.0 aurait donc été **rouge** en CI.
 
 ### Retour arrière manuel (sans `deploy.sh`), à savoir faire
 ```bash
-echo "IMAGE_TAG=v1.0.0" > .env.deploy
+echo "IMAGE_TAG=v1.0.1" > .env.deploy
 docker compose -p forma3d-staging -f compose.staging.yaml --env-file .env.deploy up -d
 ./scripts/wait-healthy.sh; echo "code=$?"
 ```
 
 ## 5. Rejouer avec de vraies versions publiées (étudiante)
 
-1. Fusionner les PR jusqu'à P6, puis taguer et pousser `v1.0.0` ; `./scripts/deploy.sh v1.0.0`.
-2. Ouvrir une PR depuis `chore/align-port-8000`. Le contrôle de port n'existe pas encore (il arrive
-   avec `fix/port-contract`), donc la CI de cette PR est verte, comme lors d'un vrai incident. La
-   fusionner, taguer `v1.1.0`, pousser, puis `./scripts/deploy.sh v1.1.0` → échec et retour arrière automatique.
-3. Fusionner `fix/port-contract`, taguer `v1.1.1`, pousser, `./scripts/deploy.sh v1.1.1` → sain.
-4. Compléter les heures réelles dans `INCIDENT-v1.1.0.md`.
+Tout le code est déjà dans `main` (PR n°13). Les trois versions sont des tags sur des commits de son historique :
+
+1. Pousser les tags `v1.0.1`, `v1.1.0`, `v1.1.1` (`phase-05.md` §5) ; attendre les trois workflows « Release » verts.
+2. `docker login ghcr.io -u Yas-sin-e` (jeton *read:packages* saisi au terminal), puis `./scripts/deploy.sh v1.0.1` → sain.
+3. `./scripts/deploy.sh v1.1.0` → échec de santé, journaux, retour automatique à `v1.0.1`.
+4. `./scripts/deploy.sh v1.1.1` → sain.
+5. Compléter les heures réelles dans `INCIDENT-v1.1.0.md`.
 
 ## 6. Preuves à conserver
 
