@@ -1479,7 +1479,7 @@ flowchart LR
 ### 15.1 Installation (Windows, une seule fois)
 
 ```powershell
-cd C:\chemin\vers\forma3d-kit-codex
+cd C:\chemin\vers\forma3d-kit
 python -m venv backend\.venv
 backend\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
 copy .env.example backend\.env
@@ -1490,7 +1490,7 @@ Puis ouvrez `backend\.env` et renseignez au minimum `FORMA3D_OWNER_PASSWORD`.
 ### 15.2 Lancer
 
 ```powershell
-cd C:\chemin\vers\forma3d-kit-codex
+cd C:\chemin\vers\forma3d-kit
 backend\.venv\Scripts\python.exe -m uvicorn app.main:app --app-dir backend --port 8000
 ```
 

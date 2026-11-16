@@ -44,10 +44,10 @@ Aucune ligne ⏳ ne doit être présentée comme faite en soutenance avant d'avo
 | Preuve | État | Référence |
 |---|---|---|
 | Job `test` reproduit en local (Python 3.12 + PostgreSQL, 176 passed, report.xml) | ✅ | `phase-04.md` §4 |
-| URL d'une exécution **verte** sur une PR | ⏳ | après `git push` de `ci/pipeline` |
-| URL d'une exécution **rouge** (`test/failing-demo`) + capture de la première erreur | ⏳ | branche locale prête |
-| `docker-build` « skipped » sur la PR rouge | ⏳ | capture |
-| Artefact `rapport-tests` téléchargé | ⏳ | capture |
+| URL d'une exécution **verte** sur une PR (PR #14) | ✅ | https://github.com/Yas-sin-e/forma3d-kit/actions/runs/43965184922 |
+| URL d'une exécution **rouge** (PR #15) ; première erreur : `AssertionError: assert {'status': 'ok'} == {'status': 'broken'}` (`tests/test_health.py:27`) | ✅ (capture à ajouter) | https://github.com/Yas-sin-e/forma3d-kit/actions/runs/43965191693 |
+| `docker-build` « skipping » sur la PR rouge | ✅ (`gh pr checks 15`) | capture à ajouter |
+| Artefact `rapport-tests` présent sur le run vert **et** sur le run rouge | ✅ (API GitHub) | capture à ajouter |
 
 ## 6. Livraison et staging (2 pts)
 

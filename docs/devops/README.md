@@ -2,7 +2,7 @@
 
 Sommaire du projet de fin de module DevOps (Licence 3 DSI, ISET, projet individuel).
 La référence complète est le cahier des charges : [CAHIER-DEVOPS.md](CAHIER-DEVOPS.md).
-**Par où commencer :** [PLAN-LECTURE.md](PLAN-LECTURE.md) donne l'ordre de lecture, jour par jour.
+**Par où commencer :** [GUIDE-BAREME.md](GUIDE-BAREME.md) relie chaque exigence du barème à son explication et à sa commande de vérification ; [PLAN-LECTURE.md](PLAN-LECTURE.md) donne l'ordre de lecture, jour par jour.
 Le code applicatif n'est pas noté : seule la chaîne DevOps l'est.
 
 ## Phases et état
@@ -22,7 +22,8 @@ Le code applicatif n'est pas noté : seule la chaîne DevOps l'est.
 | P7 | `chore/align-port-8000`, `fix/port-contract`, `docs/incident-rollback` | Incident `v1.1.0` et retour arrière | 1 | Répété en local ; à rejouer avec tags publiés | [phase-07.md](phase-07.md) |
 | P8 | `docs/devops-final` | Documentation finale | — | Fait (PR à fusionner) | [FICHE-PROJET.md](FICHE-PROJET.md), [PREUVES.md](PREUVES.md), [QUIZ.md](QUIZ.md) |
 | P9 | — | Répétition de la soutenance | 4 | Scénario écrit ; à répéter | [SOUTENANCE.md](SOUTENANCE.md) |
-| B1–B3 | — | Bonus : protection de `main`, déploiement sur tag, matrice | +4 | Après P1–P7 | — |
+| B2, B3 | `ci/bonus-matrix-deploy` | Bonus : déploiement automatique sur tag, matrice Python 3.12/3.13 | +3 | Code écrit ; B3 à observer sur la PR, B2 à prouver par le tag `v1.2.0` | [GUIDE-BAREME.md](GUIDE-BAREME.md) §8 |
+| B1 | — | Bonus : protection de `main` | +1 | Décision de l'étudiante (dépôt public ou GitHub Education) | [GUIDE-BAREME.md](GUIDE-BAREME.md) §8 |
 
 ## Ordre de fusion des branches
 

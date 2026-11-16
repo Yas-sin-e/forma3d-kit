@@ -1,8 +1,10 @@
 # Rôle : livraison continue. Un tag de version vX.Y.Z publie l'image Docker IMMUABLE sur GHCR.
 # Exécution : GitHub Actions, automatiquement quand on pousse un tag :
-#   git tag -a v1.0.0 -m "Release 1.0.0" && git push origin v1.0.0
-# Résultat : ghcr.io/yas-sin-e/forma3d:v1.0.0 (nom en minuscules, obligatoire pour GHCR).
-# La mise en service reste VOLONTAIRE (scripts/deploy.sh) : livraison continue, pas déploiement continu.
+#   git tag -a v1.2.0 -m "Release 1.2.0" && git push origin v1.2.0
+# Résultat : ghcr.io/yas-sin-e/forma3d:v1.2.0 (nom en minuscules, obligatoire pour GHCR).
+# Enchaînement : test -> publish -> deploy-staging (bonus B2 : mise en service automatique sur un
+# staging jetable du runner, suivie du contrôle de santé). Sur le poste, la mise en service reste
+# volontaire avec scripts/deploy.sh.
 name: Release
 
 on:
@@ -81,6 +83,10 @@ jobs:
         uses: docker/metadata-action@v6
         with:
           images: ${{ env.IMAGE_NAME }}
+          # latest=false : on ne publie JAMAIS de tag « latest » (il bouge à chaque version, donc
+          # il n'est pas immuable) ; seul le tag de version exact existe.
+          flavor: |
+            latest=false
           tags: |
             type=ref,event=tag
           labels: |
@@ -99,3 +105,40 @@ jobs:
         run: |
           echo "### Image publiée" >> "$GITHUB_STEP_SUMMARY"
           echo "\`${{ steps.meta.outputs.tags }}\`" >> "$GITHUB_STEP_SUMMARY"
+
+  # Bonus B2 : déploiement automatique sur tag. Le runner sert de staging JETABLE (détruit à la fin
+  # du job) : cela prouve que l'image publiée démarre avec sa base et passe le contrôle de santé.
+  deploy-staging:
+    name: deploy-staging
+    runs-on: ubuntu-latest
+    needs: publish
+    # « environment » : GitHub trace chaque déploiement (onglet Deployments du dépôt).
+    environment: staging
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Connexion à GHCR (pour tirer l'image privée)
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Même procédure que sur le poste : modèle de configuration (valeurs fictives) + version par IMAGE_TAG.
+      - name: Mettre en service l'image du tag (sans reconstruire)
+        run: |
+          cp .env.staging.example .env.staging
+          echo "IMAGE_TAG=${{ github.ref_name }}" > .env.deploy
+          docker compose -p forma3d-staging -f compose.staging.yaml --env-file .env.deploy pull api
+          docker compose -p forma3d-staging -f compose.staging.yaml --env-file .env.deploy up -d
+
+      # Code non nul -> le job échoue : la version est signalée comme non déployable.
+      - name: Contrôle de santé
+        run: ./scripts/wait-healthy.sh
+
+      - name: Journaux en cas d'échec
+        if: failure()
+        run: docker compose -p forma3d-staging -f compose.staging.yaml --env-file .env.deploy logs --tail=50
+
+      - name: Résumé
+        run: echo "### Staging sain avec \`${{ github.ref_name }}\`" >> "$GITHUB_STEP_SUMMARY"

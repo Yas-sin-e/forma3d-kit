@@ -40,7 +40,7 @@ git switch main && git pull --ff-only
 git tag -a v1.0.0 -m "Release 1.0.0"
 git show v1.0.0 --stat | head -5
 git push origin v1.0.0
-# Suivre : https://github.com/Yas-sin-e/forma3d-kit-codex/actions  (workflow « Release »)
+# Suivre : https://github.com/Yas-sin-e/forma3d-kit/actions  (workflow « Release »)
 # Image  : https://github.com/Yas-sin-e?tab=packages
 ```
 
@@ -98,6 +98,14 @@ image → commit vérifiée). Les trois images pèsent 312 Mo.
 À savoir : `docker login` avec le **mot de passe** du compte GitHub échoue (`denied: denied`) ; GHCR
 exige un jeton (classic, `read:packages`) ou la connexion par `gh`. Aucun réglage « Read and write
 permissions » du dépôt n'est nécessaire : `release.yml` déclare lui-même `packages: write`.
+
+### Bonus B2 : déploiement automatique sur tag
+
+`release.yml` enchaîne maintenant `test` → `publish` → `deploy-staging` : l'image du tag est mise en
+service sur le runner (staging jetable, `environment: staging`) puis contrôlée par `wait-healthy.sh`.
+Le tag `latest`, ajouté par défaut par `metadata-action` et observé sur GHCR, est désactivé
+(`flavor: latest=false`) : seul le tag de version exact est publié. **Non observé** tant qu'un nouveau
+tag (`v1.2.0`) n'a pas été poussé après la fusion ; procédure : `GUIDE-BAREME.md` §8.
 
 ## 6. État de vérification
 
