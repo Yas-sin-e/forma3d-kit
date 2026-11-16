@@ -32,9 +32,9 @@ def test_sqlalchemy_style_url_is_normalized() -> None:
     assert normalize_database_url("postgres://u:p@db/x") == "postgresql://u:p@db/x"
 
 
-@pytest.mark.parametrize("url", ["mysql://u:p@db/x", "sqlite:///tmp/x.db", "db:5432/forma3d"])
+@pytest.mark.parametrize("url", ["mysql://u:p@db/x", "oracle://u:p@db/x", "db:5432/forma3d"])
 def test_other_engines_are_rejected(url: str) -> None:
-    """Une URL d'un autre moteur (dont SQLite, retiré du projet) échoue tôt avec un message lisible."""
+    """Une URL d'un autre moteur que PostgreSQL échoue tôt avec un message lisible."""
     with pytest.raises(DatabaseUrlError, match="postgresql://"):
         normalize_database_url(url)
 
