@@ -92,6 +92,25 @@ else
   ok "aucun marqueur de conflit"
 fi
 
+# 3b. Contrat de port (leçon de l'incident v1.1.0) : le port d'écoute de l'image (EXPOSE, CMD,
+# HEALTHCHECK) doit être celui que les fichiers Compose publient côté conteneur (« …:8080 »).
+if [[ -f Dockerfile ]]; then
+  IMAGE_PORT="$(sed -nE 's/^EXPOSE ([0-9]+).*/\1/p' Dockerfile | head -n1)"
+  PORT_ERRORS=0
+  if ! grep -Eq -- "--port\", \"${IMAGE_PORT}\"" Dockerfile || ! grep -Eq "127\.0\.0\.1:${IMAGE_PORT}/health" Dockerfile; then
+    fail "Dockerfile : CMD ou HEALTHCHECK n'utilise pas le port EXPOSE ${IMAGE_PORT}"
+    PORT_ERRORS=1
+  fi
+  for compose_file in compose.yaml compose.staging.yaml; do
+    [[ -f "$compose_file" ]] || continue
+    if ! grep -Eq "\"127\.0\.0\.1:[0-9]+:${IMAGE_PORT}\"" "$compose_file"; then
+      fail "$compose_file ne publie pas le port ${IMAGE_PORT} de l'image (contrat de port rompu)"
+      PORT_ERRORS=1
+    fi
+  done
+  [[ "$PORT_ERRORS" -eq 0 ]] && ok "contrat de port respecté (image et Compose : ${IMAGE_PORT})"
+fi
+
 # 4. Garde-fou : en mode strict, on refuse de valider un arbre avec des changements non commités.
 if [[ "$STRICT" -eq 1 ]]; then
   if [[ -n "$(git status --porcelain)" ]]; then
