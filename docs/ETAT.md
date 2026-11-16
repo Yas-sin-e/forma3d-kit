@@ -14,6 +14,7 @@ Dernière mise à jour : 16 novembre 2026.
 - P4 (CI) : `ci.yml` réécrit (`test` avec service PostgreSQL et artefact `rapport-tests` → `docker-build` avec test de fumée). Observé en local : 176 tests sous Python 3.12 + PostgreSQL, YAML valide. **Exécution GitHub non observée** (branche non poussée). Branche locale `test/failing-demo` prête pour la PR rouge. Détails : `docs/devops/phase-04.md`.
 - P5 (release) : `release.yml` (tag `v*.*.*` → tests → publication GHCR avec `GITHUB_TOKEN`). YAML validé ; **tag et image non publiés** (fusion dans `main` et push du tag à faire par l'étudiante). Détails : `docs/devops/phase-05.md`.
 - P6 (staging) : `compose.staging.yaml`, `wait-healthy.sh`, `deploy.sh` (rollback automatique). Répétition locale observée avec une image **étiquetée localement** (non publiée) : `v1.0.0` saine à la 2e tentative. Détails : `docs/devops/phase-06.md`.
+- P7 (incident) : v1.1.0 défectueuse (port 8000, branche `chore/align-port-8000`), retour arrière automatique vers v1.0.0 en 39 s, correction v1.1.1 (branche `fix/port-contract`) avec contrôle « contrat de port » dans `check-project.sh`. Répétition locale avec images étiquetées localement, non publiées. Détails : `docs/devops/phase-07.md`, `docs/devops/INCIDENT-v1.1.0.md`.
 
 ## Avenant au cahier des charges v1.0
 

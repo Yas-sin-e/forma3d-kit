@@ -257,3 +257,5 @@ Le registre des métadonnées, les empreintes de clés, les quotas journaliers e
 | `docs/devops/phase-04.md` | Compte rendu de P4 : workflow CI expliquÃ©, PR rouge de dÃ©monstration | Justifie le point 5 du barÃ¨me | Pour la preuve du point 5 et en soutenance |
 | `docs/devops/phase-05.md` | Compte rendu de P5 : release, immuabilitÃ© des tags, procÃ©dure de livraison | Justifie le point 6 (partie publication) | Avant de taguer une version et en soutenance |
 | `docs/devops/phase-06.md` | Compte rendu de P6 : staging, santÃ©, rÃ©pÃ©tition hors ligne | Justifie le point 6 (partie mise en service) | Avant un dÃ©ploiement et en soutenance |
+| `docs/devops/phase-07.md` | Compte rendu de P7 : panne v1.1.0 (port 8000), retour arriÃ¨re, v1.1.1, prÃ©vention | Justifie le point 7 du barÃ¨me | Pour la preuve du point 7 et en soutenance |
+| `docs/devops/INCIDENT-v1.1.0.md` | Compte rendu d'incident en cinq lignes (quoi, quand, action, durÃ©e, prÃ©vention) | Format exigÃ© par le cahier ; lu en soutenance | AprÃ¨s l'incident et en soutenance |

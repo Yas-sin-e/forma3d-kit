@@ -16,7 +16,7 @@ Le code applicatif n'est pas noté : seule la chaîne DevOps l'est.
 | P4 | `ci/pipeline` | Pipeline CI `test` → `docker-build` | 3 | Écrit, testé en local ; exécution GitHub à observer | [phase-04.md](phase-04.md) |
 | P5 | `ci/release` | Tag `v1.0.0` et image GHCR | 2 (avec P6) | Écrit ; tag et publication à faire après fusion | [phase-05.md](phase-05.md) |
 | P6 | `feature/staging` | Mise en service staging + santé | 2 (avec P5) | Répété en local ; à refaire avec l'image GHCR | [phase-06.md](phase-06.md) |
-| P7 | `docs/incident-rollback` | Incident `v1.1.0` et retour arrière | 1 | À faire | — |
+| P7 | `chore/align-port-8000`, `fix/port-contract`, `docs/incident-rollback` | Incident `v1.1.0` et retour arrière | 1 | Répété en local ; à rejouer avec tags publiés | [phase-07.md](phase-07.md) |
 | P8 | `docs/devops-final` | Documentation finale | — | À faire | — |
 | P9 | — | Répétition de la soutenance | 4 | À faire | — |
 | B1–B3 | — | Bonus : protection de `main`, déploiement sur tag, matrice | +4 | Après P1–P7 | — |
