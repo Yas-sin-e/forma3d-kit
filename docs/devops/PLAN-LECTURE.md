@@ -27,7 +27,7 @@ Durée totale estimée : 8 à 10 heures, réparties sur 5 jours.
 |---|---|---|---|---|
 | 6 | `phase-03a.md` | `backend/app/repositories/base.py` puis `postgres_repository.py` | Patron Repository ; `%s` contre l'injection SQL ; `TIMESTAMPTZ` ; `FOR UPDATE` ; transactions | Lire les 19 méthodes, une par une, avec le tableau §3.3 |
 | 7 | `phase-03c.md` | `factory.py`, `backend/tests/conftest.py`, `pg_support.py` | Pourquoi SQLite a été retiré ; `DATABASE_URL` obligatoire ; base de test séparée | `./scripts/dev.ps1` puis ouvrir DBeaver sur `127.0.0.1:5433` |
-| 7b | `phase-03d.md` | `tools/migrate_sqlite_to_postgres.py` | Migration de données en une transaction, chemins relatifs, rejouabilité | Ouvrir DBeaver (§6) et retrouver tes 17 générations |
+| 7b | `phase-03d.md` | `git show d0f0085:tools/migrate_sqlite_to_postgres.py` (script supprimé après usage) | Migration de données en une transaction, chemins relatifs, rejouabilité | Ouvrir DBeaver (§6) et retrouver tes 17 générations |
 | 8 | `phase-03b.md` | `compose.yaml`, `compose.debug.yaml`, `.env.compose.example` | Nom de service `db`, port non publié, volumes, `service_healthy`, `down` / `down -v` | Rejouer la preuve de persistance et l'incident `localhost` |
 
 **Exercice DBeaver :** ouvrir la table `categories`, créer une catégorie dans le Studio, rafraîchir

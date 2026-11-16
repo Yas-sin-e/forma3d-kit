@@ -15,8 +15,8 @@ clé API), avec leurs photos et GLB, puis prouver que l'application entière fon
 
 | Fichier | Action | Rôle |
 |---|---|---|
-| `tools/migrate_sqlite_to_postgres.py` | créé | Outil de reprise **unique** : lit l'ancienne base SQLite en lecture seule et copie tout vers PostgreSQL en une transaction |
-| `backend/tests/test_sqlite_migration.py` | créé | 4 tests : chemins portables, copie complète, rejouabilité, simulation, codes de sortie |
+| `tools/migrate_sqlite_to_postgres.py` | créé puis **supprimé** après la migration | Outil de reprise unique : lisait l'ancienne base en lecture seule et copiait tout vers PostgreSQL en une transaction |
+| `backend/tests/test_sqlite_migration.py` | créé puis **supprimé** avec l'outil | 4 tests (chemins portables, copie complète, rejouabilité, simulation), tous passés avant la migration |
 | `backend/app/repositories/postgres_repository.py` | modifié | Chemins **relatifs** au dossier de stockage (`storage_root`) |
 | `backend/app/repositories/factory.py`, `backend/app/main.py` | modifiés | Transmettent le dossier de stockage au dépôt |
 | `backend/tests/test_postgres_repository.py` | modifié | 2 tests sur les chemins portables |
@@ -38,6 +38,8 @@ et le rattache au dossier de stockage de l'environnement courant à la lecture :
 Une seule base sert donc aux deux. Un chemin hors du stockage reste absolu (compatibilité).
 
 ## 4. La migration, pas à pas (exécutée le 16/11/2026)
+
+> Le script de reprise a été **supprimé après usage** (aucun code SQLite ne reste dans le projet) ; il reste consultable dans l'historique Git : `git show d0f0085:tools/migrate_sqlite_to_postgres.py`.
 
 **Données source** (copie en lecture seule de `backend/data/forma3d.sqlite3`) : 5 catégories, 17 générations
 (3 `DONE`, 14 `FAILED`), 1 clé API (empreinte seulement), 0 quota journalier, 2 événements de débit.

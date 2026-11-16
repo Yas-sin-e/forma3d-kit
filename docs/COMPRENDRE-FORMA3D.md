@@ -378,7 +378,6 @@ Le 15 novembre 2026, la propriétaire a envoyé `fauteuil-retro-sur-fond-blanc�
 | `test_frontend.py` | Fichiers du frontend : présence des éléments, `fetch` seulement dans `api.js` |
 | `test_generation_repository.py` | Historique des générations en base, redémarrage, migrations |
 | `test_postgres_repository.py` | Dépôt PostgreSQL : cas limites, chemins portables, concurrence |
-| `test_sqlite_migration.py` | Outil de reprise des anciennes données SQLite |
 | `pg_support.py` | Outils des tests : base `forma3d_test`, remise à zéro, requêtes |
 | `test_generation_service.py` | États PENDING → DONE ou FAILED, photo préparée |
 | `test_glb_finisher.py` | Finition des GLB sans modifier la géométrie |
@@ -566,7 +565,7 @@ Règle vérifiée par un test (`test_frontend.py`) : **seul `api.js` contient `f
 
 **En une phrase :** une base **PostgreSQL** (un serveur, dans le conteneur `db` de Docker Compose) garde les catégories, l'historique des modèles et les clés API ; les fichiers eux-mêmes (photos, GLB) restent sur le disque, dans le volume `storage`.
 
-> Historique : de l'étape 8 (Sprint 2) au 16 novembre 2026, la base était un fichier SQLite (`backend/data/forma3d.sqlite3`). Le projet DevOps l'a remplacée par PostgreSQL (décision D5) et les données ont été copiées par `tools/migrate_sqlite_to_postgres.py`. Voir `docs/devops/phase-03a.md`, `phase-03c.md` et `phase-03d.md`.
+> Historique : de l'étape 8 (Sprint 2) au 16 novembre 2026, la base était un fichier SQLite (`backend/data/forma3d.sqlite3`). Le projet DevOps l'a remplacée par PostgreSQL (décision D5) et les données ont été copiées par un script de reprise, supprimé ensuite. Voir `docs/devops/phase-03a.md`, `phase-03c.md` et `phase-03d.md`.
 
 ### 6.1 Schéma entité-relation
 
@@ -695,7 +694,7 @@ Pour voir les tables : `docker compose -f compose.yaml -f compose.debug.yaml up 
 
 🔁 C'est l'équivalent très simplifié de Flyway (Spring) ou des migrations Doctrine (Symfony), sans numéro de version. ⚠️ Il n'existe pas de retour arrière automatique.
 
-**Migration de données** (une seule fois, 16 novembre 2026) : `tools/migrate_sqlite_to_postgres.py` a copié l'ancienne base SQLite vers PostgreSQL, en lecture seule côté SQLite, dans une seule transaction, en transformant les chemins Windows absolus en chemins relatifs.
+**Migration de données** (une seule fois, 16 novembre 2026) : un script de reprise a copié les anciennes données vers PostgreSQL, en lecture seule côté source, dans une seule transaction, en transformant les chemins Windows absolus en chemins relatifs. Il a été supprimé après usage : aucun code SQLite ne reste dans le projet (historique : `docs/devops/phase-03d.md`).
 
 ### 6.6 Au redémarrage du serveur
 
