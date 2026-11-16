@@ -51,6 +51,16 @@ REQUIRED_FILES=(
   Dockerfile
   .dockerignore
   compose.yaml
+  # Documents de projet (contrôles repris de l'ancien workflow CI)
+  AGENTS.md
+  PRODUCT.md
+  DESIGN.md
+  docs/ETAT.md
+  docs/STRUCTURE.md
+  docs/etapes/etape-01.md
+  backend/README.md
+  frontend/README.md
+  backend/tests/test_health.py
 )
 for file in "${REQUIRED_FILES[@]}"; do
   if [[ -f "$file" ]]; then ok "présent : $file"; else fail "fichier manquant : $file"; fi
