@@ -21,9 +21,25 @@ jobs:
   test:
     name: test
     runs-on: ubuntu-latest
+    # Les tests exigent PostgreSQL : même base jetable que dans ci.yml (valeurs fictives).
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: forma3d
+          POSTGRES_PASSWORD: ci-password
+          POSTGRES_DB: forma3d_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U forma3d -d forma3d_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     env:
       PYTHON_DOTENV_DISABLED: "true"
       HF_SPACE_ID: ""
+      TEST_DATABASE_URL: postgresql://forma3d:ci-password@localhost:5432/forma3d_test
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7

@@ -22,7 +22,7 @@ jobs:
   test:
     name: test
     runs-on: ubuntu-latest
-    # Service container : un vrai PostgreSQL démarré à côté du job, pour les tests du dépôt PostgreSQL.
+    # Service container : un vrai PostgreSQL démarré à côté du job ; tous les tests en ont besoin.
     # Valeurs fictives : cette base est jetable et n'existe que pendant le job.
     services:
       postgres:
@@ -60,7 +60,7 @@ jobs:
       - name: Contrôler le dépôt (script de l'atelier 2)
         run: ./scripts/check-project.sh
 
-      - name: Lancer les tests (SQLite + PostgreSQL) avec rapport JUnit
+      - name: Lancer les tests (PostgreSQL) avec rapport JUnit
         working-directory: backend
         run: python -m pytest -q --junitxml=report.xml
 
@@ -77,6 +77,21 @@ jobs:
     name: docker-build
     runs-on: ubuntu-latest
     needs: test
+    # L'application exige PostgreSQL : le test de fumée a besoin d'une base, comme en production.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: forma3d
+          POSTGRES_PASSWORD: ci-password
+          POSTGRES_DB: forma3d
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U forma3d -d forma3d"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     steps:
       - name: Récupérer le code
         uses: actions/checkout@v7
@@ -97,7 +112,9 @@ jobs:
       # Test de fumée : l'image démarre-t-elle vraiment et répond-elle sur /health ?
       - name: Test de fumée /health
         run: |
-          docker run -d --name smoke -p 8080:8080 forma3d:ci
+          # --network host : le conteneur joint la base du service sur localhost:5432 du runner,
+          # et l'API répond sur localhost:8080 sans publication de port.
+          docker run -d --name smoke --network host             -e DATABASE_URL=postgresql://forma3d:ci-password@localhost:5432/forma3d             forma3d:ci
           for i in $(seq 1 12); do
             if curl -fsS http://localhost:8080/health; then echo; echo "image saine"; exit 0; fi
             sleep 5

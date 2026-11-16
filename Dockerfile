@@ -1,5 +1,6 @@
 # Rôle : construit l'image Docker de l'API Forma3D (FastAPI + Studio HTML + widget).
-# Exécution : docker build -t forma3d:1.0 .   puis   docker run -d -p 8080:8080 forma3d:1.0
+# Exécution : docker build -t forma3d:1.0 .   puis   docker compose up -d (l'API exige PostgreSQL
+# via DATABASE_URL ; seule : docker run -d -p 8080:8080 -e DATABASE_URL=postgresql://... forma3d:1.0).
 # L'image ne contient aucun secret ni donnée locale (voir .dockerignore) ; la configuration
 # passe uniquement par les variables d'environnement (Compose, CI, staging).
 
@@ -28,10 +29,10 @@ COPY backend/app ./app
 COPY frontend /app/frontend
 
 # Utilisateur non root : si l'application est compromise, l'attaquant n'est pas root dans le conteneur.
-# Les dossiers de données lui appartiennent pour qu'il puisse y écrire (SQLite, GLB, photos).
+# Le dossier de stockage lui appartient pour qu'il puisse y écrire (GLB, photos).
 RUN useradd --create-home --uid 10001 appuser \
-    && mkdir -p /app/backend/data /app/backend/storage \
-    && chown -R appuser:appuser /app/backend/data /app/backend/storage
+    && mkdir -p /app/backend/storage \
+    && chown -R appuser:appuser /app/backend/storage
 USER appuser
 
 # Documentation du port d'écoute (le publier reste le rôle de « docker run -p » ou de Compose).
