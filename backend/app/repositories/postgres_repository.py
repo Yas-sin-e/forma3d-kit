@@ -1,12 +1,12 @@
 # Rôle : persiste les catégories, générations et clés API dans un serveur PostgreSQL.
-# Exécution : choisi par repositories/factory.py quand DATABASE_URL commence par postgresql:// ;
+# Exécution : créé par repositories/factory.py à partir de DATABASE_URL ;
 # l'API appelle initialize() au démarrage, puis chaque opération ouvre une connexion courte.
-"""Dépôt PostgreSQL, comportement identique au dépôt SQLite (même interface GenerationRepository).
+"""Dépôt PostgreSQL : seule implémentation de l'interface GenerationRepository.
 
-Différences assumées avec SQLite, toutes invisibles pour les services :
+Choix techniques, invisibles pour les services :
 - types natifs : BOOLEAN, TIMESTAMPTZ (date avec fuseau), BIGINT GENERATED ALWAYS AS IDENTITY ;
-- migrations avec « ADD COLUMN IF NOT EXISTS » au lieu de lire PRAGMA table_info ;
-- atomicité des quotas par verrou de ligne « SELECT ... FOR UPDATE » au lieu de BEGIN IMMEDIATE ;
+- migrations idempotentes avec « ADD COLUMN IF NOT EXISTS » ;
+- atomicité des quotas par verrou de ligne « SELECT ... FOR UPDATE » ;
 - initialize() protégée par un verrou consultatif (pg_advisory_xact_lock) si deux API démarrent ensemble.
 """
 
@@ -59,7 +59,7 @@ class PostgresGenerationRepository:
     def _connection(self) -> Iterator[psycopg.Connection[dict[str, Any]]]:
         """Ouvre une connexion, valide (commit) si le bloc réussit, annule (rollback) sinon, puis ferme.
 
-        dict_row : chaque ligne est un dictionnaire (row["status"]), comme sqlite3.Row côté SQLite.
+        dict_row : chaque ligne est un dictionnaire (row["status"]) plutôt qu'un tuple.
         TimeZone=UTC : toutes les dates relues sont exprimées en UTC, quel que soit le serveur.
         """
         with psycopg.connect(
@@ -109,7 +109,7 @@ class PostgresGenerationRepository:
                 )
                 """
             )
-            # Migrations non destructives : mêmes colonnes ajoutées au fil des étapes que côté SQLite.
+            # Migrations non destructives : colonnes ajoutées au fil des étapes (avertissement, origine, intégration).
             connection.execute("ALTER TABLE generations ADD COLUMN IF NOT EXISTS image_warning TEXT")
             connection.execute(
                 "ALTER TABLE generations ADD COLUMN IF NOT EXISTS origin TEXT NOT NULL DEFAULT 'generated'"

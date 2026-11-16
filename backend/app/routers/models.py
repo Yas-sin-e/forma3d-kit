@@ -160,7 +160,7 @@ def delete_model(
     generation_id: str,
     service: Annotated[GenerationService, Depends(get_generation_service)],
 ) -> Response:
-    """Supprime définitivement un modèle du Studio : ligne SQLite, GLB et photo source."""
+    """Supprime définitivement un modèle du Studio : ligne en base, GLB et photo source."""
     try:
         deleted = service.delete_generation(generation_id)
     except ValueError as error:

@@ -1,6 +1,6 @@
-# Rôle : construit l'API FastAPI, initialise le dépôt (SQLite ou PostgreSQL) et configure les services.
+# Rôle : construit l'API FastAPI, initialise le dépôt PostgreSQL et configure les services.
 # Exécution : Uvicorn importe ce module ; FastAPI sert la page, les ressources et les routes.
-"""Point d'entrée HTTP et initialisation du dépôt SQLite de Forma3D Studio.
+"""Point d'entrée HTTP et initialisation du dépôt PostgreSQL de Forma3D Studio.
 
 Uvicorn importe ce module au démarrage ; les tests l'importent aussi. FastAPI
 expose le contrôle GET /health et initialise le stockage des métadonnées.
@@ -9,7 +9,7 @@ expose le contrôle GET /health et initialise le stockage des métadonnées.
 # logging (bibliothèque standard) : écrit des messages dans le journal du serveur.
 # Ici : avertissements au démarrage. Équivalent de SLF4J / Logback en Java.
 import logging
-# os (standard) : lit DATABASE_URL pour journaliser le type de base utilisée.
+# os (standard) : lit DATABASE_URL pour journaliser l'adresse de la base (mot de passe masqué).
 import os
 # contextlib (standard) : fabrique des « gestionnaires de contexte » (blocs with).
 # asynccontextmanager sert au cycle de vie de l'application (démarrage / arrêt).
@@ -33,7 +33,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.providers.huggingface import HuggingFaceSpaceProvider
 from app.providers.trellis import TrellisSpaceProvider
-from app.repositories.factory import create_repository, describe_backend
+from app.repositories.factory import create_repository, mask_database_url
 from app.routers.api_keys import router as api_keys_router
 from app.routers.auth import require_owner
 from app.routers.auth import router as auth_router
@@ -62,10 +62,8 @@ generation_provider = (
     if provider.settings.image3d_provider == "trellis"
     else provider
 )
-# DATABASE_URL vide -> SQLite (fichier local) ; DATABASE_URL=postgresql://... -> PostgreSQL (projet DevOps).
-generation_repository = create_repository(
-    _PROJECT_ROOT / "backend" / "data" / "forma3d.sqlite3"
-)
+# PostgreSQL est la seule base : DATABASE_URL (postgresql://...) est obligatoire, sinon erreur claire.
+generation_repository = create_repository()
 # Le schéma existe aussi pour les tests qui utilisent TestClient sans cycle lifespan.
 generation_repository.initialize()
 
@@ -74,13 +72,13 @@ generation_repository.initialize()
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """Cycle de vie de l'application : le code avant « yield » s'exécute au démarrage.
 
-    Initialise la base SQLite puis écrit des avertissements (sans bloquer le démarrage) si
+    Initialise la base PostgreSQL puis écrit des avertissements (sans bloquer le démarrage) si
     backend/.env, le mot de passe propriétaire ou HF_SPACE_ID manquent.
     Équivalent d'un @PostConstruct / ApplicationRunner de Spring Boot.
     """
     generation_repository.initialize()
-    # On journalise le type de base, jamais l'URL (elle contient le mot de passe).
-    logger.info("Base de données utilisée : %s", describe_backend(os.getenv("DATABASE_URL")))
+    # On journalise l'adresse de la base avec le mot de passe masqué (jamais en clair).
+    logger.info("Base de données PostgreSQL : %s", mask_database_url(os.getenv("DATABASE_URL", "")))
     backend_env = _PROJECT_ROOT / "backend" / ".env"
     if not backend_env.is_file():
         logger.warning("backend/.env est absent ; vérifiez le fichier local avant une génération distante.")
