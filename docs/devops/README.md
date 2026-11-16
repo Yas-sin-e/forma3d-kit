@@ -17,7 +17,7 @@ Le code applicatif n'est pas noté : seule la chaîne DevOps l'est.
 | P3d | `feature/data-migration` | Migration des données SQLite, test complet de l'application, visualisation | point 4 | Fait, observé (PR à fusionner) | [phase-03d.md](phase-03d.md) |
 | P3b | `feature/compose-postgres` | Docker Compose : api + PostgreSQL | 3 | Fait, observé (PR à fusionner) | [phase-03b.md](phase-03b.md) |
 | P4 | `ci/pipeline` | Pipeline CI `test` → `docker-build` | 3 | Écrit, testé en local ; exécution GitHub à observer | [phase-04.md](phase-04.md) |
-| P5 | `ci/release` | Tag `v1.0.0` et image GHCR | 2 (avec P6) | Écrit ; tag et publication à faire après fusion | [phase-05.md](phase-05.md) |
+| P5 | `ci/release` | Tags et images GHCR | 2 (avec P6) | Code dans `main` (PR n°13) ; `v1.0.0` posé trop tôt ; `v1.0.1`, `v1.1.0`, `v1.1.1` à pousser | [phase-05.md](phase-05.md) |
 | P6 | `feature/staging` | Mise en service staging + santé | 2 (avec P5) | Répété en local ; à refaire avec l'image GHCR | [phase-06.md](phase-06.md) |
 | P7 | `chore/align-port-8000`, `fix/port-contract`, `docs/incident-rollback` | Incident `v1.1.0` et retour arrière | 1 | Répété en local ; à rejouer avec tags publiés | [phase-07.md](phase-07.md) |
 | P8 | `docs/devops-final` | Documentation finale | — | Fait (PR à fusionner) | [FICHE-PROJET.md](FICHE-PROJET.md), [PREUVES.md](PREUVES.md), [QUIZ.md](QUIZ.md) |

@@ -36,7 +36,8 @@ depuis l'endroit où se trouvent les utilisateurs, ce que fait `wait-healthy.sh`
 ## 4. Déroulé observé le 16/11/2026 (répétition locale)
 
 Images construites localement et étiquetées `ghcr.io/yas-sin-e/forma3d:v1.1.0` et `:v1.1.1` (non publiées),
-déploiement avec `SKIP_PULL=1`. Point de départ : `v1.0.0` en service et saine (P6).
+déploiement avec `SKIP_PULL=1`. Point de départ : `v1.0.0` en service et saine (P6). Dans les versions
+**publiées**, cette version saine s'appelle `v1.0.1` (voir `phase-05.md` §5).
 
 **1. Mise en service de v1.1.0 → échec de santé (code 1)**
 ```
@@ -80,19 +81,54 @@ La PR de v1.1.0 aurait donc été **rouge** en CI.
 
 ### Retour arrière manuel (sans `deploy.sh`), à savoir faire
 ```bash
-echo "IMAGE_TAG=v1.0.0" > .env.deploy
+echo "IMAGE_TAG=v1.0.1" > .env.deploy
 docker compose -p forma3d-staging -f compose.staging.yaml --env-file .env.deploy up -d
 ./scripts/wait-healthy.sh; echo "code=$?"
 ```
 
-## 5. Rejouer avec de vraies versions publiées (étudiante)
+## 4b. Déroulé RÉEL avec les images publiées sur GHCR (16/11/2026)
 
-1. Fusionner les PR jusqu'à P6, puis taguer et pousser `v1.0.0` ; `./scripts/deploy.sh v1.0.0`.
-2. Ouvrir une PR depuis `chore/align-port-8000`. Le contrôle de port n'existe pas encore (il arrive
-   avec `fix/port-contract`), donc la CI de cette PR est verte, comme lors d'un vrai incident. La
-   fusionner, taguer `v1.1.0`, pousser, puis `./scripts/deploy.sh v1.1.0` → échec et retour arrière automatique.
-3. Fusionner `fix/port-contract`, taguer `v1.1.1`, pousser, `./scripts/deploy.sh v1.1.1` → sain.
-4. Compléter les heures réelles dans `INCIDENT-v1.1.0.md`.
+Point de départ : `v1.0.1` en service et saine (phase-06 §4b).
+
+```
+== [22:43:11] Mise en service de v1.1.0
+ Image ghcr.io/yas-sin-e/forma3d:v1.1.0 Pulled
+[22:44:06] tentative 1/6 : pas de réponse saine de http://localhost:8080/health
+...
+[22:44:33] tentative 6/6 : pas de réponse saine de http://localhost:8080/health
+staging non sain après 6 tentatives (http://localhost:8080/health)
+== [22:44:33] v1.1.0 non sain. Journaux de l'API :
+api-1  | INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+== [22:44:34] RETOUR ARRIÈRE vers v1.0.1
+[22:44:46] tentative 2/6 : {"status":"ok"}
+staging sain
+== [22:44:46] Retour arrière réussi : v1.0.1 en service ; v1.1.0 refusé.
+```
+Code de sortie 1 (la version refusée est signalée) ; `ps` : `api … :v1.0.1 Up (healthy)` ; `.last-good-tag` reste `v1.0.1`.
+
+```
+== [22:44:56] Mise en service de v1.1.1
+ Image ghcr.io/yas-sin-e/forma3d:v1.1.1 Pulled
+[22:46:27] tentative 2/12 : {"status":"ok"}
+staging sain
+== [22:46:27] v1.1.1 en service.
+```
+Code 0 ; `.last-good-tag` = `v1.1.1`.
+
+**Durée :** 95 s au plus entre le lancement du déploiement de `v1.1.0` (22:43:11) et le retour sain de
+`v1.0.1` (22:44:46). Cette mesure inclut le téléchargement de l'image (environ 50 s) pendant lequel
+`v1.0.1` répondait encore : l'interruption réelle commence au remplacement du conteneur, non horodaté
+par le script. Aucune reconstruction d'image pendant l'incident.
+
+## 5. Procédure pour rejouer (déjà faite le 16/11/2026, voir §4b)
+
+Tout le code est déjà dans `main` (PR n°13). Les trois versions sont des tags sur des commits de son historique :
+
+1. Pousser les tags `v1.0.1`, `v1.1.0`, `v1.1.1` (`phase-05.md` §5) ; attendre les trois workflows « Release » verts.
+2. `docker login ghcr.io -u Yas-sin-e` (jeton *read:packages* saisi au terminal), puis `./scripts/deploy.sh v1.0.1` → sain.
+3. `./scripts/deploy.sh v1.1.0` → échec de santé, journaux, retour automatique à `v1.0.1`.
+4. `./scripts/deploy.sh v1.1.1` → sain.
+5. Compléter les heures réelles dans `INCIDENT-v1.1.0.md`.
 
 ## 6. Preuves à conserver
 

@@ -54,9 +54,11 @@ Aucune ligne ⏳ ne doit être présentée comme faite en soutenance avant d'avo
 | Preuve | État | Référence |
 |---|---|---|
 | Répétition locale `deploy.sh v1.0.0` → staging sain | ✅ (image étiquetée localement) | `phase-06.md` §4 |
-| Tag `v1.0.0` visible sur GitHub | ⏳ | après fusion dans `main` |
+| Tag `v1.0.0` poussé trop tôt : run #97 « Project checks » vert, aucune image | ✅ (captures) | `phase-05.md` §5 |
+| Tags `v1.0.1`, `v1.1.0`, `v1.1.1` poussés ; 3 workflows « Release » verts | ✅ 16/11/2026 | `phase-05.md` §5 (runs 43960593859, …512, …801) |
 | Workflow « Release » vert, paquet visible dans *Packages* | ⏳ | URL |
-| `docker pull ghcr.io/yas-sin-e/forma3d:v1.0.0` | ⏳ | sortie |
+| `docker pull ghcr.io/yas-sin-e/forma3d:v1.0.1` (labels OCI = commit `4b2d063`) | ✅ | `phase-05.md` §5 |
+| `deploy.sh v1.0.1` avec l'image GHCR → staging sain | ✅ | `phase-06.md` §4b |
 
 ## 7. Retour arrière (1 pt)
 
@@ -65,4 +67,4 @@ Aucune ligne ⏳ ne doit être présentée comme faite en soutenance avant d'avo
 | `deploy.sh v1.1.0` échoue, retour automatique à v1.0.0 (39 s) | ✅ (répétition locale) | `phase-07.md` §4 |
 | `deploy.sh v1.1.1` sain | ✅ (répétition locale) | `phase-07.md` §4 |
 | Garde-fou « contrat de port » détecte la v1.1.0 | ✅ | `phase-07.md` §4 |
-| Même déroulé avec les tags publiés | ⏳ | `phase-07.md` §5 |
+| Même déroulé avec les images publiées : v1.1.0 refusée, retour à v1.0.1, v1.1.1 saine | ✅ | `phase-07.md` §4b |

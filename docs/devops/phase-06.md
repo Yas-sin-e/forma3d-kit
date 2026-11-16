@@ -16,7 +16,7 @@ modification du code.
 |---|---|---|
 | `compose.staging.yaml` | créé | `api` = `ghcr.io/yas-sin-e/forma3d:${IMAGE_TAG}` (pas de `build:`), même `db` et volumes qu'en P3b |
 | `.env.staging.example` | créé | Modèle sans secret de `.env.staging` (base `forma3d_staging`, valeurs fictives) |
-| `.env.deploy.example` | créé | Modèle de `.env.deploy` : une seule ligne `IMAGE_TAG=v1.0.0` |
+| `.env.deploy.example` | créé | Modèle de `.env.deploy` : une seule ligne `IMAGE_TAG=v1.0.1` |
 | `scripts/wait-healthy.sh` | créé | 12 tentatives × 5 s sur `/health` ; « staging sain » code 0, sinon « staging non sain » code 1 |
 | `scripts/deploy.sh` | créé | Écrit `.env.deploy`, `pull`, `up -d`, appelle `wait-healthy.sh`, rollback automatique sinon |
 | `.gitignore` | modifié | Ignore `.last-good-tag` (`.env.staging` et `.env.deploy` le sont déjà par `.env.*`) |
@@ -42,7 +42,7 @@ modification du code.
 cp .env.staging.example .env.staging
 docker compose down                                  # libère le port 8080 de la pile de dev
 docker login ghcr.io -u Yas-sin-e                    # paquet privé : jeton read:packages saisi au terminal
-./scripts/deploy.sh v1.0.0; echo "code=$?"
+./scripts/deploy.sh v1.0.1; echo "code=$?"
 docker compose -p forma3d-staging -f compose.staging.yaml --env-file .env.deploy ps
 git check-ignore -v .env.staging .env.deploy .last-good-tag
 ```
@@ -62,7 +62,24 @@ staging sain
 `.last-good-tag` contient `v1.0.0`. La première tentative échoue normalement (API en démarrage) :
 c'est précisément pourquoi le script réessaie.
 
-**À refaire avec la vraie image** après le push du tag `v1.0.0` (P5), sans `SKIP_PULL`.
+**À refaire avec la vraie image** après le push du tag `v1.0.1` (P5), sans `SKIP_PULL`. Lors de cette
+répétition locale, la version saine s'appelait `v1.0.0` ; la version saine **publiée** est `v1.0.1`
+(voir `phase-05.md` §5 : `v1.0.0` a été posé par erreur, sans image).
+
+## 4b. Mise en service RÉELLE depuis GHCR (observée le 16/11/2026)
+
+Images publiées par `release.yml`, tirées par `deploy.sh` (sans `SKIP_PULL`) :
+
+```
+== [22:42:40] Mise en service de v1.0.1
+ Image ghcr.io/yas-sin-e/forma3d:v1.0.1 Pulled
+[22:42:56] tentative 1/12 : pas de réponse saine de http://localhost:8080/health
+[22:43:01] tentative 2/12 : {"status":"ok"}
+staging sain
+== [22:43:01] v1.0.1 en service.
+```
+`ps` : `api ghcr.io/yas-sin-e/forma3d:v1.0.1 Up (healthy)`, `db postgres:17-alpine Up (healthy)` ; code de
+sortie 0 ; `.last-good-tag` = `v1.0.1`.
 
 ## 5. Preuves à conserver
 

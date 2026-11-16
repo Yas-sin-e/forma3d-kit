@@ -45,21 +45,29 @@
 | Staging + santé | `compose.staging.yaml`, `scripts/wait-healthy.sh`, `scripts/deploy.sh` | 6 |
 | Retour arrière | `scripts/deploy.sh`, `INCIDENT-v1.1.0.md` | 7 |
 
+## Versions publiées
+
+| Tag | Commit | Contenu | Rôle |
+|---|---|---|---|
+| `v1.0.0` | `c447aca` (ancien `main`) | aucun `release.yml` | **posé par erreur avant la fusion : aucune image, jamais déplacé** |
+| `v1.0.1` | `4b2d063` (fin de P6) | image port 8080, staging | version saine de référence |
+| `v1.1.0` | `3552bb5` (port 8000) | version volontairement défectueuse | incident P7 |
+| `v1.1.1` | `a17c181` (`main` après la PR n°13) | correction du port, contrôle du contrat de port, PostgreSQL seule base | correction de l'incident |
+
 ## Version en service
 
 | Environnement | Version | État |
 |---|---|---|
-| Staging (répétition locale du 16/11/2026) | `v1.1.1` (image construite localement) | sain — `wait-healthy.sh` code 0 |
-| Staging avec images GHCR publiées | — | à faire après fusion et push des tags |
+| Staging avec images GHCR publiées (16/11/2026, 22:46) | `v1.1.1` | sain — `wait-healthy.sh` code 0 |
 
 ## Déroulé du retour arrière
 
 1. `./scripts/deploy.sh v1.1.0` → `wait-healthy.sh` échoue (code 1) : API sur 8000, staging publie 8080.
 2. `docker compose … logs --tail=30 api` → `Uvicorn running on http://0.0.0.0:8000`.
-3. `deploy.sh` remet automatiquement `IMAGE_TAG=v1.0.0` (dernier tag sain), `up -d`, santé OK — **39 s** d'indisponibilité, aucune reconstruction.
+3. `deploy.sh` remet automatiquement le dernier tag sain (`v1.0.1` en version publiée), `up -d`, santé OK — **39 s** d'indisponibilité, aucune reconstruction.
 4. Correction livrée en `v1.1.1` ; prévention : contrôle « contrat de port » dans `check-project.sh`.
 
-Manuel : `echo IMAGE_TAG=v1.0.0 > .env.deploy && docker compose -p forma3d-staging -f compose.staging.yaml --env-file .env.deploy up -d && ./scripts/wait-healthy.sh`
+Manuel : `echo IMAGE_TAG=v1.0.1 > .env.deploy && docker compose -p forma3d-staging -f compose.staging.yaml --env-file .env.deploy up -d && ./scripts/wait-healthy.sh`
 
 ## Ce qui changerait à grande échelle
 

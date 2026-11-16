@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Rôle : met en service une version publiée (tag) en staging, avec retour arrière automatique.
-# Exécution : ./scripts/deploy.sh v1.0.0
+# Exécution : ./scripts/deploy.sh v1.0.1
 # Étapes : écrit IMAGE_TAG dans .env.deploy -> pull -> up -d -> wait-healthy.sh
 #          sain : le tag est mémorisé dans .last-good-tag ; non sain : on revient au dernier tag sain.
 # SKIP_PULL=1 : utilise une image déjà présente en local (répétition hors ligne de la soutenance).

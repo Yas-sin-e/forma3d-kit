@@ -1,5 +1,5 @@
 # Rôle : environnement de STAGING : l'image PUBLIÉE sur GHCR (jamais reconstruite) + PostgreSQL.
-# Exécution : ./scripts/deploy.sh v1.0.0   (recommandé, avec retour arrière automatique)
+# Exécution : ./scripts/deploy.sh v1.0.1   (recommandé, avec retour arrière automatique)
 #        ou : docker compose -p forma3d-staging -f compose.staging.yaml --env-file .env.deploy up -d
 # La version vient de IMAGE_TAG (fichier .env.deploy, ignoré par Git) : changer de version ou revenir
 # en arrière = changer une variable, sans toucher au code ni reconstruire.
