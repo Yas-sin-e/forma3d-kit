@@ -6,6 +6,10 @@
 4. **Durée d'indisponibilité mesurée :** 39 s, de 17:09:00 (arrêt de v1.0.0, démarrage de v1.1.0) à 17:09:39 (v1.0.0 de nouveau saine).
 5. **Ce qui empêchera la récidive :** `check-project.sh` vérifie désormais le « contrat de port » (EXPOSE, CMD et HEALTHCHECK de l'image = port publié par `compose.yaml` et `compose.staging.yaml`) et fait échouer le job `test` de la CI ; la santé est toujours vérifiée depuis l'extérieur du conteneur.
 
+> **Rejoué avec les images réellement publiées sur GHCR** (16/11/2026, 22:43–22:46) : `v1.1.0` refusée
+> après 6 tentatives à 22:44:33, retour automatique à `v1.0.1` sain à 22:44:46, puis `v1.1.1` saine à
+> 22:46:27 ; au plus 95 s entre le début du déploiement et le retour sain. Sorties : `phase-07.md` §4b.
+>
 > Versions publiées sur GHCR : la version saine de référence est `v1.0.1` (le tag `v1.0.0`, posé avant la
 > fusion, n'a jamais produit d'image). Lors de la répétition ci-dessus, elle portait localement le nom `v1.0.0`.
 >

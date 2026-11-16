@@ -66,6 +66,21 @@ c'est précisément pourquoi le script réessaie.
 répétition locale, la version saine s'appelait `v1.0.0` ; la version saine **publiée** est `v1.0.1`
 (voir `phase-05.md` §5 : `v1.0.0` a été posé par erreur, sans image).
 
+## 4b. Mise en service RÉELLE depuis GHCR (observée le 16/11/2026)
+
+Images publiées par `release.yml`, tirées par `deploy.sh` (sans `SKIP_PULL`) :
+
+```
+== [22:42:40] Mise en service de v1.0.1
+ Image ghcr.io/yas-sin-e/forma3d:v1.0.1 Pulled
+[22:42:56] tentative 1/12 : pas de réponse saine de http://localhost:8080/health
+[22:43:01] tentative 2/12 : {"status":"ok"}
+staging sain
+== [22:43:01] v1.0.1 en service.
+```
+`ps` : `api ghcr.io/yas-sin-e/forma3d:v1.0.1 Up (healthy)`, `db postgres:17-alpine Up (healthy)` ; code de
+sortie 0 ; `.last-good-tag` = `v1.0.1`.
+
 ## 5. Preuves à conserver
 
 Sortie de `deploy.sh` (code 0), `docker compose … ps`, `git check-ignore -v` des trois fichiers.

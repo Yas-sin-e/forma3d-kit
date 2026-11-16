@@ -76,11 +76,34 @@ git tag -a v1.1.1 a17c181 -m "Release 1.1.1 : correction du port et PostgreSQL s
 git push origin v1.0.1 v1.1.0 v1.1.1
 ```
 
+### Résultat observé : publication réussie
+
+| Tag | Run « Release » | Résultat |
+|---|---|---|
+| `v1.0.1` | 43960593859 | ✅ success |
+| `v1.1.0` | 43960593512 | ✅ success |
+| `v1.1.1` | 43960593801 | ✅ success |
+
+Lu avec `gh run list --workflow release.yml`. Connexion locale à GHCR par GitHub CLI (connexion dans le
+navigateur, aucun jeton copié à la main) :
+
+```bash
+gh auth login --web --scopes read:packages
+gh auth token | docker login ghcr.io -u Yas-sin-e --password-stdin    # Login Succeeded
+docker pull ghcr.io/yas-sin-e/forma3d:v1.0.1                           # Downloaded newer image
+```
+`docker image inspect` sur `v1.0.1` : labels OCI `revision = 4b2d0639…`, `version = v1.0.1` (traçabilité
+image → commit vérifiée). Les trois images pèsent 312 Mo.
+
+À savoir : `docker login` avec le **mot de passe** du compte GitHub échoue (`denied: denied`) ; GHCR
+exige un jeton (classic, `read:packages`) ou la connexion par `gh`. Aucun réglage « Read and write
+permissions » du dépôt n'est nécessaire : `release.yml` déclare lui-même `packages: write`.
+
 ## 6. État de vérification
 
 - YAML validé localement (jobs `test` → `publish`, permissions `contents: read`, `packages: write`).
 - Observé (captures de l'étudiante) : tag `v1.0.0` poussé, run #97 « Project checks » vert, aucun « Release ».
-- **Non observé :** les workflows « Release » de `v1.0.1`, `v1.1.0`, `v1.1.1` et les images sur GHCR (tags à pousser par l'étudiante).
+- Observé : tags `v1.0.1`, `v1.1.0`, `v1.1.1` poussés par l'étudiante, trois workflows « Release » verts, images tirées depuis GHCR.
 
 ## 7. Preuves à conserver
 

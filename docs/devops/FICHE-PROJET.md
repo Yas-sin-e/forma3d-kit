@@ -58,8 +58,7 @@
 
 | Environnement | Version | État |
 |---|---|---|
-| Staging (répétition locale du 16/11/2026) | `v1.1.1` (image construite localement) | sain — `wait-healthy.sh` code 0 |
-| Staging avec images GHCR publiées | — | à faire après fusion et push des tags |
+| Staging avec images GHCR publiées (16/11/2026, 22:46) | `v1.1.1` | sain — `wait-healthy.sh` code 0 |
 
 ## Déroulé du retour arrière
 
