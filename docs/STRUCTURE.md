@@ -25,12 +25,17 @@ Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 s
 | `scripts/` | Regroupe les commandes de développement Windows | Évite de mémoriser les étapes venv/tests/serveur | Au démarrage local |
 | `scripts/dev.ps1` | Crée le venv absent, installe les dépendances si nécessaire, exécute pytest, démarre Uvicorn et ouvre Edge | Donne un seul parcours reproductible au projet | Depuis PowerShell à la racine |
 | `scripts/check-project.sh` | ContrÃ´le Bash du dÃ©pÃ´t (fichiers requis, aucun `.env`/SQLite/GLB suivi, conflits, `--strict`), code 0/1 | Un seul contrÃ´le rejouÃ© Ã  l'identique par l'Ã©tudiante et par la CI | Avant un commit, une PR, un tag, et dans le job CI `test` |
+| `scripts/wait-healthy.sh` | Interroge `/health` (12 Ã— 5 s, `HEALTH_URL` paramÃ©trable) ; Â« staging sain Â» code 0, sinon code 1 | DÃ©cision automatique et bornÃ©e de la mise en service | AprÃ¨s chaque mise en service et par `deploy.sh` |
+| `scripts/deploy.sh` | Met en service un tag (`.env.deploy`, pull, up, santÃ©) et revient automatiquement au dernier tag sain (`.last-good-tag`) | Rollback sans reconstruction ni intervention de code | `./scripts/deploy.sh vX.Y.Z` en staging |
 | `.gitattributes` | Force les fins de ligne LF pour scripts Bash, Dockerfile et YAML | Ã‰vite l'erreur `bash\r` sous Linux quand on travaille sous Windows | Automatiquement Ã  chaque checkout et commit |
 | `Dockerfile` | Image de l'API : `python:3.12-slim` fixÃ©e, dÃ©pendances avant le code, utilisateur `appuser`, `EXPOSE 8080`, `HEALTHCHECK` Python, uvicorn sur 0.0.0.0 | MÃªme environnement en local, en CI et en staging | `docker build`, `docker compose build`, CI et release |
 | `.dockerignore` | Exclut Git, `.env`, donnÃ©es locales, caches, tests et docs du contexte de construction | Aucun secret ni donnÃ©e locale dans l'image ; construction plus rapide | Ã€ chaque construction d'image |
 | `compose.yaml` | Pile de dÃ©veloppement : `api` (image locale) + `db` PostgreSQL 17 sans port publiÃ©, rÃ©seau `backend`, volumes `pgdata`/`storage`, Adminer en profil `debug` | Une commande dÃ©marre l'application et sa vraie base | `docker compose up -d --build` |
 | `compose.debug.yaml` | Surcharge qui publie PostgreSQL sur `127.0.0.1:5433` pour DBeaver/HeidiSQL | Visualiser la base sans laisser 5432 ouvert en usage normal | `docker compose -f compose.yaml -f compose.debug.yaml up -d` |
 | `.env.compose.example` | ModÃ¨le sans secret de `.env.compose` (identifiants PostgreSQL fictifs, `DATABASE_URL` vers `db`) | Configuration reproductible sans mot de passe dans Git | CopiÃ© une fois avant le premier `docker compose up` |
+| `compose.staging.yaml` | Staging : image GHCR `${IMAGE_TAG}` sans `build:`, PostgreSQL, volumes, `restart: unless-stopped` | On dÃ©ploie exactement l'image testÃ©e et publiÃ©e | Par `deploy.sh` ou `docker compose -p forma3d-staging â€¦` |
+| `.env.staging.example` | ModÃ¨le sans secret de `.env.staging` (base `forma3d_staging`) | Configuration du staging reproductible, hors Git | CopiÃ© une fois avant le premier dÃ©ploiement |
+| `.env.deploy.example` | ModÃ¨le de `.env.deploy` : `IMAGE_TAG` seul | La version en service est une variable | Ã‰crit par `deploy.sh` Ã  chaque mise en service |
 
 ## Serveur temporaire TripoSR
 
@@ -251,3 +256,4 @@ Le registre des métadonnées, les empreintes de clés, les quotas journaliers e
 | `docs/devops/phase-03b.md` | Compte rendu de P3b : Compose expliquÃ©, persistance, DBeaver, incident `localhost` | Justifie le point 4 du barÃ¨me | Pour la preuve du point 4 et en soutenance |
 | `docs/devops/phase-04.md` | Compte rendu de P4 : workflow CI expliquÃ©, PR rouge de dÃ©monstration | Justifie le point 5 du barÃ¨me | Pour la preuve du point 5 et en soutenance |
 | `docs/devops/phase-05.md` | Compte rendu de P5 : release, immuabilitÃ© des tags, procÃ©dure de livraison | Justifie le point 6 (partie publication) | Avant de taguer une version et en soutenance |
+| `docs/devops/phase-06.md` | Compte rendu de P6 : staging, santÃ©, rÃ©pÃ©tition hors ligne | Justifie le point 6 (partie mise en service) | Avant un dÃ©ploiement et en soutenance |

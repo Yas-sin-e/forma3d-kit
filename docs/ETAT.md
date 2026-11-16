@@ -13,6 +13,7 @@ Dernière mise à jour : 16 novembre 2026.
 - P3b (Compose) : `compose.yaml` api + `postgres:17-alpine`. Observé : deux services healthy, 5432 non publié, `getent hosts db` résolu, catégorie conservée après `down`/`up`, DBeaver-like sur 127.0.0.1:5433 via `compose.debug.yaml`, Adminer HTTP 200 en profil `debug`, incident `localhost` → `Connection refused` diagnostiqué et corrigé. Détails : `docs/devops/phase-03b.md`.
 - P4 (CI) : `ci.yml` réécrit (`test` avec service PostgreSQL et artefact `rapport-tests` → `docker-build` avec test de fumée). Observé en local : 176 tests sous Python 3.12 + PostgreSQL, YAML valide. **Exécution GitHub non observée** (branche non poussée). Branche locale `test/failing-demo` prête pour la PR rouge. Détails : `docs/devops/phase-04.md`.
 - P5 (release) : `release.yml` (tag `v*.*.*` → tests → publication GHCR avec `GITHUB_TOKEN`). YAML validé ; **tag et image non publiés** (fusion dans `main` et push du tag à faire par l'étudiante). Détails : `docs/devops/phase-05.md`.
+- P6 (staging) : `compose.staging.yaml`, `wait-healthy.sh`, `deploy.sh` (rollback automatique). Répétition locale observée avec une image **étiquetée localement** (non publiée) : `v1.0.0` saine à la 2e tentative. Détails : `docs/devops/phase-06.md`.
 
 ## Avenant au cahier des charges v1.0
 
