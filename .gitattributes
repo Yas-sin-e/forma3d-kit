@@ -1,0 +1,9 @@
+# Rôle : fixe les fins de ligne dans Git, quel que soit le système (Windows CRLF / Linux LF).
+# Exécution : lu automatiquement par Git à chaque checkout et à chaque commit.
+# Les scripts Bash DOIVENT être en LF : avec CRLF, Linux lit « bash\r » et échoue
+# (« /usr/bin/env: 'bash\r': No such file or directory ») dans WSL2, Docker et la CI.
+*.sh text eol=lf
+# Fichiers lus dans des conteneurs Linux : LF aussi, par précaution.
+Dockerfile text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
