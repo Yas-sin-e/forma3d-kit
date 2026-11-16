@@ -8,8 +8,8 @@ Le code applicatif n'est pas noté : seule la chaîne DevOps l'est.
 
 | Phase | Branche | Sujet | Barème | État | Compte rendu |
 |---|---|---|:-:|---|---|
-| P0 | `docs/devops-kickoff` | Diagnostic d'entrée et cadrage | (point 1) | En cours | [phase-00.md](phase-00.md) |
-| P3a | `feature/postgres-repository` | Dépôt PostgreSQL derrière `GenerationRepository` | point 4 | À faire (avancée, voir décision D2) | — |
+| P0 | `docs/devops-kickoff` | Diagnostic d'entrée et cadrage | (point 1) | Fait (PR à fusionner) | [phase-00.md](phase-00.md) |
+| P3a | `feature/postgres-repository` | Dépôt PostgreSQL derrière `GenerationRepository` | point 4 | Fait, tests observés (PR à fusionner) | [phase-03a.md](phase-03a.md) |
 | P1 | `chore/check-project` | Script Bash de contrôle | 2 | À faire | — |
 | P2 | `feature/dockerfile` | Conteneuriser l'application | 3 | À faire | — |
 | P3b | `feature/compose-postgres` | Docker Compose : api + PostgreSQL | 3 | À faire | — |
