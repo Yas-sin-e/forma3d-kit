@@ -1,47 +1,107 @@
-# Vérifie les documents requis et exécute les tests du backend à chaque changement.
-name: Project checks
+# Rôle : pipeline d'intégration continue (CI) de Forma3D : tests puis construction de l'image Docker.
+# Exécution : GitHub Actions, automatiquement à chaque pull request et à chaque push sur main.
+# Enchaînement : job « test » -> (needs) -> job « docker-build ». Si « test » est rouge,
+# « docker-build » ne démarre pas : on ne construit jamais une image à partir d'un code qui échoue.
+name: CI
 
 on:
-  push:
   pull_request:
+  push:
+    branches: [main]
 
+# Moindre privilège : le jeton GitHub du pipeline peut seulement LIRE le dépôt.
 permissions:
   contents: read
 
+# Une nouvelle exécution sur la même branche annule la précédente (économise les minutes gratuites).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  project-checks:
-    name: Documents and backend tests
+  test:
+    name: test
     runs-on: ubuntu-latest
+    # Service container : un vrai PostgreSQL démarré à côté du job, pour les tests du dépôt PostgreSQL.
+    # Valeurs fictives : cette base est jetable et n'existe que pendant le job.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: forma3d
+          POSTGRES_PASSWORD: ci-password
+          POSTGRES_DB: forma3d_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U forma3d -d forma3d_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      # Comme scripts/dev.ps1 : aucun .env lu, aucun fournisseur 3D contacté pendant les tests.
+      PYTHON_DOTENV_DISABLED: "true"
+      HF_SPACE_ID: ""
+      TEST_DATABASE_URL: postgresql://forma3d:ci-password@localhost:5432/forma3d_test
     steps:
-      - name: Check out repository
+      - name: Récupérer le code
         uses: actions/checkout@v7
 
-      - name: Set up Python
+      - name: Installer Python 3.12 (même version que l'image Docker)
         uses: actions/setup-python@v7
         with:
-          python-version: "3.14"
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
 
-      - name: Install backend dependencies
+      - name: Installer les dépendances
+        run: python -m pip install -r backend/requirements.txt
+
+      - name: Contrôler le dépôt (script de l'atelier 2)
+        run: ./scripts/check-project.sh
+
+      - name: Lancer les tests (SQLite + PostgreSQL) avec rapport JUnit
         working-directory: backend
-        run: python -m pip install -r requirements.txt
+        run: python -m pytest -q --junitxml=report.xml
 
-      - name: Run backend tests
-        working-directory: backend
-        run: python -m pytest -q
+      # if: always() : le rapport est publié MÊME si les tests échouent ; c'est là qu'il est utile.
+      - name: Publier le rapport de tests
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: rapport-tests
+          path: backend/report.xml
+          if-no-files-found: warn
 
-      - name: Verify required project files
+  docker-build:
+    name: docker-build
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v7
+
+      - name: Préparer Buildx
+        uses: docker/setup-buildx-action@v4
+
+      # push: false : la CI vérifie que l'image se construit ; la publication est le rôle de release.yml.
+      # load: true : l'image est chargée dans le Docker du runner pour le test de fumée ci-dessous.
+      - name: Construire l'image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          load: true
+          tags: forma3d:ci
+
+      # Test de fumée : l'image démarre-t-elle vraiment et répond-elle sur /health ?
+      - name: Test de fumée /health
         run: |
-          set -euo pipefail
-          test -f README.md
-          test -f AGENTS.md
-          test -f PRODUCT.md
-          test -f DESIGN.md
-          test -f docs/ETAT.md
-          test -f docs/STRUCTURE.md
-          test -f docs/etapes/etape-01.md
-          test -f .env.example
-          test -f backend/requirements.txt
-          test -f backend/app/main.py
-          test -f backend/tests/test_health.py
-          test -f backend/README.md
-          test -f frontend/README.md
+          docker run -d --name smoke -p 8080:8080 forma3d:ci
+          for i in $(seq 1 12); do
+            if curl -fsS http://localhost:8080/health; then echo; echo "image saine"; exit 0; fi
+            sleep 5
+          done
+          echo "image non saine" >&2
+          docker logs smoke >&2
+          exit 1
