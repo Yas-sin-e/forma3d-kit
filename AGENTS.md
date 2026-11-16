@@ -140,3 +140,10 @@ Le travail reste gratuit. Aucun fournisseur ni modèle 3D ne change. Les routes 
 - Le Studio n'a pas d'authentification : usage local ou démonstration uniquement, ne pas l'exposer publiquement tel quel.
 - L'intégration publique est désactivée par défaut ; origines CORS et frame-ancestors sont fermées par défaut.
 - Pas de service payant, d'entraînement, de Docker, de framework frontend ou de dépendance lourde.
+
+## Projet DevOps (exception tracée le 16 novembre 2026)
+- Référence prioritaire : `docs/devops/CAHIER-DEVOPS.md` ; sommaire et décisions : `docs/devops/README.md`.
+- Exception décidée par l'étudiante : Docker, Docker Compose et PostgreSQL (`postgres:17-alpine`, dépendance `psycopg[binary]` après accord explicite) sont autorisés **pour le projet DevOps uniquement**. L'interdiction de Docker ci-dessus ne s'applique pas à ce projet.
+- SQLite reste le comportement par défaut quand `DATABASE_URL` est vide ; `scripts/dev.ps1` et les tests existants doivent rester fonctionnels.
+- Le fournisseur 3D ne change pas. Aucun secret dans Git, une image ou un journal de pipeline ; pour GHCR, seul `secrets.GITHUB_TOKEN` est utilisé.
+- Une phase à la fois, chacune sur sa branche avec une pull request ; compte rendu dans `docs/devops/phase-XX.md`.
