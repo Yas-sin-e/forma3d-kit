@@ -17,9 +17,27 @@ Le code applicatif n'est pas noté : seule la chaîne DevOps l'est.
 | P5 | `ci/release` | Tag `v1.0.0` et image GHCR | 2 (avec P6) | Écrit ; tag et publication à faire après fusion | [phase-05.md](phase-05.md) |
 | P6 | `feature/staging` | Mise en service staging + santé | 2 (avec P5) | Répété en local ; à refaire avec l'image GHCR | [phase-06.md](phase-06.md) |
 | P7 | `chore/align-port-8000`, `fix/port-contract`, `docs/incident-rollback` | Incident `v1.1.0` et retour arrière | 1 | Répété en local ; à rejouer avec tags publiés | [phase-07.md](phase-07.md) |
-| P8 | `docs/devops-final` | Documentation finale | — | À faire | — |
-| P9 | — | Répétition de la soutenance | 4 | À faire | — |
+| P8 | `docs/devops-final` | Documentation finale | — | Fait (PR à fusionner) | [FICHE-PROJET.md](FICHE-PROJET.md), [PREUVES.md](PREUVES.md), [QUIZ.md](QUIZ.md) |
+| P9 | — | Répétition de la soutenance | 4 | Scénario écrit ; à répéter | [SOUTENANCE.md](SOUTENANCE.md) |
 | B1–B3 | — | Bonus : protection de `main`, déploiement sur tag, matrice | +4 | Après P1–P7 | — |
+
+## Ordre de fusion des branches
+
+Les branches sont **empilées** : chacune part de la précédente. Fusionner les PR dans cet ordre, chacune
+vers `main` ; après chaque fusion, la PR suivante ne montre plus que ses propres commits.
+
+1. `docs/devops-kickoff` (P0)
+2. `feature/postgres-repository` (P3a)
+3. `chore/check-project` (P1)
+4. `feature/dockerfile` (P2)
+5. `feature/compose-postgres` (P3b)
+6. `ci/pipeline` (P4) — puis ouvrir `test/failing-demo` sans la fusionner (PR rouge)
+7. `ci/release` (P5) — puis tag `v1.0.0`
+8. `feature/staging` (P6)
+9. `chore/align-port-8000` (version défectueuse) — puis tag `v1.1.0`
+10. `fix/port-contract` — puis tag `v1.1.1`
+11. `docs/incident-rollback` (P7)
+12. `docs/devops-final` (P8–P9)
 
 ## Décisions tracées
 

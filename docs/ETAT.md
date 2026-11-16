@@ -15,6 +15,8 @@ Dernière mise à jour : 16 novembre 2026.
 - P5 (release) : `release.yml` (tag `v*.*.*` → tests → publication GHCR avec `GITHUB_TOKEN`). YAML validé ; **tag et image non publiés** (fusion dans `main` et push du tag à faire par l'étudiante). Détails : `docs/devops/phase-05.md`.
 - P6 (staging) : `compose.staging.yaml`, `wait-healthy.sh`, `deploy.sh` (rollback automatique). Répétition locale observée avec une image **étiquetée localement** (non publiée) : `v1.0.0` saine à la 2e tentative. Détails : `docs/devops/phase-06.md`.
 - P7 (incident) : v1.1.0 défectueuse (port 8000, branche `chore/align-port-8000`), retour arrière automatique vers v1.0.0 en 39 s, correction v1.1.1 (branche `fix/port-contract`) avec contrôle « contrat de port » dans `check-project.sh`. Répétition locale avec images étiquetées localement, non publiées. Détails : `docs/devops/phase-07.md`, `docs/devops/INCIDENT-v1.1.0.md`.
+- P8–P9 (documentation) : README « Démarrer en une commande », `FICHE-PROJET.md`, `PREUVES.md` (✅ observé / ⏳ à produire), `QUIZ.md`, `SOUTENANCE.md`.
+- **Reste à faire par l'étudiante :** pousser les branches et fusionner les PR dans l'ordre de `docs/devops/README.md`, observer la CI verte puis rouge, taguer et pousser `v1.0.0`, `v1.1.0`, `v1.1.1`, rejouer staging et rollback avec les images GHCR, remplir les ⏳ de `PREUVES.md`. Bonus B1–B3 non commencés.
 
 ## Avenant au cahier des charges v1.0
 
