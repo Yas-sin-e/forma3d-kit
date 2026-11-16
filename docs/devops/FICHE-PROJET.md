@@ -1,7 +1,7 @@
 # Fiche projet DevOps — Forma3D Studio (une page)
 
 **Étudiante :** projet individuel, Licence 3 DSI, ISET · **Application :** API FastAPI + Studio HTML + widget
-· **Dépôt :** `Yas-sin-e/forma3d-kit-codex` (privé) · **Image :** `ghcr.io/yas-sin-e/forma3d:<tag>`
+· **Dépôt :** `Yas-sin-e/forma3d-kit` (privé) · **Image :** `ghcr.io/yas-sin-e/forma3d:<tag>`
 
 ## Architecture
 

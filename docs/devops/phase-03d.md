@@ -33,7 +33,7 @@ et le rattache au dossier de stockage de l'environnement courant à la lecture :
 | Environnement | Dossier de stockage | Chemin reconstruit |
 |---|---|---|
 | Conteneur `api` | `/app/backend/storage` (volume `storage`) | `/app/backend/storage/models/4521a7f1-….glb` |
-| Poste Windows (`dev.ps1`) | `…\forma3d-kit-codex\backend\storage` | `…\backend\storage\models\4521a7f1-….glb` |
+| Poste Windows (`dev.ps1`) | `…\forma3d-kit\backend\storage` | `…\backend\storage\models\4521a7f1-….glb` |
 
 Une seule base sert donc aux deux. Un chemin hors du stockage reste absolu (compatibilité).
 

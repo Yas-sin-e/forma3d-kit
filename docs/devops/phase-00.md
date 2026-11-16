@@ -28,7 +28,7 @@ Aucun code applicatif n'est modifié dans cette phase.
 |---|---|---|
 | `git status` | aucune modification | On part d'un arbre propre : tout changement à venir sera le nôtre. |
 | `git log --oneline --graph -n 15` | historique en « fusions de PR » (#8 à #12), dernier commit `c447aca` | Le travail passe déjà par branches + pull requests, jamais en direct sur `main`. |
-| `git remote -v` | `origin` → `github.com/Yas-sin-e/forma3d-kit-codex.git` | Un seul dépôt distant, en HTTPS. |
+| `git remote -v` | `origin` → `github.com/Yas-sin-e/forma3d-kit.git` | Un seul dépôt distant, en HTTPS. |
 | `git ls-files \| wc -l` | 141 fichiers suivis | Taille raisonnable, pas de données lourdes versionnées. |
 | `docker version` | client 29.2.1, **moteur injoignable** (`dockerDesktopLinuxEngine` absent) | Docker Desktop n'était pas démarré. À lancer avant P2 (avec intégration WSL2). |
 | `docker compose version` | v5.0.2 | Compose v2 intégré au CLI (`docker compose`, sans tiret). |

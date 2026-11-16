@@ -28,7 +28,7 @@ Inventaire réalisé sur la branche `main` (commit `4fa727a`).
 
 | Exigence du barème | Déjà présent dans Forma3D | Manquant |
 |---|---|---|
-| 1. Git propre (2 pts) | Dépôt GitHub `forma3d-kit-codex`, branches `claude/*`, PR fusionnées, `.gitignore` complet (`.env`, `backend/data/`, `backend/storage/`), `.env.example` à jour | Convention de nommage DevOps (`feature/`, `ci/`, `docs/`), messages *Conventional Commits* systématiques, `.dockerignore`, vérification « aucun secret dans l'historique » |
+| 1. Git propre (2 pts) | Dépôt GitHub `forma3d-kit`, branches `claude/*`, PR fusionnées, `.gitignore` complet (`.env`, `backend/data/`, `backend/storage/`), `.env.example` à jour | Convention de nommage DevOps (`feature/`, `ci/`, `docs/`), messages *Conventional Commits* systématiques, `.dockerignore`, vérification « aucun secret dans l'historique » |
 | 2. Script Bash de contrôle (2 pts) | `scripts/dev.ps1` (PowerShell, lancement local) | **`scripts/check-project.sh`** : contrôles, codes de sortie 0/1, garde-fou `git status --porcelain` |
 | 3. Conteneuriser (3 pts) | Route `GET /health` → `{"status":"ok"}` | **`Dockerfile`**, **`.dockerignore`**, tag explicite, utilisateur non root, `HEALTHCHECK` |
 | 4. Compose (3 pts) | Persistance via **SQLite** (`backend/data/forma3d.sqlite3`) derrière l'interface `GenerationRepository` | **Une vraie base dans un service séparé** (PostgreSQL), `compose.yaml`, réseau privé, volume nommé, `depends_on: condition: service_healthy` |
