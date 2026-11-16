@@ -49,7 +49,7 @@ poussée). À contrôler par l'étudiante après le push :
 ```bash
 git push -u origin ci/pipeline
 # puis ouvrir la PR et regarder l'onglet Actions :
-# https://github.com/Yas-sin-e/forma3d-kit-codex/actions
+# https://github.com/Yas-sin-e/forma3d-kit/actions
 ```
 
 ### PR rouge de démonstration (ne pas fusionner)
@@ -60,6 +60,18 @@ git push -u origin test/failing-demo     # puis ouvrir une PR vers main, sans la
 ```
 Attendu : job `test` rouge, première erreur utile `AssertionError` dans `test_health.py`, artefact
 `rapport-tests` quand même présent (grâce à `if: always()`), job `docker-build` **non démarré** (`needs`).
+
+### Résultats observés sur GitHub (16/11/2026)
+
+- PR #14 : `test` pass (49 s), `docker-build` pass (1 min 1 s) — https://github.com/Yas-sin-e/forma3d-kit/actions/runs/43965184922
+- PR #15 (rouge, non fusionnée) : `test` fail, `docker-build` *skipping* ; première erreur utile `AssertionError: assert {'status': 'ok'} == {'status': 'broken'}` à `tests/test_health.py:27` — https://github.com/Yas-sin-e/forma3d-kit/actions/runs/43965191693
+- L'artefact `rapport-tests` existe sur les deux runs (y compris le rouge, grâce à `if: always()`).
+
+### Bonus B3 : matrice de versions
+
+Le job `test` tourne désormais sur Python 3.12 et 3.13 (`strategy.matrix`, `fail-fast: false`), avec un
+artefact par version (`rapport-tests-3.12`, `rapport-tests-3.13`). Vérifié en local : `179 passed` sous
+3.12 et sous 3.13 (conteneurs `python:3.12-slim` et `python:3.13-slim`). Explication : `GUIDE-BAREME.md` §8.
 
 ## 5. Preuves à conserver
 
