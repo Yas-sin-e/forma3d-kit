@@ -1,0 +1,64 @@
+# Rôle : pile de DÉVELOPPEMENT Forma3D : l'API (construite depuis le Dockerfile) + PostgreSQL.
+# Exécution : docker compose up -d --build   puis   http://localhost:8080
+# Arrêt : docker compose down (conserve les données) ; docker compose down -v (EFFACE les volumes).
+# Outil de debug facultatif : docker compose --profile debug up -d  -> Adminer sur http://localhost:8081
+name: forma3d
+
+services:
+  api:
+    build: .
+    image: forma3d:dev
+    ports:
+      # « hôte:conteneur » : seul port publié de la pile. 127.0.0.1 = joignable depuis ce poste uniquement.
+      - "127.0.0.1:8080:8080"
+    # Configuration et mot de passe de démonstration : fichier ignoré par Git, créé à partir du
+    # modèle versionné .env.compose.example. Il contient DATABASE_URL dont l'hôte est « db », le NOM
+    # DU SERVICE : le DNS interne de Compose le résout. « localhost » désignerait le conteneur api
+    # lui-même, où aucune base n'écoute (incident documenté dans phase-03b.md).
+    env_file: .env.compose
+    depends_on:
+      db:
+        # On attend que PostgreSQL soit SAIN (pg_isready), pas seulement démarré.
+        condition: service_healthy
+    volumes:
+      # GLB et photos générés : conservés hors du conteneur, qui peut être recréé à tout moment.
+      - storage:/app/backend/storage
+    networks: [backend]
+    restart: unless-stopped
+
+  db:
+    image: postgres:17-alpine
+    env_file: .env.compose
+    # AUCUN « ports: » : PostgreSQL n'est joignable que par les conteneurs du réseau « backend ».
+    # Pour l'ouvrir à DBeaver, voir compose.debug.yaml (127.0.0.1:5433 uniquement).
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [backend]
+    restart: unless-stopped
+
+  # Défi atelier 4 : interface web d'administration, présente seulement avec --profile debug.
+  adminer:
+    image: adminer:5
+    profiles: [debug]
+    ports:
+      - "127.0.0.1:8081:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [backend]
+
+networks:
+  # Réseau privé de la pile : api, db et adminer se voient par leur nom de service.
+  backend:
+
+volumes:
+  # Volumes NOMMÉS gérés par Docker : ils survivent à « docker compose down ».
+  pgdata:
+  storage:

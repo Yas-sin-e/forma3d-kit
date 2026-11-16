@@ -50,6 +50,7 @@ REQUIRED_FILES=(
   backend/app/main.py
   Dockerfile
   .dockerignore
+  compose.yaml
 )
 for file in "${REQUIRED_FILES[@]}"; do
   if [[ -f "$file" ]]; then ok "présent : $file"; else fail "fichier manquant : $file"; fi

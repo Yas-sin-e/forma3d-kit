@@ -1,0 +1,10 @@
+# Rôle : surcharge de DEBUG qui ouvre PostgreSQL à DBeaver / HeidiSQL (Laragon) depuis CE poste uniquement.
+# Exécution : docker compose -f compose.yaml -f compose.debug.yaml up -d
+# Connexion DBeaver : hôte 127.0.0.1, port 5433, base/utilisateur/mot de passe de .env.compose.
+# En usage normal (docker compose up), ce fichier n'est PAS chargé : le port 5432 reste fermé.
+services:
+  db:
+    ports:
+      # 127.0.0.1 : jamais joignable depuis le réseau local. 5433 : évite un conflit avec un
+      # PostgreSQL éventuellement installé sur le poste (port 5432).
+      - "127.0.0.1:5433:5432"
