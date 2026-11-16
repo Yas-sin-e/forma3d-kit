@@ -1,0 +1,40 @@
+# Rôle : environnement de STAGING : l'image PUBLIÉE sur GHCR (jamais reconstruite) + PostgreSQL.
+# Exécution : ./scripts/deploy.sh v1.0.0   (recommandé, avec retour arrière automatique)
+#        ou : docker compose -p forma3d-staging -f compose.staging.yaml --env-file .env.deploy up -d
+# La version vient de IMAGE_TAG (fichier .env.deploy, ignoré par Git) : changer de version ou revenir
+# en arrière = changer une variable, sans toucher au code ni reconstruire.
+services:
+  api:
+    # Pas de « build: » : on déploie exactement l'image testée et publiée par release.yml.
+    image: ghcr.io/yas-sin-e/forma3d:${IMAGE_TAG:?IMAGE_TAG manquant, voir .env.deploy}
+    ports:
+      - "127.0.0.1:8080:8080"
+    env_file: .env.staging
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - storage:/app/backend/storage
+    networks: [backend]
+    restart: unless-stopped
+
+  db:
+    image: postgres:17-alpine
+    env_file: .env.staging
+    # Aucun port publié : comme en développement, la base n'est joignable que par l'API.
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [backend]
+    restart: unless-stopped
+
+networks:
+  backend:
+
+volumes:
+  pgdata:
+  storage:

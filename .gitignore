@@ -39,3 +39,6 @@ extension-debug.log
 # Matériel local de Codex
 .agents/
 PROMPT-1.md
+
+# Dernier tag sain en staging (écrit par scripts/deploy.sh)
+.last-good-tag
