@@ -35,14 +35,14 @@ RUN useradd --create-home --uid 10001 appuser \
 USER appuser
 
 # Documentation du port d'écoute (le publier reste le rôle de « docker run -p » ou de Compose).
-EXPOSE 8080
+EXPOSE 8000
 
 # Contrôle de santé interne : Docker marque le conteneur « healthy » ou « unhealthy ».
 # Écrit en Python car curl n'est pas présent dans l'image slim (l'installer alourdirait l'image).
 HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=3 \
-    CMD ["python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=2).status == 200 else 1)"]
+    CMD ["python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).status == 200 else 1)"]
 
 # 0.0.0.0 = écouter sur toutes les interfaces du conteneur. Avec 127.0.0.1, l'API ne serait joignable
 # que depuis l'intérieur du conteneur : le port publié sur l'hôte ne recevrait aucune réponse.
 # Forme JSON (exec) : uvicorn est le processus 1 et reçoit directement le signal d'arrêt de Docker.
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
