@@ -23,6 +23,8 @@ Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 s
 | `.github/workflows/ci.yml` | Vérifie les documents et exécute pytest en CI | Détecte une régression avant la soutenance | Lors d'un push ou d'une pull request |
 | `scripts/` | Regroupe les commandes de développement Windows | Évite de mémoriser les étapes venv/tests/serveur | Au démarrage local |
 | `scripts/dev.ps1` | Crée le venv absent, installe les dépendances si nécessaire, exécute pytest, démarre Uvicorn et ouvre Edge | Donne un seul parcours reproductible au projet | Depuis PowerShell à la racine |
+| `scripts/check-project.sh` | ContrÃ´le Bash du dÃ©pÃ´t (fichiers requis, aucun `.env`/SQLite/GLB suivi, conflits, `--strict`), code 0/1 | Un seul contrÃ´le rejouÃ© Ã  l'identique par l'Ã©tudiante et par la CI | Avant un commit, une PR, un tag, et dans le job CI `test` |
+| `.gitattributes` | Force les fins de ligne LF pour scripts Bash, Dockerfile et YAML | Ã‰vite l'erreur `bash\r` sous Linux quand on travaille sous Windows | Automatiquement Ã  chaque checkout et commit |
 
 ## Serveur temporaire TripoSR
 
@@ -238,3 +240,4 @@ Le registre des métadonnées, les empreintes de clés, les quotas journaliers e
 | `docs/devops/README.md` | Sommaire du projet DevOps : phases, branches, état et décisions D1 à D4 | Donne au jury et à l'étudiante une vue d'ensemble traçable | Au début de chaque phase DevOps et en soutenance |
 | `docs/devops/phase-00.md` | Compte rendu de P0 : diagnostic d'entrée, contrôle de secrets, décisions | Prouve qu'on est parti d'un état observé et sans secret | Pour la preuve du point 1 et en soutenance |
 | `docs/devops/phase-03a.md` | Compte rendu de P3a : dÃ©pÃ´t PostgreSQL, diffÃ©rences avec SQLite, tests, DBeaver | Justifie la migration vers une vraie base pour le jury | Pour le point 4 et en soutenance |
+| `docs/devops/phase-01.md` | Compte rendu de P1 : script de contrÃ´le, codes de sortie, piÃ¨ge CRLF | Justifie le point 2 du barÃ¨me | Pour la preuve du point 2 et en soutenance |

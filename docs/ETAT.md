@@ -8,6 +8,7 @@ Dernière mise à jour : 16 novembre 2026.
 - P0 (diagnostic et cadrage) : diagnostic observé — arbre Git propre, aucun `.env` ni jeton `hf_`/`ghp_` dans tout l'historique, ports 8080/5432/5433 libres, Docker Compose v5.0.2 présent mais **moteur Docker Desktop non démarré** au moment du diagnostic. Exception Docker/PostgreSQL tracée dans `AGENTS.md`. Détails : `docs/devops/phase-00.md`.
 - Ordre retenu : P0 → P3a (dépôt PostgreSQL) → P1 → P2 → P3b → P4 à P9. SQLite reste le défaut tant que `DATABASE_URL` est vide.
 - P3a (dépôt PostgreSQL) : `postgres_repository.py` implémente les 19 méthodes de `GenerationRepository` ; `factory.py` choisit le moteur selon `DATABASE_URL` (vide = SQLite inchangé). `psycopg[binary]` ajouté avec l'accord de l'étudiante. Observé le 16/11/2026 : `169 passed, 7 skipped` en SQLite, `176 passed` contre `postgres:17-alpine` ; API de bout en bout sur PostgreSQL (`/health` OK, catégorie créée et relue par `psql`). Détails : `docs/devops/phase-03a.md`.
+- P1 (script de contrôle) : `scripts/check-project.sh` (exécutable `100755`, LF par `.gitattributes`). Observé : succès code 0, `--strict` sale code 1, fichier requis manquant code 1. Détails : `docs/devops/phase-01.md`.
 
 ## Avenant au cahier des charges v1.0
 

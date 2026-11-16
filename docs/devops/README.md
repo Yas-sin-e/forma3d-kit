@@ -10,7 +10,7 @@ Le code applicatif n'est pas noté : seule la chaîne DevOps l'est.
 |---|---|---|:-:|---|---|
 | P0 | `docs/devops-kickoff` | Diagnostic d'entrée et cadrage | (point 1) | Fait (PR à fusionner) | [phase-00.md](phase-00.md) |
 | P3a | `feature/postgres-repository` | Dépôt PostgreSQL derrière `GenerationRepository` | point 4 | Fait, tests observés (PR à fusionner) | [phase-03a.md](phase-03a.md) |
-| P1 | `chore/check-project` | Script Bash de contrôle | 2 | À faire | — |
+| P1 | `chore/check-project` | Script Bash de contrôle | 2 | Fait, observé (PR à fusionner) | [phase-01.md](phase-01.md) |
 | P2 | `feature/dockerfile` | Conteneuriser l'application | 3 | À faire | — |
 | P3b | `feature/compose-postgres` | Docker Compose : api + PostgreSQL | 3 | À faire | — |
 | P4 | `ci/pipeline` | Pipeline CI `test` → `docker-build` | 3 | À faire | — |
