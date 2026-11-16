@@ -1,0 +1,176 @@
+# Rôle : vérifie que le dépôt PostgreSQL respecte le même contrat que le dépôt SQLite.
+# Exécution : pytest ; ces tests ne tournent que si TEST_DATABASE_URL pointe vers une base de TEST
+# (sinon ils sont ignorés proprement). En CI, un conteneur postgres:17-alpine la fournit.
+"""Tests d'intégration du dépôt PostgreSQL contre un vrai serveur PostgreSQL.
+
+ATTENTION : chaque test supprime puis recrée les tables de la base TEST_DATABASE_URL.
+Par sécurité, le nom de la base doit contenir « test » (ex. forma3d_test).
+"""
+
+from __future__ import annotations
+
+import os
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+from urllib.parse import urlsplit
+from uuid import UUID
+
+import pytest
+
+from app.models import GenerationRecord, GenerationStatus, ModelOrigin
+from app.repositories.base import CategoryConflictError, CategoryInUseError, CategoryNotFoundError
+from app.services.api_key_service import APIKeyService
+
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "").strip()
+pytestmark = pytest.mark.skipif(
+    not TEST_DATABASE_URL, reason="TEST_DATABASE_URL non définie : tests PostgreSQL ignorés."
+)
+_TABLES = ("api_rate_events", "api_usage_daily", "api_keys", "generations", "categories")
+
+
+@pytest.fixture()
+def repository():
+    """Fournit un dépôt PostgreSQL sur un schéma vide et fraîchement initialisé."""
+    import psycopg
+
+    from app.repositories.postgres_repository import PostgresGenerationRepository
+
+    database_name = urlsplit(TEST_DATABASE_URL).path.lstrip("/")
+    if "test" not in database_name:
+        pytest.fail(f"Refus : la base « {database_name} » ne contient pas « test » ; ses tables seraient supprimées.")
+    with psycopg.connect(TEST_DATABASE_URL) as connection:
+        connection.execute(f"DROP TABLE IF EXISTS {', '.join(_TABLES)} CASCADE")
+    repo = PostgresGenerationRepository(TEST_DATABASE_URL)
+    repo.initialize()
+    return repo
+
+
+def _record(tmp_path: Path, generation_id: str = "gen-1", **changes: object) -> GenerationRecord:
+    """Construit une génération de test (aucun fichier 3D réel)."""
+    now = datetime(2026, 11, 16, 10, 0, tzinfo=UTC)
+    base = GenerationRecord(
+        id=generation_id,
+        status=GenerationStatus.PENDING,
+        filename="chaise.jpg",
+        content_type="image/jpeg",
+        category="chair",
+        image_path=tmp_path / "chaise.jpg",
+        created_at=now,
+        updated_at=now,
+    )
+    return replace(base, **changes)
+
+
+def test_initialize_seeds_categories_and_is_idempotent(repository) -> None:
+    """Le schéma et les trois catégories initiales existent, même après plusieurs initialisations."""
+    repository.initialize()
+    repository.initialize()
+    assert [c.slug for c in repository.list_categories()] == ["chair", "stool", "side-table"]
+
+
+def test_generation_lifecycle_and_public_id(repository, tmp_path: Path) -> None:
+    """Création PENDING, passage DONE avec UUID public, relecture, activation et suppression."""
+    repository.save_generation(_record(tmp_path))
+    pending = repository.get_generation("gen-1")
+    assert pending is not None and pending.status is GenerationStatus.PENDING and pending.public_id is None
+
+    done_at = datetime(2026, 11, 16, 10, 2, tzinfo=UTC)
+    repository.save_generation(
+        _record(tmp_path, status=GenerationStatus.DONE, model_path=tmp_path / "m.glb",
+                duration_seconds=12.5, updated_at=done_at)
+    )
+    done = repository.get_generation("gen-1")
+    assert done.status is GenerationStatus.DONE and done.duration_seconds == 12.5
+    assert UUID(done.public_id).version == 4
+    assert done.updated_at == done_at and done.origin is ModelOrigin.GENERATED
+
+    # Un nouvel enregistrement ne change ni l'UUID public ni l'activation.
+    enabled = repository.set_embed_enabled("gen-1", True)
+    assert enabled.embed_enabled is True
+    repository.save_generation(replace(done, error_message=None, public_id=None))
+    again = repository.get_generation("gen-1")
+    assert again.public_id == done.public_id and again.embed_enabled is True
+    assert repository.get_generation_by_public_id(done.public_id).id == "gen-1"
+    assert [g.id for g in repository.list_completed_generations()] == ["gen-1"]
+
+    assert repository.delete_generation("gen-1") is True
+    assert repository.delete_generation("gen-1") is False
+    assert repository.get_generation("gen-1") is None
+
+
+def test_embed_requires_done_generation(repository, tmp_path: Path) -> None:
+    """Un modèle non terminé ne peut pas être activé pour l'intégration."""
+    repository.save_generation(_record(tmp_path))
+    assert repository.set_embed_enabled("gen-1", True) is None
+    assert repository.set_embed_enabled("inconnu", True) is None
+
+
+def test_restart_marks_interrupted_generations_failed(repository, tmp_path: Path) -> None:
+    """Au redémarrage, une génération restée RUNNING devient FAILED avec un message clair."""
+    repository.save_generation(_record(tmp_path, status=GenerationStatus.RUNNING))
+    repository.initialize()
+    record = repository.get_generation("gen-1")
+    assert record.status is GenerationStatus.FAILED
+    assert "interrompue" in record.error_message
+
+
+def test_category_crud_rules(repository, tmp_path: Path) -> None:
+    """Création, conflit de slug, renommage, désactivation et suppression protégée."""
+    created = repository.create_category("bench", "Banc")
+    assert created.is_active and created.slug == "bench"
+    with pytest.raises(CategoryConflictError):
+        repository.create_category("bench", "Autre banc")
+
+    renamed = repository.update_category("bench", slug="long-bench", label="Banc long", is_active=False)
+    assert (renamed.id, renamed.slug, renamed.is_active) == (created.id, "long-bench", False)
+    assert repository.get_category("long-bench") is None
+    assert repository.get_category("long-bench", include_inactive=True) is not None
+    assert "long-bench" not in [c.slug for c in repository.list_categories()]
+    with pytest.raises(CategoryConflictError):
+        repository.update_category("long-bench", slug="chair")
+    with pytest.raises(CategoryNotFoundError):
+        repository.update_category("absent", label="x")
+
+    repository.save_generation(_record(tmp_path, category="stool"))
+    with pytest.raises(CategoryInUseError):
+        repository.delete_category("stool")
+    repository.delete_category("long-bench")
+    with pytest.raises(CategoryNotFoundError):
+        repository.delete_category("long-bench")
+
+
+def test_api_keys_quota_rate_limit_and_deletion(repository) -> None:
+    """Clés : empreinte seule, débit par minute, quota par jour UTC, révocation, suppression."""
+    service = APIKeyService(repository)
+    key, secret = service.create("Intégrateur")
+    assert service.authenticate(secret).id == key.id
+    assert all(secret not in (k.fingerprint, k.prefix) for k in repository.list_api_keys())
+
+    start = datetime(2026, 11, 11, 12, 0, tzinfo=UTC)
+    assert service.consume_rate_limit(key, 1, start) is None
+    assert service.consume_rate_limit(key, 1, start + timedelta(seconds=10)) == "rate_limit"
+    assert service.consume_rate_limit(key, 1, start + timedelta(seconds=61)) is None
+    assert service.consume_daily_quota(key, 1, start) is None
+    assert service.consume_daily_quota(key, 1, start + timedelta(minutes=1)) == "daily_quota"
+    assert service.consume_daily_quota(key, 1, start + timedelta(days=1)) is None
+
+    assert repository.delete_revoked_api_key(key.id) == "active"
+    service.revoke(key.id)
+    assert service.consume_rate_limit(key, 1, start + timedelta(days=2)) == "revoked"
+    assert service.authenticate(secret) is None
+    assert repository.delete_revoked_api_key(key.id) == "deleted"
+    assert repository.delete_revoked_api_key(key.id) == "not_found"
+    assert repository.list_api_keys() == []
+
+
+def test_rate_limit_is_atomic_under_concurrency(repository) -> None:
+    """Huit requêtes simultanées avec une limite de 3 : exactement 3 acceptées (verrou FOR UPDATE)."""
+    service = APIKeyService(repository)
+    key, _secret = service.create("Concurrence")
+    now = datetime.now(UTC)
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        results = list(pool.map(lambda _: repository.consume_api_rate_limit(key.id, 3, now), range(8)))
+    assert results.count(None) == 3
+    assert results.count("rate_limit") == 5
