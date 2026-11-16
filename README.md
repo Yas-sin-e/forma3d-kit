@@ -31,7 +31,7 @@ docker compose up -d --build
 Puis ouvrir http://localhost:8080 (mot de passe fictif du Studio : celui de `.env.compose`). La pile
 contient l'API et une base PostgreSQL 17 dans un conteneur séparé, avec des données conservées dans des
 volumes. `docker compose down` arrête sans effacer ; `docker compose down -v` efface les données.
-Le lancement Windows sans Docker (`scripts/dev.ps1`, SQLite) reste disponible ci-dessous.
+PostgreSQL est la seule base de données. `scripts/dev.ps1` démarre lui-même le conteneur PostgreSQL (Docker Desktop requis) puis lance les tests et le serveur en local.
 
 Chaîne DevOps (contrôle, image, Compose, CI, release GHCR, staging, rollback) : voir
 [docs/devops/README.md](docs/devops/README.md) et la fiche d'une page

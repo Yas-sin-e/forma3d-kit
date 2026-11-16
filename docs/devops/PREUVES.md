@@ -35,7 +35,7 @@ Aucune ligne ⏳ ne doit être présentée comme faite en soutenance avant d'avo
 | `getent hosts db` → `172.19.0.2 db` | ✅ | `phase-03b.md` §4 |
 | Catégorie `bench` conservée après `down` / `up` | ✅ | `phase-03b.md` §4 |
 | Incident `localhost` → `Connection refused` → correction | ✅ | `phase-03b.md` §4 |
-| Tests du dépôt PostgreSQL : 176 passed | ✅ | `phase-03a.md` §4 |
+| Tests du dépôt PostgreSQL : 176 passed (P3a) ; 177 passed, PostgreSQL seule base (P3c) | ✅ | `phase-03a.md` §4, `phase-03c.md` §4 |
 | Capture DBeaver des tables | ⏳ | à capturer (`compose.debug.yaml`, 127.0.0.1:5433) |
 
 ## 5. Pipeline CI (3 pts)

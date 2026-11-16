@@ -39,7 +39,7 @@
 | Contrôle du dépôt (0/1) | `scripts/check-project.sh` | 2 |
 | Image non root + HEALTHCHECK | `Dockerfile`, `.dockerignore` | 3 |
 | Pile api + PostgreSQL | `compose.yaml` (+ `compose.debug.yaml` pour DBeaver) | 4 |
-| Persistance PostgreSQL | `backend/app/repositories/postgres_repository.py`, `factory.py` | 4 |
+| Persistance PostgreSQL (seule base, SQLite retiré) | `backend/app/repositories/postgres_repository.py`, `factory.py` | 4 |
 | CI `test` → `docker-build` | `.github/workflows/ci.yml` | 5 |
 | Version immuable GHCR | `.github/workflows/release.yml` | 6 |
 | Staging + santé | `compose.staging.yaml`, `scripts/wait-healthy.sh`, `scripts/deploy.sh` | 6 |

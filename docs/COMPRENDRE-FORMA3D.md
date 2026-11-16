@@ -1,5 +1,7 @@
 # Comprendre Forma3D Studio — le guide complet
 
+> **Mise à jour du 16 novembre 2026 (projet DevOps) :** SQLite a été retiré du code. PostgreSQL est désormais la seule base (`backend/app/repositories/postgres_repository.py`, variable `DATABASE_URL` obligatoire). Ce document garde la description historique ; voir `docs/devops/phase-03c.md`.
+
 > Document pédagogique pour comprendre **tout** le projet et l'expliquer à un jury.
 > Il décrit uniquement ce qui existe dans le dépôt au 15 novembre 2026 (dernier commit lu : `95f2d86`, après l'ajout de la suppression des modèles, de la session persistante facultative et de l'architecture cible).
 > Quand une information n'a pas pu être vérifiée dans le code, elle est marquée **« à vérifier »**.

@@ -144,6 +144,6 @@ Le travail reste gratuit. Aucun fournisseur ni modèle 3D ne change. Les routes 
 ## Projet DevOps (exception tracée le 16 novembre 2026)
 - Référence prioritaire : `docs/devops/CAHIER-DEVOPS.md` ; sommaire et décisions : `docs/devops/README.md`.
 - Exception décidée par l'étudiante : Docker, Docker Compose et PostgreSQL (`postgres:17-alpine`, dépendance `psycopg[binary]` après accord explicite) sont autorisés **pour le projet DevOps uniquement**. L'interdiction de Docker ci-dessus ne s'applique pas à ce projet.
-- SQLite reste le comportement par défaut quand `DATABASE_URL` est vide ; `scripts/dev.ps1` et les tests existants doivent rester fonctionnels.
+- Décision D5 du 16 novembre 2026 : SQLite est retiré du code ; PostgreSQL est la seule base (`DATABASE_URL` obligatoire, tests sur `TEST_DATABASE_URL`). `scripts/dev.ps1` démarre PostgreSQL par Docker Compose. Les mentions de SQLite plus haut décrivent l'historique des Sprints 1 à 5.
 - Le fournisseur 3D ne change pas. Aucun secret dans Git, une image ou un journal de pipeline ; pour GHCR, seul `secrets.GITHUB_TOKEN` est utilisé.
 - Une phase à la fois, chacune sur sa branche avec une pull request ; compte rendu dans `docs/devops/phase-XX.md`.

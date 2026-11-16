@@ -148,7 +148,7 @@ export function mount(route) {
   const deleteFeedback = $("#detail-delete-feedback");
   const tabs = [...document.querySelectorAll(".tab[data-method]")];
   let pollTimer = null;
-  // Vrai seulement si la fiche vient de l'historique SQLite (pas d'un exemple de démonstration).
+  // Vrai seulement si la fiche vient de l'historique en base (pas d'un exemple de démonstration).
   let storedInHistory = false;
   let generation = null;
   let model = null;

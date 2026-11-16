@@ -1,5 +1,7 @@
 # Phase P3a — Dépôt PostgreSQL derrière `GenerationRepository`
 
+> **Suite :** la décision D5 a ensuite retiré SQLite ; PostgreSQL est devenu la seule base. Les mentions « SQLite par défaut » ci-dessous décrivent l'état de cette phase. Voir [phase-03c.md](phase-03c.md).
+
 - **Branche :** `feature/postgres-repository` (partie du point 4 du barème, 3 pts avec P3b)
 - **Date :** 16 novembre 2026
 - **Décision D2 :** phase avancée juste après P0, à la demande de l'étudiante.

@@ -1,5 +1,7 @@
 # Stockage local des modèles
 
+> **Mise à jour du 16 novembre 2026 (projet DevOps) :** SQLite a été retiré du code. PostgreSQL est désormais la seule base (`backend/app/repositories/postgres_repository.py`, variable `DATABASE_URL` obligatoire). Ce document garde la description historique ; voir `docs/devops/phase-03c.md`.
+
 ## Décision
 
 Les métadonnées de catégorie et de modèle restent dans SQLite, via `SQLiteGenerationRepository`. Les fichiers restent sous `backend/storage/`. SQLite est fourni par Python ; l'étape n'ajoute aucun serveur de base de données.
