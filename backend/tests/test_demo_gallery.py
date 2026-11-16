@@ -24,7 +24,7 @@ class _NoGenerations:
 
 @pytest.fixture(autouse=True)
 def isolate_from_local_generations():
-    """Sans cela, un modèle réellement généré dans backend/data/ apparaît dans la galerie testée."""
+    """Sans cela, un modèle réellement généré (enregistré en base) apparaît dans la galerie testée."""
     app.dependency_overrides[get_generation_service] = _NoGenerations
     yield
     app.dependency_overrides.pop(get_generation_service, None)

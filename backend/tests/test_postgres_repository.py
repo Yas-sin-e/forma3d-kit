@@ -151,3 +151,37 @@ def test_rate_limit_is_atomic_under_concurrency(repository) -> None:
         results = list(pool.map(lambda _: repository.consume_api_rate_limit(key.id, 3, now), range(8)))
     assert results.count(None) == 3
     assert results.count("rate_limit") == 5
+
+
+def test_paths_under_storage_root_are_stored_relative_and_portable(tmp_path: Path) -> None:
+    """Sous storage_root, la base garde « models/x.glb » ; un autre dossier racine relit le même modèle."""
+    from app.repositories.postgres_repository import PostgresGenerationRepository
+    from pg_support import query, test_database_url
+
+    windows_like_root = tmp_path / "poste" / "storage"
+    container_like_root = tmp_path / "conteneur" / "storage"
+    writer = PostgresGenerationRepository(test_database_url(), storage_root=windows_like_root)
+    writer.save_generation(
+        _record(
+            tmp_path,
+            image_path=windows_like_root / "images" / "gen-1.jpg",
+            model_path=windows_like_root / "models" / "gen-1.glb",
+            status=GenerationStatus.DONE,
+        )
+    )
+
+    assert query("SELECT source_photo_path, glb_path FROM generations WHERE id = 'gen-1'") == [
+        ("images/gen-1.jpg", "models/gen-1.glb")
+    ]
+    reader = PostgresGenerationRepository(test_database_url(), storage_root=container_like_root)
+    record = reader.get_generation("gen-1")
+    assert record.model_path == container_like_root.resolve() / "models" / "gen-1.glb"
+    assert record.image_path == container_like_root.resolve() / "images" / "gen-1.jpg"
+
+
+def test_paths_outside_storage_root_stay_absolute(tmp_path: Path, repository) -> None:
+    """Un fichier hors du stockage (ou un dépôt sans storage_root) garde son chemin absolu."""
+    repository.save_generation(_record(tmp_path, model_path=tmp_path / "ailleurs" / "m.glb"))
+    record = repository.get_generation("gen-1")
+    assert record.model_path == (tmp_path / "ailleurs" / "m.glb").resolve()
+    assert record.image_path == (tmp_path / "chaise.jpg").resolve()

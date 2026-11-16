@@ -36,7 +36,7 @@ PNG_BYTES = b"\x89PNG\r\n\x1a\nsample"
 def setup(tmp_path: Path):
     """Service réel sur la base PostgreSQL de test et un dossier de stockage temporaire."""
     # tmp_path (fixture pytest) : dossier temporaire propre à ce test, effacé ensuite.
-    # La vraie base backend/data/ n'est jamais touchée.
+    # La base de travail n'est jamais touchée : les tests utilisent la base séparée forma3d_test.
     repository = make_repository()
     repository.initialize()
     storage = LocalStorage(tmp_path / "storage")
