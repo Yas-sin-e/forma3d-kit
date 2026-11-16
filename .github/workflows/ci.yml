@@ -114,7 +114,9 @@ jobs:
         run: |
           # --network host : le conteneur joint la base du service sur localhost:5432 du runner,
           # et l'API répond sur localhost:8080 sans publication de port.
-          docker run -d --name smoke --network host             -e DATABASE_URL=postgresql://forma3d:ci-password@localhost:5432/forma3d             forma3d:ci
+          docker run -d --name smoke --network host \
+            -e DATABASE_URL=postgresql://forma3d:ci-password@localhost:5432/forma3d \
+            forma3d:ci
           for i in $(seq 1 12); do
             if curl -fsS http://localhost:8080/health; then echo; echo "image saine"; exit 0; fi
             sleep 5
