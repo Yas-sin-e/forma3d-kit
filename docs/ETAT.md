@@ -11,6 +11,7 @@ Dernière mise à jour : 16 novembre 2026.
 - P1 (script de contrôle) : `scripts/check-project.sh` (exécutable `100755`, LF par `.gitattributes`). Observé : succès code 0, `--strict` sale code 1, fichier requis manquant code 1. Détails : `docs/devops/phase-01.md`.
 - P2 (image Docker) : `Dockerfile` + `.dockerignore`. Observé : image `forma3d:1.0` de 312 Mo, `healthy`, `/health` OK, utilisateur `appuser`, aucun `.env` dans l'image ; incident `Exited (3)` diagnostiqué par `docker logs`. Détails : `docs/devops/phase-02.md`.
 - P3b (Compose) : `compose.yaml` api + `postgres:17-alpine`. Observé : deux services healthy, 5432 non publié, `getent hosts db` résolu, catégorie conservée après `down`/`up`, DBeaver-like sur 127.0.0.1:5433 via `compose.debug.yaml`, Adminer HTTP 200 en profil `debug`, incident `localhost` → `Connection refused` diagnostiqué et corrigé. Détails : `docs/devops/phase-03b.md`.
+- P4 (CI) : `ci.yml` réécrit (`test` avec service PostgreSQL et artefact `rapport-tests` → `docker-build` avec test de fumée). Observé en local : 176 tests sous Python 3.12 + PostgreSQL, YAML valide. **Exécution GitHub non observée** (branche non poussée). Branche locale `test/failing-demo` prête pour la PR rouge. Détails : `docs/devops/phase-04.md`.
 
 ## Avenant au cahier des charges v1.0
 

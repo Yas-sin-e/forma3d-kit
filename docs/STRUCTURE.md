@@ -20,7 +20,7 @@ Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 s
 | `.agents/` | Configuration locale de l'assistant, exclue de Git | Sépare les paramètres de Codex des sources applicatives | Pendant le travail local ; pas requis à l'exécution |
 | `.agents/skills/` | Emplacement local des skills | N'ajoute pas de dépendance au produit | Quand une skill locale est installée |
 | `.agents/skills/.gitkeep` | Marqueur local du répertoire de skills | Rend visible l'emplacement réservé même s'il est vide | Dans le dossier de travail local |
-| `.github/workflows/ci.yml` | Vérifie les documents et exécute pytest en CI | Détecte une régression avant la soutenance | Lors d'un push ou d'une pull request |
+| `.github/workflows/ci.yml` | Pipeline CI : job `test` (check-project, pytest SQLite + PostgreSQL, artefact JUnit `rapport-tests`) puis job `docker-build` (`needs: test`, image `forma3d:ci`, test de fumée `/health`) | Aucune image construite à partir d.un code qui échoue | À chaque pull request et push sur `main` |
 | `scripts/` | Regroupe les commandes de développement Windows | Évite de mémoriser les étapes venv/tests/serveur | Au démarrage local |
 | `scripts/dev.ps1` | Crée le venv absent, installe les dépendances si nécessaire, exécute pytest, démarre Uvicorn et ouvre Edge | Donne un seul parcours reproductible au projet | Depuis PowerShell à la racine |
 | `scripts/check-project.sh` | ContrÃ´le Bash du dÃ©pÃ´t (fichiers requis, aucun `.env`/SQLite/GLB suivi, conflits, `--strict`), code 0/1 | Un seul contrÃ´le rejouÃ© Ã  l'identique par l'Ã©tudiante et par la CI | Avant un commit, une PR, un tag, et dans le job CI `test` |
@@ -248,3 +248,4 @@ Le registre des métadonnées, les empreintes de clés, les quotas journaliers e
 | `docs/devops/phase-01.md` | Compte rendu de P1 : script de contrÃ´le, codes de sortie, piÃ¨ge CRLF | Justifie le point 2 du barÃ¨me | Pour la preuve du point 2 et en soutenance |
 | `docs/devops/phase-02.md` | Compte rendu de P2 : Dockerfile expliquÃ©, vÃ©rifications, incident `Exited (3)` | Justifie le point 3 du barÃ¨me | Pour la preuve du point 3 et en soutenance |
 | `docs/devops/phase-03b.md` | Compte rendu de P3b : Compose expliquÃ©, persistance, DBeaver, incident `localhost` | Justifie le point 4 du barÃ¨me | Pour la preuve du point 4 et en soutenance |
+| `docs/devops/phase-04.md` | Compte rendu de P4 : workflow CI expliquÃ©, PR rouge de dÃ©monstration | Justifie le point 5 du barÃ¨me | Pour la preuve du point 5 et en soutenance |
