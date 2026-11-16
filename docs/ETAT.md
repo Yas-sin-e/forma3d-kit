@@ -9,6 +9,7 @@ Dernière mise à jour : 16 novembre 2026.
 - Ordre retenu : P0 → P3a (dépôt PostgreSQL) → P1 → P2 → P3b → P4 à P9. SQLite reste le défaut tant que `DATABASE_URL` est vide.
 - P3a (dépôt PostgreSQL) : `postgres_repository.py` implémente les 19 méthodes de `GenerationRepository` ; `factory.py` choisit le moteur selon `DATABASE_URL` (vide = SQLite inchangé). `psycopg[binary]` ajouté avec l'accord de l'étudiante. Observé le 16/11/2026 : `169 passed, 7 skipped` en SQLite, `176 passed` contre `postgres:17-alpine` ; API de bout en bout sur PostgreSQL (`/health` OK, catégorie créée et relue par `psql`). Détails : `docs/devops/phase-03a.md`.
 - P1 (script de contrôle) : `scripts/check-project.sh` (exécutable `100755`, LF par `.gitattributes`). Observé : succès code 0, `--strict` sale code 1, fichier requis manquant code 1. Détails : `docs/devops/phase-01.md`.
+- P2 (image Docker) : `Dockerfile` + `.dockerignore`. Observé : image `forma3d:1.0` de 312 Mo, `healthy`, `/health` OK, utilisateur `appuser`, aucun `.env` dans l'image ; incident `Exited (3)` diagnostiqué par `docker logs`. Détails : `docs/devops/phase-02.md`.
 
 ## Avenant au cahier des charges v1.0
 
