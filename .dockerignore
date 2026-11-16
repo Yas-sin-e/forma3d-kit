@@ -1,0 +1,40 @@
+# Rôle : liste ce qui n'est JAMAIS envoyé au moteur Docker lors d'un « docker build ».
+# Exécution : lu automatiquement par docker build (et docker compose build) à la racine du dépôt.
+# Effets : aucun secret ni donnée locale dans l'image, contexte de construction plus petit et plus rapide.
+
+# Historique Git et outils locaux
+.git/
+.github/
+.claude/
+.agents/
+.vscode/
+.idea/
+
+# Secrets et configuration locale (seul le modèle sans secret est autorisé)
+.env
+.env.*
+**/.env
+!.env.example
+
+# Python : environnements virtuels et caches
+.venv/
+**/.venv/
+**/__pycache__/
+**/*.py[cod]
+.pytest_cache/
+**/.pytest_cache/
+
+# Données locales : base SQLite, GLB et photos (montées en volume par Compose, jamais copiées)
+backend/data/
+backend/storage/
+*.sqlite3
+*.db
+
+# Inutile à l'exécution
+backend/tests/
+tools/
+docs/
+examples/
+scripts/
+*.log
+*.docx

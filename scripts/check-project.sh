@@ -48,6 +48,8 @@ REQUIRED_FILES=(
   .env.example
   backend/requirements.txt
   backend/app/main.py
+  Dockerfile
+  .dockerignore
 )
 for file in "${REQUIRED_FILES[@]}"; do
   if [[ -f "$file" ]]; then ok "présent : $file"; else fail "fichier manquant : $file"; fi
