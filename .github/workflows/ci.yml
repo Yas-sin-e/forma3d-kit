@@ -20,8 +20,15 @@ concurrency:
 
 jobs:
   test:
-    name: test
+    name: test (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    # Bonus B3, matrice de versions : le même job tourne une fois par version de Python.
+    # 3.12 = version de l'image Docker (production) ; 3.13 = version suivante (compatibilité future).
+    # fail-fast: false : si une version échoue, l'autre va quand même au bout, on voit les DEUX résultats.
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13"]
     # Service container : un vrai PostgreSQL démarré à côté du job ; tous les tests en ont besoin.
     # Valeurs fictives : cette base est jetable et n'existe que pendant le job.
     services:
@@ -47,10 +54,10 @@ jobs:
       - name: Récupérer le code
         uses: actions/checkout@v7
 
-      - name: Installer Python 3.12 (même version que l'image Docker)
+      - name: Installer Python ${{ matrix.python-version }}
         uses: actions/setup-python@v7
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
           cache: pip
           cache-dependency-path: backend/requirements.txt
 
@@ -69,7 +76,8 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: rapport-tests
+          # Un artefact par version de la matrice (deux artefacts du même nom entreraient en conflit).
+          name: rapport-tests-${{ matrix.python-version }}
           path: backend/report.xml
           if-no-files-found: warn
 
