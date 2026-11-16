@@ -14,7 +14,7 @@ Le code applicatif n'est pas noté : seule la chaîne DevOps l'est.
 | P2 | `feature/dockerfile` | Conteneuriser l'application | 3 | Fait, observé (PR à fusionner) | [phase-02.md](phase-02.md) |
 | P3b | `feature/compose-postgres` | Docker Compose : api + PostgreSQL | 3 | Fait, observé (PR à fusionner) | [phase-03b.md](phase-03b.md) |
 | P4 | `ci/pipeline` | Pipeline CI `test` → `docker-build` | 3 | Écrit, testé en local ; exécution GitHub à observer | [phase-04.md](phase-04.md) |
-| P5 | `ci/release` | Tag `v1.0.0` et image GHCR | 2 (avec P6) | À faire | — |
+| P5 | `ci/release` | Tag `v1.0.0` et image GHCR | 2 (avec P6) | Écrit ; tag et publication à faire après fusion | [phase-05.md](phase-05.md) |
 | P6 | `feature/staging` | Mise en service staging + santé | 2 (avec P5) | À faire | — |
 | P7 | `docs/incident-rollback` | Incident `v1.1.0` et retour arrière | 1 | À faire | — |
 | P8 | `docs/devops-final` | Documentation finale | — | À faire | — |
