@@ -1,53 +1,42 @@
-# Rôle : vérifie le choix SQLite/PostgreSQL selon DATABASE_URL et le masquage du mot de passe.
-# Exécution : pytest, sans base PostgreSQL ni réseau (aucune connexion n'est ouverte).
+# Rôle : vérifie la création du dépôt PostgreSQL depuis DATABASE_URL et le masquage du mot de passe.
+# Exécution : pytest ; aucune connexion n'est ouverte par ces tests (la fabrique ne se connecte pas).
 """Tests de la fabrique de dépôt (repositories/factory.py)."""
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
-from app.repositories.factory import DatabaseUrlError, create_repository, describe_backend, mask_database_url
+from app.repositories.factory import DatabaseUrlError, create_repository, mask_database_url, normalize_database_url
 from app.repositories.postgres_repository import PostgresGenerationRepository
-from app.repositories.sqlite_repository import SQLiteGenerationRepository
 
 
-def test_empty_database_url_keeps_sqlite(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Sans DATABASE_URL, le comportement historique (SQLite) est conservé."""
-    monkeypatch.delenv("DATABASE_URL", raising=False)
-    repository = create_repository(tmp_path / "local.sqlite3")
-    assert isinstance(repository, SQLiteGenerationRepository)
-    assert isinstance(create_repository(tmp_path / "x.sqlite3", "   "), SQLiteGenerationRepository)
-
-
-def test_postgres_url_from_environment_selects_postgres(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """DATABASE_URL=postgresql://... choisit PostgreSQL sans ouvrir de connexion."""
+def test_database_url_from_environment_creates_postgres_repository(monkeypatch: pytest.MonkeyPatch) -> None:
+    """DATABASE_URL=postgresql://... donne un dépôt PostgreSQL, sans ouvrir de connexion."""
     monkeypatch.setenv("DATABASE_URL", "postgresql://forma3d:dev-password@db:5432/forma3d")
-    repository = create_repository(tmp_path / "unused.sqlite3")
+    repository = create_repository()
     assert isinstance(repository, PostgresGenerationRepository)
-    assert not (tmp_path / "unused.sqlite3").exists()
+    assert repository._database_url == "postgresql://forma3d:dev-password@db:5432/forma3d"
 
 
-def test_sqlalchemy_style_url_is_normalized(tmp_path: Path) -> None:
+@pytest.mark.parametrize("missing", [None, "", "   "])
+def test_missing_database_url_fails_with_clear_message(monkeypatch: pytest.MonkeyPatch, missing) -> None:
+    """Sans DATABASE_URL, l'application refuse de démarrer et explique quoi faire."""
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    with pytest.raises(DatabaseUrlError, match="PostgreSQL est obligatoire"):
+        create_repository(missing) if missing is not None else create_repository()
+
+
+def test_sqlalchemy_style_url_is_normalized() -> None:
     """La forme postgresql+psycopg:// est acceptée et convertie pour psycopg."""
-    repository = create_repository(tmp_path / "x.sqlite3", "postgresql+psycopg://u:p@db:5432/forma3d")
-    assert isinstance(repository, PostgresGenerationRepository)
-    assert repository._database_url == "postgresql://u:p@db:5432/forma3d"
+    assert normalize_database_url("postgresql+psycopg://u:p@db:5432/forma3d") == "postgresql://u:p@db:5432/forma3d"
+    assert normalize_database_url("postgres://u:p@db/x") == "postgresql://u:p@db/x"
 
 
 @pytest.mark.parametrize("url", ["mysql://u:p@db/x", "sqlite:///tmp/x.db", "db:5432/forma3d"])
-def test_unsupported_database_url_is_rejected_with_clear_message(url: str) -> None:
-    """Une URL d'un autre moteur échoue tôt, avec un message lisible, au lieu d'une erreur obscure."""
+def test_other_engines_are_rejected(url: str) -> None:
+    """Une URL d'un autre moteur (dont SQLite, retiré du projet) échoue tôt avec un message lisible."""
     with pytest.raises(DatabaseUrlError, match="postgresql://"):
-        describe_backend(url)
-
-
-def test_describe_backend_names_engine() -> None:
-    """Le type de base est journalisable sans exposer l'URL."""
-    assert describe_backend(None) == "sqlite"
-    assert describe_backend("") == "sqlite"
-    assert describe_backend("postgres://u:p@db/x") == "postgresql"
+        normalize_database_url(url)
 
 
 def test_mask_database_url_hides_password() -> None:

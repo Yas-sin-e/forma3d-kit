@@ -10,7 +10,7 @@ from pathlib import Path
 from PIL import Image
 
 from app.models import GenerationStatus, ProductCategory
-from app.repositories.sqlite_repository import SQLiteGenerationRepository
+from pg_support import make_repository
 from app.services.demo_gallery import DemoGallery
 from app.services.generation_service import GenerationService
 from app.services.glb_finisher import compute_vertex_normals, finish_glb
@@ -138,7 +138,7 @@ def test_generation_service_stores_the_finished_glb(tmp_path: Path) -> None:
             """Faux fournisseur : remplace l'appel au service d'IA (aucun réseau, aucune vraie génération)."""
             return raw
 
-    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    repository = make_repository()
     repository.initialize()
     service = GenerationService(RawGlbProvider(), LocalStorage(tmp_path), repository)
     photo = tmp_path / "photo.png"

@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import json
-import sqlite3
 import struct
 from pathlib import Path
 from uuid import UUID
@@ -15,7 +14,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.routers.models import get_demo_gallery, get_generation_service
-from app.repositories.sqlite_repository import SQLiteGenerationRepository
+from pg_support import drop_all_tables, execute, make_repository, query, table_columns
 from app.services.demo_gallery import DemoGallery
 from app.services.generation_service import GenerationService
 from app.storage.local_storage import LocalStorage
@@ -32,7 +31,7 @@ def _valid_glb() -> bytes:
 @pytest.fixture
 def library_client(tmp_path: Path):
     """Configure un client local, un dépôt temporaire et un petit plafond d'upload."""
-    database = SQLiteGenerationRepository(tmp_path / "library.sqlite3")
+    database = make_repository()
     database.initialize()
     storage = LocalStorage(tmp_path / "storage")
     service = GenerationService(provider=object(), storage=storage, repository=database)
@@ -208,47 +207,55 @@ def test_public_model_and_glb_require_explicit_integration_activation(library_cl
     assert client.get(metadata_url + "/glb").status_code == 404
 
 
-def test_initialize_migrates_origin_without_losing_existing_generation(tmp_path: Path) -> None:
+def test_initialize_migrates_origin_without_losing_existing_generation() -> None:
     """Prouve la migration de la colonne origin sans perte des générations existantes."""
-    database_path = tmp_path / "legacy.sqlite3"
-    with sqlite3.connect(database_path) as connection:
-        connection.executescript(
-            """
-            CREATE TABLE categories (
-                id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT NOT NULL UNIQUE,
-                label TEXT NOT NULL, is_active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL
-            );
-            CREATE TABLE generations (
-                id TEXT PRIMARY KEY, category_id INTEGER NOT NULL REFERENCES categories(id),
-                status TEXT NOT NULL, filename TEXT NOT NULL, content_type TEXT NOT NULL,
-                source_photo_path TEXT NOT NULL, glb_path TEXT, duration_seconds REAL,
-                error_message TEXT, image_warning TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
-            );
-            INSERT INTO categories (id, slug, label, is_active, created_at)
-                VALUES (1, 'chair', 'Chaise', 1, '2026-01-01T00:00:00+00:00');
-            INSERT INTO generations (id, category_id, status, filename, content_type,
-                source_photo_path, glb_path, duration_seconds, error_message, image_warning,
-                created_at, updated_at)
-                VALUES ('existing-id', 1, 'DONE', 'old.png', 'image/png', 'old.png', 'old.glb',
-                4.5, NULL, NULL, '2026-01-01T00:00:00+00:00', '2026-01-01T00:00:00+00:00');
-            """
+    drop_all_tables()
+    execute(
+        """
+        CREATE TABLE categories (
+            id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, slug TEXT NOT NULL UNIQUE,
+            label TEXT NOT NULL, is_active BOOLEAN NOT NULL DEFAULT TRUE, created_at TIMESTAMPTZ NOT NULL
         )
+        """
+    )
+    execute(
+        """
+        CREATE TABLE generations (
+            id TEXT PRIMARY KEY, category_id BIGINT NOT NULL REFERENCES categories(id),
+            status TEXT NOT NULL, filename TEXT NOT NULL, content_type TEXT NOT NULL,
+            source_photo_path TEXT NOT NULL, glb_path TEXT, duration_seconds DOUBLE PRECISION,
+            error_message TEXT, image_warning TEXT, created_at TIMESTAMPTZ NOT NULL, updated_at TIMESTAMPTZ NOT NULL
+        )
+        """
+    )
+    execute(
+        "INSERT INTO categories (slug, label, is_active, created_at)"
+        " VALUES ('chair', 'Chaise', TRUE, '2026-01-01T00:00:00+00:00')"
+    )
+    execute(
+        """
+        INSERT INTO generations (id, category_id, status, filename, content_type,
+            source_photo_path, glb_path, duration_seconds, error_message, image_warning,
+            created_at, updated_at)
+        VALUES ('existing-id', 1, 'DONE', 'old.png', 'image/png', 'old.png', 'old.glb',
+            4.5, NULL, NULL, '2026-01-01T00:00:00+00:00', '2026-01-01T00:00:00+00:00')
+        """
+    )
 
-    repository = SQLiteGenerationRepository(database_path)
+    repository = make_repository()
     repository.initialize()
-    with sqlite3.connect(database_path) as connection:
-        columns = {row[1] for row in connection.execute("PRAGMA table_info(generations)")}
-        old = connection.execute(
-            "SELECT filename, glb_path, duration_seconds, origin, public_id, embed_enabled "
-            "FROM generations WHERE id='existing-id'"
-        ).fetchone()
+    old = query(
+        "SELECT filename, glb_path, duration_seconds, origin, public_id, embed_enabled "
+        "FROM generations WHERE id='existing-id'"
+    )[0]
     restored = repository.get_generation("existing-id")
 
-    assert "origin" in columns
+    assert "origin" in table_columns("generations")
     assert old[:4] == ("old.png", "old.glb", 4.5, "generated")
     assert UUID(old[4]).version == 4
-    assert old[5] == 0
+    assert old[5] is False
     assert restored is not None and restored.filename == "old.png"
     assert restored.model_path == Path("old.glb")
     assert restored.public_id == old[4]
     assert restored.embed_enabled is False
+

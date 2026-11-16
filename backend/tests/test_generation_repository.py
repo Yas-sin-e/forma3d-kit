@@ -1,11 +1,10 @@
-# Rôle : vérifie le schéma SQLite, la reprise après redémarrage et l'historique terminé.
-# Exécution : Pytest emploie un fichier SQLite temporaire et un fournisseur simulé local.
+# Rôle : vérifie le schéma PostgreSQL, la reprise après redémarrage et l'historique terminé.
+# Exécution : Pytest emploie la base PostgreSQL de test et un fournisseur simulé local.
 """Tests du dépôt de générations sans réseau ni génération 3D réelle."""
 
 from __future__ import annotations
 
 import json
-import sqlite3
 import struct
 from dataclasses import replace
 from datetime import UTC, datetime
@@ -13,7 +12,7 @@ from pathlib import Path
 from uuid import UUID
 
 from app.models import GenerationStatus, ProductCategory
-from app.repositories.sqlite_repository import SQLiteGenerationRepository
+from pg_support import drop_all_tables, execute, make_repository, query, table_columns
 from app.services.generation_service import GenerationService
 from app.services.upload_validator import ValidatedUpload
 from app.storage.local_storage import LocalStorage
@@ -36,35 +35,26 @@ class SuccessfulProvider:
         return _minimal_glb()
 
 
-def test_initialize_creates_categories_table_and_seeds_defaults(tmp_path: Path) -> None:
+def test_initialize_creates_categories_table_and_seeds_defaults() -> None:
     """Prouve que initialize() crée les tables et les trois catégories de départ."""
-    database_path = tmp_path / "data" / "history.sqlite3"
-    repository = SQLiteGenerationRepository(database_path)
+    drop_all_tables()
+    repository = make_repository()
 
     repository.initialize()
 
-    with sqlite3.connect(database_path) as connection:
-        columns = {
-            row[1]
-            for row in connection.execute("PRAGMA table_info(categories)").fetchall()
-        }
-        categories = connection.execute(
-            "SELECT slug, label, is_active FROM categories ORDER BY slug"
-        ).fetchall()
-
-    assert columns == {"id", "slug", "label", "is_active", "created_at"}
+    categories = query("SELECT slug, label, is_active FROM categories ORDER BY slug")
+    assert table_columns("categories") == {"id", "slug", "label", "is_active", "created_at"}
     assert categories == [
-        ("chair", "Chaise", 1),
-        ("side-table", "Table d’appoint", 1),
-        ("stool", "Tabouret", 1),
+        ("chair", "Chaise", True),
+        ("side-table", "Table d’appoint", True),
+        ("stool", "Tabouret", True),
     ]
 
 
 def test_completed_generation_survives_repository_and_service_restart(tmp_path: Path) -> None:
-    """Prouve qu'un modèle terminé est toujours visible après un redémarrage (persistance SQLite)."""
-    database_path = tmp_path / "data" / "history.sqlite3"
+    """Prouve qu'un modèle terminé est toujours visible après un redémarrage (persistance PostgreSQL)."""
     storage_root = tmp_path / "storage"
-    first_repository = SQLiteGenerationRepository(database_path)
+    first_repository = make_repository()
     first_repository.initialize()
     first_service = GenerationService(
         SuccessfulProvider(),
@@ -82,7 +72,7 @@ def test_completed_generation_survives_repository_and_service_restart(tmp_path: 
     assert completed.duration_seconds is not None
     assert completed.duration_seconds >= 0
 
-    restarted_repository = SQLiteGenerationRepository(database_path)
+    restarted_repository = make_repository()
     restarted_repository.initialize()
     restarted_service = GenerationService(
         SuccessfulProvider(),
@@ -106,9 +96,8 @@ def test_completed_generation_survives_repository_and_service_restart(tmp_path: 
 
 def test_initialize_fails_pending_and_running_generations_after_restart(tmp_path: Path) -> None:
     """Prouve qu'au redémarrage, les générations PENDING ou RUNNING passent en FAILED."""
-    database_path = tmp_path / "data" / "history.sqlite3"
     storage_root = tmp_path / "storage"
-    repository = SQLiteGenerationRepository(database_path)
+    repository = make_repository()
     repository.initialize()
     service = GenerationService(SuccessfulProvider(), LocalStorage(storage_root), repository)
     upload = ValidatedUpload(filename="chair.jpg", content_type="image/jpeg", size_bytes=12)
@@ -123,7 +112,7 @@ def test_initialize_fails_pending_and_running_generations_after_restart(tmp_path
         )
     )
 
-    restarted_repository = SQLiteGenerationRepository(database_path)
+    restarted_repository = make_repository()
     restarted_repository.initialize()
 
     for generation_id in (pending.id, running.id):
@@ -134,71 +123,63 @@ def test_initialize_fails_pending_and_running_generations_after_restart(tmp_path
         assert restored.duration_seconds is None
 
 
-def test_repository_opens_a_fresh_connection_for_each_operation(
-    monkeypatch,
-    tmp_path: Path,
-) -> None:
+def test_repository_opens_a_fresh_connection_for_each_operation(monkeypatch) -> None:
     """Prouve que le dépôt ouvre une connexion neuve par opération (aucune connexion partagée)."""
-    import app.repositories.sqlite_repository as sqlite_repository_module
+    import app.repositories.postgres_repository as postgres_repository_module
 
-    opened_connections: list[sqlite3.Connection] = []
-    original_connect = sqlite_repository_module.sqlite3.connect
+    opened_connections = []
+    original_connect = postgres_repository_module.psycopg.connect
 
-    def track_connect(*args, **kwargs) -> sqlite3.Connection:
-        """Espion : compte les ouvertures de connexion SQLite puis appelle la vraie fonction."""
+    def track_connect(*args, **kwargs):
+        """Espion : compte les ouvertures de connexion PostgreSQL puis appelle la vraie fonction."""
         connection = original_connect(*args, **kwargs)
         opened_connections.append(connection)
         return connection
 
-    monkeypatch.setattr(sqlite_repository_module.sqlite3, "connect", track_connect)
-    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    monkeypatch.setattr(postgres_repository_module.psycopg, "connect", track_connect)
+    repository = make_repository()
 
     repository.initialize()
     repository.list_completed_generations()
 
     assert len(opened_connections) == 2
     assert opened_connections[0] is not opened_connections[1]
+    assert all(connection.closed for connection in opened_connections)
 
 
-def test_initialize_migrates_preparation_warning_column(tmp_path: Path) -> None:
+def test_initialize_migrates_preparation_warning_column() -> None:
     """Prouve la migration : la colonne image_warning est ajoutée à une ancienne base sans perte de données."""
-    database_path = tmp_path / "history.sqlite3"
-    with sqlite3.connect(database_path) as connection:
-        connection.execute(
-            """
-            CREATE TABLE categories (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                slug TEXT NOT NULL UNIQUE,
-                label TEXT NOT NULL,
-                is_active INTEGER NOT NULL DEFAULT 1,
-                created_at TEXT NOT NULL
-            )
-            """
+    drop_all_tables()
+    execute(
+        """
+        CREATE TABLE categories (
+            id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+            slug TEXT NOT NULL UNIQUE,
+            label TEXT NOT NULL,
+            is_active BOOLEAN NOT NULL DEFAULT TRUE,
+            created_at TIMESTAMPTZ NOT NULL
         )
-        connection.execute(
-            """
-            CREATE TABLE generations (
-                id TEXT PRIMARY KEY,
-                category_id INTEGER NOT NULL REFERENCES categories(id),
-                status TEXT NOT NULL,
-                filename TEXT NOT NULL,
-                content_type TEXT NOT NULL,
-                source_photo_path TEXT NOT NULL,
-                glb_path TEXT,
-                duration_seconds REAL,
-                error_message TEXT,
-                created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
-            )
-            """
+        """
+    )
+    execute(
+        """
+        CREATE TABLE generations (
+            id TEXT PRIMARY KEY,
+            category_id BIGINT NOT NULL REFERENCES categories(id),
+            status TEXT NOT NULL,
+            filename TEXT NOT NULL,
+            content_type TEXT NOT NULL,
+            source_photo_path TEXT NOT NULL,
+            glb_path TEXT,
+            duration_seconds DOUBLE PRECISION,
+            error_message TEXT,
+            created_at TIMESTAMPTZ NOT NULL,
+            updated_at TIMESTAMPTZ NOT NULL
         )
+        """
+    )
 
-    SQLiteGenerationRepository(database_path).initialize()
+    make_repository().initialize()
 
-    with sqlite3.connect(database_path) as connection:
-        columns = {
-            row[1]
-            for row in connection.execute("PRAGMA table_info(generations)").fetchall()
-        }
+    assert "image_warning" in table_columns("generations")
 
-    assert "image_warning" in columns

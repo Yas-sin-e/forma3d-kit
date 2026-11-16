@@ -1,5 +1,5 @@
 # Rôle : vérifie la page iframe, le statut d’activation et la CSP frame-ancestors.
-# Exécution : Pytest utilise un GLB minimal et un dépôt SQLite temporaires, sans réseau externe.
+# Exécution : Pytest utilise un GLB minimal et la base PostgreSQL de tests, sans réseau externe.
 """Tests HTTP de la page viewer qui sera intégrée dans les sites clients."""
 
 import json
@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.routers.models import get_generation_service
-from app.repositories.sqlite_repository import SQLiteGenerationRepository
+from pg_support import make_repository
 from app.services.generation_service import GenerationService
 from app.storage.local_storage import LocalStorage
 
@@ -25,7 +25,7 @@ def _valid_glb() -> bytes:
 
 def test_embed_page_requires_activation_and_sets_restrictive_frame_ancestors(tmp_path: Path) -> None:
     """Prouve que /embed exige un modèle activé et envoie une politique CSP frame-ancestors restrictive."""
-    repository = SQLiteGenerationRepository(tmp_path / "embed.sqlite3")
+    repository = make_repository()
     repository.initialize()
     service = GenerationService(object(), LocalStorage(tmp_path / "storage"), repository)
     app.dependency_overrides[get_generation_service] = lambda: service

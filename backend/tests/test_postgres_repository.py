@@ -1,20 +1,13 @@
-# Rôle : vérifie que le dépôt PostgreSQL respecte le même contrat que le dépôt SQLite.
-# Exécution : pytest ; ces tests ne tournent que si TEST_DATABASE_URL pointe vers une base de TEST
-# (sinon ils sont ignorés proprement). En CI, un conteneur postgres:17-alpine la fournit.
-"""Tests d'intégration du dépôt PostgreSQL contre un vrai serveur PostgreSQL.
-
-ATTENTION : chaque test supprime puis recrée les tables de la base TEST_DATABASE_URL.
-Par sécurité, le nom de la base doit contenir « test » (ex. forma3d_test).
-"""
+# Rôle : vérifie que le dépôt PostgreSQL respecte le contrat GenerationRepository (cas limites, concurrence).
+# Exécution : pytest, contre la base PostgreSQL de test (TEST_DATABASE_URL), remise à zéro par conftest.py.
+"""Tests d'intégration du dépôt PostgreSQL : cycle de vie, catégories, clés API, quotas et concurrence."""
 
 from __future__ import annotations
 
-import os
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from urllib.parse import urlsplit
 from uuid import UUID
 
 import pytest
@@ -22,29 +15,13 @@ import pytest
 from app.models import GenerationRecord, GenerationStatus, ModelOrigin
 from app.repositories.base import CategoryConflictError, CategoryInUseError, CategoryNotFoundError
 from app.services.api_key_service import APIKeyService
-
-TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "").strip()
-pytestmark = pytest.mark.skipif(
-    not TEST_DATABASE_URL, reason="TEST_DATABASE_URL non définie : tests PostgreSQL ignorés."
-)
-_TABLES = ("api_rate_events", "api_usage_daily", "api_keys", "generations", "categories")
+from pg_support import make_repository
 
 
 @pytest.fixture()
 def repository():
-    """Fournit un dépôt PostgreSQL sur un schéma vide et fraîchement initialisé."""
-    import psycopg
-
-    from app.repositories.postgres_repository import PostgresGenerationRepository
-
-    database_name = urlsplit(TEST_DATABASE_URL).path.lstrip("/")
-    if "test" not in database_name:
-        pytest.fail(f"Refus : la base « {database_name} » ne contient pas « test » ; ses tables seraient supprimées.")
-    with psycopg.connect(TEST_DATABASE_URL) as connection:
-        connection.execute(f"DROP TABLE IF EXISTS {', '.join(_TABLES)} CASCADE")
-    repo = PostgresGenerationRepository(TEST_DATABASE_URL)
-    repo.initialize()
-    return repo
+    """Dépôt PostgreSQL sur un schéma neuf (conftest.py vient de réinitialiser la base)."""
+    return make_repository()
 
 
 def _record(tmp_path: Path, generation_id: str = "gen-1", **changes: object) -> GenerationRecord:

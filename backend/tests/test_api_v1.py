@@ -9,7 +9,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.repositories.sqlite_repository import SQLiteGenerationRepository
+from pg_support import make_repository
 from app.routers.api_keys import get_api_key_service
 from app.routers.categories import get_category_service
 from app.routers.models import get_generation_service
@@ -34,7 +34,7 @@ class StaticProvider:
 
 def test_api_v1_creates_tracks_downloads_and_returns_embed_code(tmp_path: Path) -> None:
     """Prouve le parcours complet de l'API externe : création, suivi, téléchargement du GLB, code d'intégration."""
-    repository = SQLiteGenerationRepository(tmp_path / "api.sqlite3")
+    repository = make_repository()
     repository.initialize()
     key_service = APIKeyService(repository)
     _key, secret = key_service.create("Site de démonstration")
@@ -102,7 +102,7 @@ def test_api_v1_creates_tracks_downloads_and_returns_embed_code(tmp_path: Path) 
 
 def test_api_v1_rate_limit_has_consistent_json_and_retry_after(tmp_path: Path) -> None:
     """Prouve qu'un dépassement de débit renvoie 429, le format d'erreur {error:{code,message}} et Retry-After."""
-    repository = SQLiteGenerationRepository(tmp_path / "rate.sqlite3")
+    repository = make_repository()
     repository.initialize()
     key_service = APIKeyService(repository)
     _key, secret = key_service.create("Débit")

@@ -1,4 +1,4 @@
-# Rôle : vérifie la suppression définitive d'un modèle (ligne SQLite, GLB, photo source) et ses refus.
+# Rôle : vérifie la suppression définitive d'un modèle (ligne en base, GLB, photo source) et ses refus.
 # Exécution : Pytest appelle FastAPI en mémoire avec un dépôt et un stockage temporaires, sans réseau.
 """Tests de DELETE /models/{id}, de GenerationService.delete_generation et du stockage associé."""
 
@@ -11,7 +11,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.repositories.sqlite_repository import SQLiteGenerationRepository
+from pg_support import make_repository
 from app.routers.models import get_generation_service
 from app.services.generation_service import GenerationService
 from app.services.upload_validator import ValidatedUpload
@@ -34,10 +34,10 @@ PNG_BYTES = b"\x89PNG\r\n\x1a\nsample"
 
 @pytest.fixture
 def setup(tmp_path: Path):
-    """Service réel sur un dépôt SQLite et un dossier de stockage temporaires."""
+    """Service réel sur la base PostgreSQL de test et un dossier de stockage temporaire."""
     # tmp_path (fixture pytest) : dossier temporaire propre à ce test, effacé ensuite.
     # La vraie base backend/data/ n'est jamais touchée.
-    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    repository = make_repository()
     repository.initialize()
     storage = LocalStorage(tmp_path / "storage")
     service = GenerationService(SuccessfulProvider(), storage, repository)
@@ -60,7 +60,7 @@ def _create_done_model(client: TestClient) -> str:
 
 
 def test_delete_removes_row_glb_and_source_photo(setup) -> None:
-    """Prouve que la suppression efface la ligne SQLite, le GLB et la photo source."""
+    """Prouve que la suppression efface la ligne en base, le GLB et la photo source."""
     client, _service, storage = setup
     generation_id = _create_done_model(client)
     glb_path = storage.models_dir / f"{generation_id}.glb"
@@ -115,7 +115,7 @@ def test_delete_refuses_a_generation_still_in_progress(setup) -> None:
 
 def test_repository_delete_reports_whether_a_row_existed(tmp_path: Path) -> None:
     """Prouve que le dépôt indique si une ligne a réellement été supprimée."""
-    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    repository = make_repository()
     repository.initialize()
 
     assert repository.delete_generation(str(uuid4())) is False

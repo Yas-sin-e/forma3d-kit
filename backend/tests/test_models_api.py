@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 from app.main import app
 from app.models import ProductCategory
 from app.providers.base import ProviderError
-from app.repositories.sqlite_repository import SQLiteGenerationRepository
+from pg_support import make_repository
 from app.routers.models import get_demo_gallery, get_generation_service
 from app.services.generation_service import GenerationService
 from app.services.demo_gallery import DemoGallery
@@ -39,7 +39,7 @@ class SuccessfulProvider:
 
 def test_upload_returns_job_and_status_records_provider_failure(tmp_path: Path) -> None:
     """Prouve que l'envoi répond 202 PENDING puis que l'état final enregistre l'échec du fournisseur."""
-    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    repository = make_repository()
     repository.initialize()
     service = GenerationService(UnavailableProvider(), LocalStorage(tmp_path), repository)
     app.dependency_overrides[get_generation_service] = lambda: service
@@ -73,7 +73,7 @@ def test_upload_returns_job_and_status_records_provider_failure(tmp_path: Path) 
 
 def test_upload_rejects_invalid_image_before_scheduling_generation(tmp_path: Path) -> None:
     """Prouve qu'une image invalide est refusée avant de lancer la moindre génération."""
-    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    repository = make_repository()
     repository.initialize()
     service = GenerationService(UnavailableProvider(), LocalStorage(tmp_path), repository)
     app.dependency_overrides[get_generation_service] = lambda: service
@@ -109,7 +109,7 @@ def test_upload_requires_a_supported_category() -> None:
 
 def test_completed_upload_appears_in_its_category_with_source_and_glb(tmp_path: Path) -> None:
     """Prouve qu'un modèle terminé apparaît dans sa catégorie avec sa photo source et son GLB."""
-    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    repository = make_repository()
     repository.initialize()
     service = GenerationService(
         SuccessfulProvider(),
@@ -148,7 +148,7 @@ def test_completed_upload_appears_in_its_category_with_source_and_glb(tmp_path: 
 
 def test_status_route_returns_not_found_for_unknown_id(tmp_path: Path) -> None:
     """Prouve qu'un identifiant inconnu donne 404 sur la route de suivi."""
-    repository = SQLiteGenerationRepository(tmp_path / "history.sqlite3")
+    repository = make_repository()
     repository.initialize()
     service = GenerationService(UnavailableProvider(), LocalStorage(tmp_path), repository)
     app.dependency_overrides[get_generation_service] = lambda: service

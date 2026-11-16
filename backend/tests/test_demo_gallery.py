@@ -15,7 +15,7 @@ from app.services.demo_gallery import DemoGallery
 
 
 class _NoGenerations:
-    """Remplace le service réel : la base SQLite locale de la développeuse n'entre pas dans ces tests."""
+    """Remplace le service réel : la base locale de la développeuse n'entre pas dans ces tests."""
 
     def list_completed_generations(self) -> list:
         """Aucune génération enregistrée : la galerie testée ne contient que les exemples."""
