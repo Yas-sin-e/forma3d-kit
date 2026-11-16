@@ -97,9 +97,9 @@ jobs:
       # Test de fumée : l'image démarre-t-elle vraiment et répond-elle sur /health ?
       - name: Test de fumée /health
         run: |
-          docker run -d --name smoke -p 8000:8000 forma3d:ci
+          docker run -d --name smoke -p 8080:8080 forma3d:ci
           for i in $(seq 1 12); do
-            if curl -fsS http://localhost:8000/health; then echo; echo "image saine"; exit 0; fi
+            if curl -fsS http://localhost:8080/health; then echo; echo "image saine"; exit 0; fi
             sleep 5
           done
           echo "image non saine" >&2
