@@ -11,7 +11,7 @@ Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 s
 | `DESIGN.md` | Source de vérité des couleurs, du texte, des composants et du mouvement | Maintient la cohérence visuelle | Avant de créer ou modifier l'interface |
 | `README.md` | Démarrage du dépôt, état et commandes Windows | Point d'entrée pour l'étudiante et le jury | Au clonage et au lancement |
 | `PROMPT-1.md` | Prompt local de démarrage de session v2 | Rappelle les règles au travail quotidien | Au début d'une session Codex ; ignoré par Git |
-| `.gitignore` | Exclut secrets, environnements, caches, uploads et sorties générées | Évite de versionner les données locales ou sensibles | Avant chaque commit |
+| `.gitignore` | Exclut secrets (dont `.env.*` sauf les modèles `*.example`), environnements, caches, uploads et sorties générées | Évite de versionner les données locales ou sensibles | Avant chaque commit |
 | `.env.example` | Variables fournisseur, plafond GLB, quotas, débit API, origines CORS et origines autorisées à intégrer (aucune par défaut) mot de passe propriétaire `FORMA3D_OWNER_PASSWORD` (vide = connexion refusée) et choix du fournisseur `IMAGE3D_PROVIDER` / `TRELLIS_SPACE_ID` | Rend la configuration explicite sans cible ni secret ni politique de cadrage ouverte | Avant le lancement du service intégrable |
 | `sprint-1-v2-saas-3d-ecommerce.docx` | Cahier des charges remis pour le sprint | Conserve la référence de départ et ses exigences | Au cadrage et à la soutenance |
 | `.github/` | Configuration destinée au dépôt GitHub | Sépare l'automatisation distante des sources | Sur GitHub |
@@ -27,6 +27,9 @@ Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 s
 | `.gitattributes` | Force les fins de ligne LF pour scripts Bash, Dockerfile et YAML | Ã‰vite l'erreur `bash\r` sous Linux quand on travaille sous Windows | Automatiquement Ã  chaque checkout et commit |
 | `Dockerfile` | Image de l'API : `python:3.12-slim` fixÃ©e, dÃ©pendances avant le code, utilisateur `appuser`, `EXPOSE 8080`, `HEALTHCHECK` Python, uvicorn sur 0.0.0.0 | MÃªme environnement en local, en CI et en staging | `docker build`, `docker compose build`, CI et release |
 | `.dockerignore` | Exclut Git, `.env`, donnÃ©es locales, caches, tests et docs du contexte de construction | Aucun secret ni donnÃ©e locale dans l'image ; construction plus rapide | Ã€ chaque construction d'image |
+| `compose.yaml` | Pile de dÃ©veloppement : `api` (image locale) + `db` PostgreSQL 17 sans port publiÃ©, rÃ©seau `backend`, volumes `pgdata`/`storage`, Adminer en profil `debug` | Une commande dÃ©marre l'application et sa vraie base | `docker compose up -d --build` |
+| `compose.debug.yaml` | Surcharge qui publie PostgreSQL sur `127.0.0.1:5433` pour DBeaver/HeidiSQL | Visualiser la base sans laisser 5432 ouvert en usage normal | `docker compose -f compose.yaml -f compose.debug.yaml up -d` |
+| `.env.compose.example` | ModÃ¨le sans secret de `.env.compose` (identifiants PostgreSQL fictifs, `DATABASE_URL` vers `db`) | Configuration reproductible sans mot de passe dans Git | CopiÃ© une fois avant le premier `docker compose up` |
 
 ## Serveur temporaire TripoSR
 
@@ -244,3 +247,4 @@ Le registre des métadonnées, les empreintes de clés, les quotas journaliers e
 | `docs/devops/phase-03a.md` | Compte rendu de P3a : dÃ©pÃ´t PostgreSQL, diffÃ©rences avec SQLite, tests, DBeaver | Justifie la migration vers une vraie base pour le jury | Pour le point 4 et en soutenance |
 | `docs/devops/phase-01.md` | Compte rendu de P1 : script de contrÃ´le, codes de sortie, piÃ¨ge CRLF | Justifie le point 2 du barÃ¨me | Pour la preuve du point 2 et en soutenance |
 | `docs/devops/phase-02.md` | Compte rendu de P2 : Dockerfile expliquÃ©, vÃ©rifications, incident `Exited (3)` | Justifie le point 3 du barÃ¨me | Pour la preuve du point 3 et en soutenance |
+| `docs/devops/phase-03b.md` | Compte rendu de P3b : Compose expliquÃ©, persistance, DBeaver, incident `localhost` | Justifie le point 4 du barÃ¨me | Pour la preuve du point 4 et en soutenance |
