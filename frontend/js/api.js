@@ -122,6 +122,16 @@ export async function setModelIntegrationEnabled(modelId, enabled) {
   return readResponse(response, "Impossible de modifier l’intégration de ce modèle.");
 }
 
+// Renomme un modèle enregistré : PATCH /models/{id}/name avec {"name": "..."}.
+export async function renameModel(modelId, name) {
+  const response = await fetch(`/models/${encodeURIComponent(modelId)}/name`, {
+    method: "PATCH",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+  return readResponse(response, "Impossible de renommer ce modèle.");
+}
+
 /* Supprime définitivement un modèle du Studio : ligne, GLB et photo source (204 sans contenu). */
 export async function deleteModel(modelId) {
   const response = await fetch(`/models/${encodeURIComponent(modelId)}`, {

@@ -4,8 +4,8 @@
  * Refonte : chaque ligne affiche son statut en badge et le nombre de modèles enregistrés ;
  * désactivation et suppression passent par une fenêtre de confirmation (confirmDialog).
  */
-import { createCategory, deleteCategory, listCategories, updateCategory } from "../api.js?v=20261115-e1";
-import { confirmDialog } from "./confirm-dialog.js?v=20261115-e1";
+import { createCategory, deleteCategory, listCategories, updateCategory } from "../api.js?v=20261117-r1";
+import { confirmDialog } from "./confirm-dialog.js?v=20261117-r1";
 
 // Branche l'écran de gestion des catégories : création, renommage, activation, suppression.
 export function setupCategoryManager(onCategoriesChanged, options = {}) {

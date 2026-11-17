@@ -3,9 +3,9 @@
  * Exécution : router.js monte la grille sur #/modeles ; #/modeles?import=1 ouvre directement l'import GLB.
  * Refonte : état vide illustré avec appel à l'action, cartes animées, filtres avec compteurs.
  */
-import { importGlbModel, listCategories } from "../api.js?v=20261115-e1";
-import { setupGallery } from "../views/gallery.js?v=20261115-e1";
-import { emptyCubeIllustration } from "../views/illustrations.js?v=20261115-e1";
+import { importGlbModel, listCategories } from "../api.js?v=20261117-r1";
+import { setupGallery } from "../views/gallery.js?v=20261117-r1";
+import { emptyCubeIllustration } from "../views/illustrations.js?v=20261117-r1";
 
 export const title = "Mes modèles";
 const generationIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

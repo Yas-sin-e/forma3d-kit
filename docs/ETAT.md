@@ -1,6 +1,6 @@
 # État du projet — Forma3D Studio
 
-Dernière mise à jour : 16 novembre 2026.
+Dernière mise à jour : 17 novembre 2026.
 
 ## Projet DevOps (actif depuis le 16 novembre 2026)
 
@@ -21,6 +21,10 @@ Dernière mise à jour : 16 novembre 2026.
 - Livraison (16/11/2026) : PR n°13 fusionnée dans `main` (les 14 phases d'un coup). Tag `v1.0.0` poussé **avant** la fusion sur `c447aca`, sans `release.yml` : aucune image (run #97 « Project checks » seulement). Décision : ne pas déplacer `v1.0.0` ; versions retenues `v1.0.1` (`4b2d063`), `v1.1.0` (`3552bb5`, défectueuse), `v1.1.1` (`a17c181`). Tags poussés par l'étudiante ; 3 workflows « Release » verts ; images tirées depuis GHCR (connexion `gh`). Staging réel : `v1.0.1` sain, `v1.1.0` refusé avec retour automatique à `v1.0.1`, `v1.1.1` sain (phase-06 §4b, phase-07 §4b). Détails : `docs/devops/phase-05.md` §5.
 - Vérification générale (16/11/2026) : PR #14 verte et fusionnée ; PR #15 rouge (`AssertionError`, `docker-build` sauté), à ne pas fusionner. Application et base contrôlées (5 catégories, 17 générations, 1 clé ; 179 tests sous Python 3.12 et 3.13). Audit : 176 fichiers suivis, tous cités dans `STRUCTURE.md`, tous les fichiers de code avec en-tête. Dépôt GitHub renommé `forma3d-kit` (sans `-codex`) ; le dossier local garde son ancien nom. Bonus B3 (matrice) et B2 (déploiement sur tag) écrits sur `ci/bonus-matrix-deploy`. Guide : `docs/devops/GUIDE-BAREME.md`.
 - **Reste à faire par l'étudiante :** pousser les branches et fusionner les PR dans l'ordre de `docs/devops/README.md`, observer la CI verte puis rouge, taguer et pousser `v1.0.0`, `v1.1.0`, `v1.1.1`, rejouer staging et rollback avec les images GHCR, remplir les ⏳ de `PREUVES.md`. Bonus B1–B3 non commencés.
+
+## Ajout du 17 novembre 2026
+
+- Étape 25 : bouton « ✎ Renommer » sur la fiche d'un modèle enregistré (formulaire en ligne, Entrée enregistre, Échap annule) et route `PATCH /models/{id}/name`. Seule la colonne `filename` change (extension d'origine gardée), sans migration ; GLB, photo et UUID public inchangés. Observé : `189 passed` sur la base PostgreSQL de test. Clé de cache frontend passée à `20261117-r1`. Bouton non vérifié visuellement dans le navigateur par l'assistant. Détails : `docs/etapes/etape-25.md`.
 
 ## Avenant au cahier des charges v1.0
 

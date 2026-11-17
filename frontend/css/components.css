@@ -2158,6 +2158,41 @@ model-viewer {
   width: 100%;
 }
 
+/* Renommage d'un modèle : bouton discret à côté du nom, formulaire en ligne. */
+.detail-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.detail-name-row h2 {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.detail-rename {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+}
+
+.detail-rename-form {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.detail-rename-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.detail-rename-feedback {
+  min-height: 1.25em;
+  margin: var(--space-2) 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
 /* Suppression d'un modèle : action secondaire et rouge, placée sous le téléchargement. */
 .detail-delete {
   width: 100%;

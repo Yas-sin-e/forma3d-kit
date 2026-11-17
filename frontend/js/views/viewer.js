@@ -5,7 +5,7 @@
  * bascule Vue 3D / Photo source / Comparer quand une photo source est disponible.
  * Sous-étape A : matériau mat pour les GLB sans matériau, recadrage et rotation en pause en mode Comparer.
  */
-import { refitCamera, watchProductAppearance } from "./model-appearance.js?v=20261115-e1";
+import { refitCamera, watchProductAppearance } from "./model-appearance.js?v=20261117-r1";
 
 // Branche le viewer 3D de la page Créer et ses boutons de caméra.
 // <model-viewer> est un composant web de Google : une balise HTML qui affiche un fichier GLB avec rotation et zoom.

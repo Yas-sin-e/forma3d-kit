@@ -31,6 +31,9 @@ from app.services.glb_finisher import finish_glb
 
 logger = logging.getLogger(__name__)
 
+# Longueur maximale d'un nom de modèle choisi dans le Studio (même borne que ModelRenameRequest).
+MAX_MODEL_NAME_LENGTH = 80
+
 
 class GenerationService:
     """Coordonne le fournisseur, les fichiers locaux et l'historique persistant."""
@@ -112,6 +115,26 @@ class GenerationService:
             if record.status is not GenerationStatus.DONE or self.get_model_path(generation_id) is None:
                 raise ValueError("Seuls les modèles terminés avec un GLB disponible peuvent être intégrés.")
             return self._repository.set_embed_enabled(generation_id, enabled)
+
+    def rename_generation(self, generation_id: str, name: str) -> GenerationRecord | None:
+        """Renomme un modèle du Studio : seul le nom affiché change, l'extension d'origine est gardée.
+
+        Retour : l'enregistrement mis à jour, ou None si l'identifiant est inconnu.
+        Lève ValueError si le nom est vide, trop long ou contient un séparateur de chemin.
+        """
+        cleaned = " ".join(name.split())  # espaces multiples, tabulations et retours à la ligne -> un espace
+        if not cleaned:
+            raise ValueError("Le nom ne peut pas être vide.")
+        if len(cleaned) > MAX_MODEL_NAME_LENGTH:
+            raise ValueError(f"Le nom ne doit pas dépasser {MAX_MODEL_NAME_LENGTH} caractères.")
+        if "/" in cleaned or "\\" in cleaned:
+            raise ValueError("Le nom ne doit pas contenir de « / » ni de « \\ ».")
+        with self._lock:
+            record = self._repository.get_generation(generation_id)
+            if record is None:
+                return None
+            # La galerie affiche Path(filename).stem : on garde donc l'extension (.png, .glb…) d'origine.
+            return self._repository.rename_generation(generation_id, cleaned + Path(record.filename).suffix)
 
     def delete_generation(self, generation_id: str) -> bool:
         """Supprime définitivement une génération terminée ou échouée, puis ses fichiers.
