@@ -45,6 +45,10 @@ class GenerationRepository(Protocol):
         """Active ou désactive l'intégration d'un modèle terminé."""
         ...
 
+    def rename_generation(self, generation_id: str, filename: str) -> GenerationRecord | None:
+        """Remplace le nom de fichier affiché d'une génération ; None si elle est inconnue."""
+        ...
+
     def delete_generation(self, generation_id: str) -> bool:
         """Supprime la ligne d'une génération ; renvoie False si elle est inconnue."""
         ...

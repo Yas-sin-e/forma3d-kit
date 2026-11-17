@@ -61,6 +61,12 @@ class EmbedIntegrationRequest(BaseModel):
     enabled: bool
 
 
+class ModelRenameRequest(BaseModel):
+    """Nouveau nom affiché d'un modèle du Studio (l'extension d'origine est conservée)."""
+
+    name: str = Field(min_length=1, max_length=80, description="Nouveau nom, 1 à 80 caractères.")
+
+
 class PublicModelResponse(BaseModel):
     """Métadonnées minimales exposées lorsque l'intégration est activée."""
 
