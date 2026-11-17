@@ -17,6 +17,7 @@ from app.schemas import (
     DemoModelResponse,
     EmbedIntegrationRequest,
     GenerationResponse,
+    ModelCategoryRequest,
     ModelRenameRequest,
     PublicModelResponse,
 )
@@ -165,6 +166,22 @@ def rename_model(
     """Renomme un modèle enregistré ; 404 si inconnu, 422 si le nom est refusé."""
     try:
         record = service.rename_generation(generation_id, payload.name)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    if record is None:
+        raise HTTPException(status_code=404, detail="Modèle introuvable.")
+    return _to_response(record)
+
+
+@router.patch("/{generation_id}/category", response_model=GenerationResponse)
+def change_model_category(
+    generation_id: str,
+    payload: ModelCategoryRequest,
+    service: Annotated[GenerationService, Depends(get_generation_service)],
+) -> GenerationResponse:
+    """Change la catégorie d'un modèle enregistré ; 404 si inconnu, 422 si la catégorie est refusée."""
+    try:
+        record = service.change_category(generation_id, payload.category)
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
     if record is None:

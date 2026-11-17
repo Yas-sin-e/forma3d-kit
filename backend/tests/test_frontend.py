@@ -208,8 +208,8 @@ def test_create_page_keeps_workspace_then_progress_layout() -> None:
 
     assert 'grid-template-columns: repeat(3, minmax(0, 1fr));' in components
     assert 'grid-template-columns: repeat(5, minmax(0, 1fr));' in components
-    assert "components.css?v=20261117-r1" in shell
-    assert '"./pages/create.js?v=20261117-r1"' in router
+    assert "components.css?v=20261117-r2" in shell
+    assert '"./pages/create.js?v=20261117-r2"' in router
 
 
 def test_widget_script_defines_the_integrator_tag_and_uses_embed_iframe() -> None:
@@ -330,7 +330,7 @@ def test_viewers_fix_default_gltf_material_and_refit_in_compare_mode() -> None:
     assert "updateFraming()" in appearance
     for module in (viewer, detail, gallery, dashboard):
         assert "watchProductAppearance(" in module
-        assert "model-appearance.js?v=20261117-r1" in module
+        assert "model-appearance.js?v=20261117-r2" in module
     assert "refitCamera(viewer)" in viewer and "refitCamera(modelViewer)" in detail
     assert 'removeAttribute("auto-rotate")' in detail
 

@@ -26,6 +26,8 @@ Dernière mise à jour : 17 novembre 2026.
 
 - Étape 25 : bouton « ✎ Renommer » sur la fiche d'un modèle enregistré (formulaire en ligne, Entrée enregistre, Échap annule) et route `PATCH /models/{id}/name`. Seule la colonne `filename` change (extension d'origine gardée), sans migration ; GLB, photo et UUID public inchangés. Observé : `189 passed` sur la base PostgreSQL de test. Clé de cache frontend passée à `20261117-r1`. Bouton non vérifié visuellement dans le navigateur par l'assistant. Détails : `docs/etapes/etape-25.md`.
 
+- Étape 26 : le bouton devient « ✎ Modifier » (nom et catégorie) ; route `PATCH /models/{id}/category` (catégorie active uniquement, 422 sinon). Cause du « Not Found » observé par l'étudiante : le serveur Uvicorn du port 8001 avait été démarré avant la récupération de l'étape 25 et gardait l'ancien code ; `dev.ps1` affiche désormais un avertissement quand il réutilise un serveur déjà lancé. Observé : `193 passed`. Clé de cache `20261117-r2`. Non vérifié dans le navigateur par l'assistant. Détails : `docs/etapes/etape-26.md`.
+
 ## Avenant au cahier des charges v1.0
 
 Les Sprints 3 (comptes publics) et 4 (vitrine/catalogue public) sont retirés du périmètre. L'objectif prioritaire est un module 3D intégrable partout, composé d'une API avec clé et d'un widget ; le Studio est la console privée mono-propriétaire. Limite connue : le Studio n'a pas d'authentification, donc usage local ou démonstration uniquement ; ne pas l'exposer publiquement tel quel.

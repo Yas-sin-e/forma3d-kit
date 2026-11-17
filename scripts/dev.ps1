@@ -89,6 +89,12 @@ try {
     $alreadyRunning = $false
 }
 
+if ($alreadyRunning) {
+    # Uvicorn est lancé sans rechargement automatique : un serveur déjà démarré garde l'ancien code Python.
+    # Les fichiers du frontend sont relus depuis le disque, mais une nouvelle route renverrait « Not Found ».
+    Write-Warning "Un serveur répond déjà sur le port $Port : il est réutilisé avec le code chargé à son démarrage. Après un git pull ou une modification Python, arrêtez-le (Stop-Process) puis relancez ce script."
+}
+
 if (-not $alreadyRunning) {
     $stdoutPath = Join-Path $backendRoot ".dev-server-output.log"
     $stderrPath = Join-Path $backendRoot ".dev-server-error.log"

@@ -7,7 +7,7 @@
  * FORMA3D_OWNER_PASSWORD, et la session est un cookie HttpOnly signé (illisible en JavaScript).
  * Ce module ne garde qu'un indicateur en mémoire, rafraîchi par GET /auth/me.
  */
-import { getSession, loginOwner, logoutOwner } from "./api.js?v=20261117-r1";
+import { getSession, loginOwner, logoutOwner } from "./api.js?v=20261117-r2";
 
 // sessionStorage : petit stockage du navigateur, propre à l'onglet et effacé à sa fermeture.
 // On y garde seulement la page demandée avant la connexion, jamais un mot de passe ni un jeton.

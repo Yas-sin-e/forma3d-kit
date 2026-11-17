@@ -136,6 +136,20 @@ class GenerationService:
             # La galerie affiche Path(filename).stem : on garde donc l'extension (.png, .glb…) d'origine.
             return self._repository.rename_generation(generation_id, cleaned + Path(record.filename).suffix)
 
+    def change_category(self, generation_id: str, category: str) -> GenerationRecord | None:
+        """Déplace un modèle du Studio vers une autre catégorie active.
+
+        Retour : l'enregistrement mis à jour, ou None si l'identifiant est inconnu.
+        Lève ValueError si la catégorie est inconnue ou désactivée (même règle qu'à l'envoi).
+        """
+        category_slug = category.strip()
+        if self._repository.get_category(category_slug) is None:
+            raise ValueError("Cette catégorie est inconnue ou désactivée.")
+        with self._lock:
+            if self._repository.get_generation(generation_id) is None:
+                return None
+            return self._repository.set_generation_category(generation_id, category_slug)
+
     def delete_generation(self, generation_id: str) -> bool:
         """Supprime définitivement une génération terminée ou échouée, puis ses fichiers.
 

@@ -67,6 +67,12 @@ class ModelRenameRequest(BaseModel):
     name: str = Field(min_length=1, max_length=80, description="Nouveau nom, 1 à 80 caractères.")
 
 
+class ModelCategoryRequest(BaseModel):
+    """Nouvelle catégorie d'un modèle du Studio, désignée par son slug."""
+
+    category: str = Field(min_length=1, max_length=80, description="Slug d'une catégorie active.")
+
+
 class PublicModelResponse(BaseModel):
     """Métadonnées minimales exposées lorsque l'intégration est activée."""
 

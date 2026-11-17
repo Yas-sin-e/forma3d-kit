@@ -132,6 +132,16 @@ export async function renameModel(modelId, name) {
   return readResponse(response, "Impossible de renommer ce modèle.");
 }
 
+// Change la catégorie d'un modèle enregistré : PATCH /models/{id}/category avec {"category": "slug"}.
+export async function changeModelCategory(modelId, category) {
+  const response = await fetch(`/models/${encodeURIComponent(modelId)}/category`, {
+    method: "PATCH",
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({ category }),
+  });
+  return readResponse(response, "Impossible de changer la catégorie de ce modèle.");
+}
+
 /* Supprime définitivement un modèle du Studio : ligne, GLB et photo source (204 sans contenu). */
 export async function deleteModel(modelId) {
   const response = await fetch(`/models/${encodeURIComponent(modelId)}`, {
