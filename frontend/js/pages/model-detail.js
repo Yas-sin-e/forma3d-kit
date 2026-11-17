@@ -5,12 +5,13 @@
  * guidée en 4 étapes (interrupteur, choix iframe/widget, code à copier, aperçu réel via /embed).
  * Sous-étape A : matériau mat pour les GLB sans matériau, recadrage et rotation en pause en mode Comparer.
  * Suppression : bouton « Supprimer ce modèle » avec confirmation, puis retour à Mes modèles.
- * Renommage : bouton « Renommer » à côté du nom, formulaire en ligne (Entrée enregistre, Échap annule).
+ * Modification : bouton « Modifier » à côté du nom, formulaire en ligne pour le nom et la catégorie
+ * (Entrée enregistre, Échap annule) ; seules les valeurs changées sont envoyées.
  */
-import { deleteModel, getGenerationStatus, listCategories, listGalleryModels, renameModel, setModelIntegrationEnabled } from "../api.js?v=20261117-r1";
-import { confirmDialog } from "../views/confirm-dialog.js?v=20261117-r1";
-import { exampleGenerationSeconds, exampleProviders, formatDuration, formatLongDate } from "../format.js?v=20261117-r1";
-import { refitCamera, watchProductAppearance } from "../views/model-appearance.js?v=20261117-r1";
+import { deleteModel, getGenerationStatus, listCategories, listGalleryModels, renameModel, changeModelCategory, setModelIntegrationEnabled } from "../api.js?v=20261117-r2";
+import { confirmDialog } from "../views/confirm-dialog.js?v=20261117-r2";
+import { exampleGenerationSeconds, exampleProviders, formatDuration, formatLongDate } from "../format.js?v=20261117-r2";
+import { refitCamera, watchProductAppearance } from "../views/model-appearance.js?v=20261117-r2";
 
 export const title = "Fiche du modèle";
 
@@ -44,11 +45,13 @@ export function render(route) {
         <aside class="panel detail-information" aria-labelledby="detail-name">
           <div class="detail-name-row">
             <h2 id="detail-name">Informations</h2>
-            <button class="button button-ghost detail-rename" id="detail-rename" type="button" hidden aria-label="Renommer ce modèle">✎ Renommer</button>
+            <button class="button button-ghost detail-rename" id="detail-rename" type="button" hidden aria-label="Modifier le nom ou la catégorie de ce modèle">✎ Modifier</button>
           </div>
           <form class="detail-rename-form" id="detail-rename-form" hidden>
             <label class="field-label" for="detail-rename-input">Nouveau nom</label>
             <input type="text" id="detail-rename-input" maxlength="80" required autocomplete="off">
+            <label class="field-label" for="detail-category-select">Catégorie</label>
+            <select id="detail-category-select"></select>
             <div class="detail-rename-actions">
               <button class="button button-primary" id="detail-rename-save" type="submit">Enregistrer</button>
               <button class="button button-secondary" id="detail-rename-cancel" type="button">Annuler</button>
@@ -164,6 +167,7 @@ export function mount(route) {
   const renameInput = $("#detail-rename-input");
   const renameSave = $("#detail-rename-save");
   const renameFeedback = $("#detail-rename-feedback");
+  const categorySelect = $("#detail-category-select");
   const tabs = [...document.querySelectorAll(".tab[data-method]")];
   let pollTimer = null;
   // Vrai seulement si la fiche vient de l'historique en base (pas d'un exemple de démonstration).
@@ -204,7 +208,7 @@ export function mount(route) {
     const baseUrl = window.location.origin;
     const publicId = model.public_id;
     if (method === "widget") {
-      return `<script src="${baseUrl}/static/widget.js?v=20261117-r1" defer></script>\n<forma3d-viewer model="${publicId}" height="480" auto-rotate></forma3d-viewer>`;
+      return `<script src="${baseUrl}/static/widget.js?v=20261117-r2" defer></script>\n<forma3d-viewer model="${publicId}" height="480" auto-rotate></forma3d-viewer>`;
     }
     return `<iframe src="${baseUrl}/embed/${encodeURIComponent(publicId)}" title="Aperçu 3D du produit" width="100%" height="480" loading="lazy" style="border:0"></iframe>`;
   }
@@ -397,6 +401,7 @@ export function mount(route) {
     renameButton.hidden = open || !storedInHistory;
     if (open) {
       renameInput.value = name.textContent;
+      fillCategorySelect();
       renameFeedback.textContent = "";
       renameInput.focus();
       renameInput.select();
@@ -405,9 +410,23 @@ export function mount(route) {
     }
   }
 
+  // Remplit la liste des catégories actives et présélectionne celle du modèle.
+  // Une catégorie désactivée encore portée par le modèle reste affichée pour ne pas la perdre.
+  function fillCategorySelect() {
+    const current = model?.category || generation?.category || "";
+    const choices = labels.filter((item) => item.is_active || item.slug === current);
+    categorySelect.replaceChildren(...choices.map((item) => {
+      const option = document.createElement("option");
+      option.value = item.slug;
+      option.textContent = item.is_active ? item.label : `${item.label} (désactivée)`;
+      option.selected = item.slug === current;
+      return option;
+    }));
+  }
+
   renameButton.addEventListener("click", () => setRenaming(true));
   $("#detail-rename-cancel").addEventListener("click", () => setRenaming(false));
-  renameInput.addEventListener("keydown", (event) => {
+  renameForm.addEventListener("keydown", (event) => {
     if (event.key === "Escape") setRenaming(false);
   });
   renameForm.addEventListener("submit", async (event) => {
@@ -417,19 +436,28 @@ export function mount(route) {
       renameFeedback.textContent = "Le nom ne peut pas être vide.";
       return;
     }
+    const newCategory = categorySelect.value;
+    const nameChanged = newName !== name.textContent;
+    const categoryChanged = Boolean(newCategory) && newCategory !== (model?.category || generation?.category);
+    if (!nameChanged && !categoryChanged) {
+      setRenaming(false);
+      return;
+    }
     renameSave.disabled = true;
     renameFeedback.textContent = "Enregistrement…";
     try {
-      generation = await renameModel(route.id, newName);
+      // Deux routes distinctes : on n'appelle que celle(s) dont la valeur a changé.
+      if (nameChanged) generation = await renameModel(route.id, newName);
+      if (categoryChanged) generation = await changeModelCategory(route.id, newCategory);
       // La galerie affiche le nom sans extension : on recalcule la même valeur pour la fiche.
       const displayName = generation.filename.replace(/\.[^.]+$/, "");
-      if (model) model = { ...model, name: displayName };
+      if (model) model = { ...model, name: displayName, category: generation.category };
       setRenaming(false);
       showGeneration(generation, model);
       document.title = `${name.textContent} — Forma3D Studio`;
-      renameFeedback.textContent = "Nom enregistré.";
+      renameFeedback.textContent = "Modifications enregistrées.";
     } catch (renameError) {
-      renameFeedback.textContent = renameError.message || "Impossible de renommer ce modèle.";
+      renameFeedback.textContent = renameError.message || "Impossible d’enregistrer les modifications.";
     } finally {
       renameSave.disabled = false;
     }

@@ -49,6 +49,10 @@ class GenerationRepository(Protocol):
         """Remplace le nom de fichier affiché d'une génération ; None si elle est inconnue."""
         ...
 
+    def set_generation_category(self, generation_id: str, category_slug: str) -> GenerationRecord | None:
+        """Rattache une génération à une autre catégorie ; None si elle est inconnue."""
+        ...
+
     def delete_generation(self, generation_id: str) -> bool:
         """Supprime la ligne d'une génération ; renvoie False si elle est inconnue."""
         ...

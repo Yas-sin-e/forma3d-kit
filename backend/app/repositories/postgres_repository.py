@@ -312,6 +312,24 @@ class PostgresGenerationRepository:
             ).fetchone()
         return self._record_from_row(row) if row is not None else None
 
+    def set_generation_category(self, generation_id: str, category_slug: str) -> GenerationRecord | None:
+        """Change la catégorie (colonne category_id, retrouvée par son slug) d'une génération."""
+        with self._connection() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE generations
+                SET category_id = (SELECT id FROM categories WHERE slug = %s), updated_at = %s
+                WHERE id = %s
+                """,
+                (category_slug, datetime.now(UTC), generation_id),
+            )
+            if cursor.rowcount == 0:
+                return None
+            row = connection.execute(
+                _GENERATION_SELECT + " WHERE generations.id = %s", (generation_id,)
+            ).fetchone()
+        return self._record_from_row(row) if row is not None else None
+
     def delete_generation(self, generation_id: str) -> bool:
         """Supprime la ligne d'une génération ; False si elle n'existait pas."""
         with self._connection() as connection:

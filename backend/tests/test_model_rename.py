@@ -1,6 +1,6 @@
-# Rôle : vérifie le renommage d'un modèle du Studio (PATCH /models/{id}/name) et ses refus.
+# Rôle : vérifie le renommage (PATCH /models/{id}/name) et le changement de catégorie (PATCH /models/{id}/category) d'un modèle, et leurs refus.
 # Exécution : Pytest appelle FastAPI en mémoire avec la base PostgreSQL de test et un stockage temporaire, sans réseau.
-"""Tests de PATCH /models/{id}/name, de GenerationService.rename_generation et du dépôt associé."""
+"""Tests du renommage et du changement de catégorie d'un modèle (routes, service et dépôt PostgreSQL)."""
 
 import json
 import struct
@@ -122,3 +122,57 @@ def test_rename_persists_in_repository(setup) -> None:
 
     assert record is not None
     assert record.filename == "Chaise métal 01.png"
+
+
+def _gallery_category(client: TestClient, generation_id: str) -> str:
+    """Retourne la catégorie affichée par la galerie pour un identifiant donné."""
+    items = client.get("/models/gallery").json()["items"]
+    return next(item["category"] for item in items if item["id"] == generation_id)
+
+
+def test_change_category_moves_model_in_gallery(setup) -> None:
+    """Prouve qu'un modèle déplacé apparaît dans la nouvelle catégorie de la galerie."""
+    client, _service = setup
+    generation_id = _create_done_model(client)
+
+    response = client.patch(f"/models/{generation_id}/category", json={"category": "stool"})
+
+    assert response.status_code == 200
+    assert response.json()["category"] == "stool"
+    assert _gallery_category(client, generation_id) == "stool"
+
+
+def test_change_category_persists_in_repository(setup) -> None:
+    """Prouve que la nouvelle catégorie est relue depuis PostgreSQL par un nouveau dépôt."""
+    client, _service = setup
+    generation_id = _create_done_model(client)
+    client.patch(f"/models/{generation_id}/category", json={"category": "side-table"})
+
+    record = make_repository().get_generation(generation_id)
+
+    assert record is not None
+    assert record.category == "side-table"
+
+
+def test_change_category_refuses_unknown_or_inactive_category(setup) -> None:
+    """Prouve qu'une catégorie inconnue ou désactivée est refusée en 422 sans rien changer."""
+    client, _service = setup
+    generation_id = _create_done_model(client)
+    client.post("/categories", json={"slug": "lampe", "label": "Lampe"})
+    client.patch("/categories/lampe", json={"is_active": False})
+
+    unknown = client.patch(f"/models/{generation_id}/category", json={"category": "inconnue"})
+    inactive = client.patch(f"/models/{generation_id}/category", json={"category": "lampe"})
+
+    assert unknown.status_code == 422
+    assert inactive.status_code == 422
+    assert _gallery_category(client, generation_id) == "chair"
+
+
+def test_change_category_unknown_model_returns_404(setup) -> None:
+    """Prouve qu'un identifiant inconnu renvoie 404."""
+    client, _service = setup
+
+    response = client.patch(f"/models/{uuid4()}/category", json={"category": "stool"})
+
+    assert response.status_code == 404

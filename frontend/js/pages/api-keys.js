@@ -5,9 +5,9 @@
  * de statut et confirmation de révocation par fenêtre modale.
  * Une clé révoquée peut ensuite être supprimée définitivement (avec ses compteurs de quota).
  */
-import { createApiKey, deleteRevokedApiKey, listApiKeys, revokeApiKey } from "../api.js?v=20261117-r1";
-import { confirmDialog } from "../views/confirm-dialog.js?v=20261117-r1";
-import { formatLongDate, pluralize } from "../format.js?v=20261117-r1";
+import { createApiKey, deleteRevokedApiKey, listApiKeys, revokeApiKey } from "../api.js?v=20261117-r2";
+import { confirmDialog } from "../views/confirm-dialog.js?v=20261117-r2";
+import { formatLongDate, pluralize } from "../format.js?v=20261117-r2";
 
 export const title = "Clés API";
 
