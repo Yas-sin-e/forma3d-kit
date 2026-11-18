@@ -2,6 +2,8 @@
 
 > **Mise à jour du 16 novembre 2026 (projet DevOps) :** SQLite a été retiré du code. PostgreSQL est désormais la seule base (`backend/app/repositories/postgres_repository.py`, variable `DATABASE_URL` obligatoire). Les sections 3 à 6, 20 et 22 ont été mises à jour ; les données ont été migrées (`docs/devops/phase-03d.md`).
 
+> **Mise à jour du 17 novembre 2026 (étapes 25 et 26) :** la fiche d'un modèle a un bouton « ✎ Modifier » pour changer son **nom** (`PATCH /models/{id}/name`) et sa **catégorie** (`PATCH /models/{id}/category`). `scripts/dev.ps1` prévient quand il réutilise un serveur déjà lancé. Sections mises à jour : 4.2, 5.1, 6.7, 10.5 (nouvelle sous-partie 10.5 b), 14, 15, 20.9, 20.11 et 22. Détails : `docs/etapes/etape-25.md` et `etape-26.md`.
+
 > Document pédagogique pour comprendre **tout** le projet et l'expliquer à un jury.
 > Il décrit uniquement ce qui existe dans le dépôt au 15 novembre 2026 (dernier commit lu : `95f2d86`, après l'ajout de la suppression des modèles, de la session persistante facultative et de l'architecture cible).
 > Quand une information n'a pas pu être vérifiée dans le code, elle est marquée **« à vérifier »**.
@@ -297,7 +299,7 @@ Le 15 novembre 2026, la propriétaire a envoyé `fauteuil-retro-sur-fond-blanc�
 - **TripoSR** : modèle de Stability AI et Tripo AI, qui produit une forme fidèle mais des couleurs approximatives.
 - **TRELLIS** : modèle de Microsoft, qui produit un maillage avec une **texture** (meilleures couleurs), mais qui peut inventer des parties cachées.
 - **model-viewer** : une balise HTML fournie par Google qui affiche un GLB avec rotation, zoom et éclairage.
-- **Modules ES** : `import { x } from "./api.js?v=..."`. Le navigateur charge les fichiers à la demande. Le paramètre `?v=20261115-e1` est une **clé de cache** (unique pour tout le frontend, changée le 15 novembre 2026) : on la change quand le code change, pour que le navigateur ne garde pas l'ancienne version.
+- **Modules ES** : `import { x } from "./api.js?v=..."`. Le navigateur charge les fichiers à la demande. Le paramètre `?v=20261117-r2` est une **clé de cache** (unique pour tout le frontend, changée le 17 novembre 2026) : on la change quand le code change, pour que le navigateur ne garde pas l'ancienne version.
 - **Web Components** : on définit une nouvelle balise (`customElements.define("forma3d-viewer", ...)`) utilisable dans n'importe quelle page HTML, même sans framework.
 - **pytest** : chaque fonction `test_...` est exécutée ; si une ligne `assert` échoue, le test échoue.
 - **GitHub Actions** : à chaque `git push`, GitHub lance les tests sur une machine virtuelle (voir section 14).
@@ -343,7 +345,7 @@ Le 15 novembre 2026, la propriétaire a envoyé `fauteuil-retro-sur-fond-blanc�
 | `backend/app/repositories/factory.py` | Lit `DATABASE_URL` (obligatoire) et crée le dépôt PostgreSQL |
 | `backend/app/routers/__init__.py` | Paquet des routeurs (vide) |
 | `backend/app/routers/auth.py` | Connexion : `/auth/login`, `/auth/logout`, `/auth/me`, dépendance `require_owner` |
-| `backend/app/routers/models.py` | Modèles du Studio : création, galerie, import, copie, intégration, fichiers ; routes `/public` |
+| `backend/app/routers/models.py` | Modèles du Studio : création, galerie, import, copie, intégration, renommage, changement de catégorie, suppression, fichiers ; routes `/public` |
 | `backend/app/routers/categories.py` | CRUD des catégories |
 | `backend/app/routers/api_keys.py` | Gestion des clés API et dépendance `require_api_key` |
 | `backend/app/routers/api_v1.py` | API externe versionnée `/api/v1` (protégée par clé) |
@@ -388,6 +390,7 @@ Le 15 novembre 2026, la propriétaire a envoyé `fauteuil-retro-sur-fond-blanc�
 | `test_model_library.py` | Import GLB et copie d'exemple |
 | `test_models_api.py` | Routes `/models` |
 | `test_model_deletion.py` | Suppression d'un modèle : ligne, GLB et photo effacés ; refus pendant la création, pour un exemple ou sans connexion |
+| `test_model_rename.py` | Renommage et changement de catégorie : nouveau nom et nouvelle catégorie visibles dans la galerie et relus en base ; refus d'un nom vide, trop long ou avec `/` ou `\`, d'une catégorie inconnue ou désactivée, d'un modèle inconnu (14 tests) |
 | `test_trellis_provider.py` | Fournisseur TRELLIS avec client simulé |
 | `test_trial_tools.py` | Outils d'essai de fournisseurs |
 | `test_upload_validator.py` | Validation des photos |
@@ -702,7 +705,7 @@ Les générations restées `PENDING` ou `RUNNING` (le serveur s'est arrêté au 
 
 ### 6.7 Le patron Repository : pourquoi le passage à PostgreSQL n'a touché aucun service
 
-Les services ne parlent jamais à la base directement : ils utilisent le **contrat** `GenerationRepository` (`backend/app/repositories/base.py`). Ce contrat liste les 19 opérations : `initialize`, `save_generation`, `get_generation`, `get_generation_by_public_id`, `set_embed_enabled`, `delete_generation`, `list_completed_generations`, `get_category`, `list_categories`, `create_category`, `update_category`, `delete_category`, `create_api_key`, `list_api_keys`, `find_api_keys_by_prefix`, `revoke_api_key`, `delete_revoked_api_key`, `consume_api_rate_limit`, `consume_api_daily_quota`.
+Les services ne parlent jamais à la base directement : ils utilisent le **contrat** `GenerationRepository` (`backend/app/repositories/base.py`). Ce contrat liste les 21 opérations : `initialize`, `save_generation`, `get_generation`, `get_generation_by_public_id`, `set_embed_enabled`, `rename_generation`, `set_generation_category`, `delete_generation`, `list_completed_generations`, `get_category`, `list_categories`, `create_category`, `update_category`, `delete_category`, `create_api_key`, `list_api_keys`, `find_api_keys_by_prefix`, `revoke_api_key`, `delete_revoked_api_key`, `consume_api_rate_limit`, `consume_api_daily_quota`.
 
 🔁 C'est une **interface Java** : `PostgresGenerationRepository` (`backend/app/repositories/postgres_repository.py`) implémente ces méthodes ; `factory.py` la crée à partir de `DATABASE_URL`. Les routes et les services n'ont pas changé d'une ligne lors du remplacement de SQLite.
 
@@ -1095,7 +1098,7 @@ Fichiers : `pages/models.js`, `views/gallery.js`. Le GLB importé est vérifié 
 
 ```
 ┌───────────────────────────────────────────┬─────────────────────────┐
-│ Aperçu 3D      [Vue 3D|Photo source|Comparer]│ Chaise en bois cintré   │
+│ Aperçu 3D      [Vue 3D|Photo source|Comparer]│ Chaise   [✎ Modifier]   │
 │ ┌───────────────────┬───────────────────┐ │ État        Prêt        │
 │ │  modèle 3D        │  photo source     │ │ Catégorie   Chaise      │
 │ │  (mode Comparer)  │                   │ │ Origine     Exemple · TRELLIS│
@@ -1120,6 +1123,7 @@ Fichiers : `pages/models.js`, `views/gallery.js`. Le GLB importé est vérifié 
 | ② Onglets « IFrame » / « Widget Forma3D » | Choisissent le code affiché ; bloqués tant que l'étape 1 n'est pas faite | local |
 | ③ « Copier » | Copie le code ; « Code copié. Collez-le dans la page produit de votre site. » | presse-papiers |
 | ④ Aperçu | Affiche la vraie page `/embed/{public_id}` dans un cadre | `/embed/...` |
+| « ✎ Modifier » (à droite du nom) | Ouvre un formulaire en ligne : champ « Nouveau nom » et liste « Catégorie ». « Enregistrer » (ou Entrée) envoie **seulement ce qui a changé** ; « Annuler » (ou Échap) referme. Message « Modifications enregistrées. » ou la cause de l'erreur. Caché pour les exemples non enregistrés | `PATCH /models/{id}/name` et/ou `PATCH /models/{id}/category` |
 | « Supprimer ce modèle » (rouge, sous « Télécharger ») | Fenêtre de confirmation (« Cette action est irréversible », avec un avertissement si l'intégration est active), puis suppression de la ligne, du GLB et de la photo, et retour à « Mes modèles ». Caché pour les exemples et pendant une création | `DELETE /models/{id}` |
 
 | État | Ce qu'on voit |
@@ -1129,8 +1133,32 @@ Fichiers : `pages/models.js`, `views/gallery.js`. Le GLB importé est vérifié 
 | Échec | « La création n'a pas abouti. Aucun fichier n'est disponible. » |
 | Identifiant inconnu | « Ce modèle est introuvable. Il a peut-être été supprimé. » |
 | Suppression refusée | Message sous le bouton (par exemple 409 : « Ce modèle est encore en cours de création… ») |
+| Modification refusée | Message sous le formulaire : « Le nom ne peut pas être vide. », « Le nom ne doit pas dépasser 80 caractères. », « Cette catégorie est inconnue ou désactivée. » (422) |
+| « Not Found » en enregistrant | Le serveur tourne encore avec un ancien code : voir la section 15.3 |
 
 ⚠️ Les **exemples du catalogue** n'ont pas de section d'intégration : il faut d'abord les copier dans « Mes modèles ». Fichier : `pages/model-detail.js`.
+
+#### 10.5 b Modifier le nom ou la catégorie : ce qui se passe (étapes 25 et 26)
+
+**Exemple concret :** la photo `th.webp` a donné un modèle nommé « th » et rangé par erreur dans « Chaise ». Sur sa fiche, la propriétaire clique sur « ✎ Modifier », tape « Canapé blanc », choisit « Canapé » et enregistre.
+
+| Étape | Ce qui se passe | Où |
+|---|---|---|
+| 1 | Le formulaire compare les valeurs avec celles affichées et n'appelle que la route utile | `pages/model-detail.js` (écouteur `submit`) |
+| 2 | `renameModel()` envoie `PATCH /models/{id}/name` avec `{"name": "Canapé blanc"}` | `api.js` |
+| 3 | Pydantic vérifie la forme (1 à 80 caractères) ; sinon 422 automatique | `schemas.py` → `ModelRenameRequest` |
+| 4 | Le service nettoie les espaces, refuse `/` et `\`, et **garde l'extension** : `th.webp` devient `Canapé blanc.webp` | `generation_service.rename_generation()` |
+| 5 | `UPDATE generations SET filename = …` | `postgres_repository.rename_generation()` |
+| 6 | `changeModelCategory()` envoie `PATCH /models/{id}/category` avec `{"category": "canape"}` | `api.js` |
+| 7 | Le service refuse une catégorie inconnue ou désactivée (même règle qu'à l'envoi d'une photo) | `generation_service.change_category()` |
+| 8 | `UPDATE generations SET category_id = (SELECT id FROM categories WHERE slug = …)` | `postgres_repository.set_generation_category()` |
+| 9 | La fiche se met à jour ; dans « Mes modèles », le modèle apparaît sous « Canapé » avec son nouveau nom | `GET /models/gallery` |
+
+Ce qui **ne change pas** : les fichiers `{id}.glb` et la photo (ils sont nommés par identifiant), l'UUID public et l'intégration. Une iframe déjà collée sur un site continue de fonctionner.
+
+**Pourquoi c'est simple :** la galerie affiche `Path(filename).stem` (le nom sans extension), et la catégorie est déjà une colonne `category_id`. Il n'y a donc **aucune migration** : on met à jour deux colonnes existantes.
+
+**Question du jury :** « Pourquoi deux routes plutôt qu'une ? » → « Chaque route a une seule responsabilité et ses propres erreurs (nom invalide d'un côté, catégorie désactivée de l'autre). Le formulaire n'appelle que celle dont la valeur a changé. »
 
 ### 10.6 Exemples — `#/exemples`
 
@@ -1403,7 +1431,7 @@ sequenceDiagram
 
 ## 14. Tests et CI/CD
 
-**En une phrase :** 159 tests automatiques (au 15 novembre 2026) vérifient le backend et les fichiers du frontend, et GitHub les relance à chaque envoi de code.
+**En une phrase :** 193 tests automatiques (au 17 novembre 2026) vérifient le backend et les fichiers du frontend, et GitHub les relance à chaque envoi de code.
 
 ### 14.1 Ce que prouvent les tests
 
@@ -1501,11 +1529,15 @@ Ouvrez `http://127.0.0.1:8000`. Variante automatique, recommandée : `.\scripts\
 | `.\scripts\dev.ps1` | **8001** | Oui pour le serveur, non pour les tests |
 | `uvicorn … --port 8000` à la main | **8000** (ou le port choisi) | Oui |
 
-⚠️ Si un serveur répond déjà sur le port, `dev.ps1` affiche « API prête » **sans le redémarrer** : après une modification de `backend/.env`, arrêtez d'abord l'ancien serveur. Le serveur tourne en arrière-plan et ne s'arrête pas quand on ferme le terminal :
+⚠️ Si un serveur répond déjà sur le port, `dev.ps1` le **réutilise sans le redémarrer** et affiche un avertissement jaune (depuis l'étape 26). Uvicorn est lancé sans rechargement automatique : il garde le code Python chargé à son démarrage. Après un `git pull` qui touche le backend, ou une modification de `backend/.env`, arrêtez d'abord l'ancien serveur. Il tourne en arrière-plan et ne s'arrête pas quand on ferme le terminal. Cette commande arrête les deux processus d'Uvicorn (parent et enfant) :
 
 ```powershell
-Get-NetTCPConnection -LocalPort 8001 -State Listen | ForEach-Object { Stop-Process -Id $_.OwningProcess }
+Get-CimInstance Win32_Process -Filter "Name='python.exe'" | Where-Object CommandLine -match 'uvicorn' | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
 ```
+
+Puis relancez `.\scripts\dev.ps1`. PostgreSQL tourne dans Docker : il n'est pas arrêté, et les modèles restent en base.
+
+⚠️ N'arrêtez pas le serveur **pendant une génération** (jusqu'à environ 300 s) : elle tourne dans ce processus. Au redémarrage, une création interrompue passe en `FAILED`.
 
 ### 15.3 Erreurs fréquentes
 
@@ -1518,6 +1550,8 @@ Get-NetTCPConnection -LocalPort 8001 -State Listen | ForEach-Object { Stop-Proce
 | Badge « Serveur 3D : hors ligne » | Voir la section 17 (fournisseur non configuré, ancien serveur, quota, Colab expiré…) | Lire `/health/provider`, puis suivre la section 17 |
 | « Les tests ont échoué ; le serveur n'a pas été démarré » | Un test a échoué : `dev.ps1` refuse alors de démarrer le serveur | Lire le nom du test en rouge ; mettre le dépôt à jour (`git pull`) |
 | « API prête » mais l'ancienne configuration reste active | Un ancien serveur occupait déjà le port | Arrêter l'ancien serveur (commande ci-dessus), relancer |
+| « Not Found » en enregistrant une modification, alors que le bouton « ✎ Modifier » s'affiche | Le serveur a été démarré **avant** le `git pull` : il ne connaît pas encore la route. Le bouton apparaît quand même, car les fichiers du frontend sont relus depuis le disque | Arrêter l'ancien serveur (commande ci-dessus), relancer `dev.ps1`, puis **Ctrl+F5**. Le code actuel répond « Modèle introuvable. », jamais « Not Found » |
+| `Stop-Process : … valeur nulle` | Le serveur était déjà arrêté (par exemple par une première commande d'arrêt) | Rien à faire : relancer `dev.ps1` |
 | « The read operation timed out » | Space TRELLIS très lent (ancien délai de 5 s) | Corrigé (120 s par requête) ; mettre le dépôt à jour |
 | Le bouton « Supprimer ce modèle » n'apparaît pas | Ancienne version de `model-detail.js` en cache | **Ctrl+F5**, ou F12 puis « Vider le cache et effectuer une actualisation forcée » |
 | « Quota GPU gratuit du Space TRELLIS atteint » | Quota journalier épuisé | Réessayer plus tard ; ajouter un jeton gratuit `HF_TOKEN` |
@@ -1976,7 +2010,7 @@ async def create_model_generation(
 
 Les routes **publiques** (`/public/models/{public_id}` et `/glb`) passent toutes par `_get_enabled_public_model` (ligne ~155) : 404 si le modèle n'existe pas, n'est pas `DONE`, n'est pas activé ou n'a plus de fichier. La même réponse 404 dans tous les cas : on ne révèle pas pourquoi.
 
-Autres routes du fichier : `POST /models/import` (GLB local, extension `.glb`, taille ≤ `MAX_GLB_UPLOAD_MB`, format GLB 2.0), `POST /models/examples/{id}/copy`, `GET /models/gallery`, `PATCH /models/{id}/integration`, `DELETE /models/{id}` (étape 23), `GET /models/{id}`, `/glb`, `/source-image`.
+Autres routes du fichier : `POST /models/import` (GLB local, extension `.glb`, taille ≤ `MAX_GLB_UPLOAD_MB`, format GLB 2.0), `POST /models/examples/{id}/copy`, `GET /models/gallery`, `PATCH /models/{id}/integration`, `PATCH /models/{id}/name` (étape 25), `PATCH /models/{id}/category` (étape 26), `DELETE /models/{id}` (étape 23), `GET /models/{id}`, `/glb`, `/source-image`.
 
 **Question du jury :** « Pourquoi 202 et pas 200 ? » → « Le modèle n'existe pas encore au moment de la réponse ; 202 dit "accepté, en cours", et la réponse donne l'adresse de suivi. »
 
@@ -2014,7 +2048,7 @@ def _frame_ancestors(request: Request) -> str:
 | `glb_finisher.py` | Complète le GLB | Lit l'en-tête et les chunks, ajoute des normales (moyenne pondérée par l'aire des triangles), un matériau mat, met `metallicFactor` à 0 quand il manque. **Ne lève jamais d'exception** : en cas de doute, renvoie le fichier d'origine. |
 | `demo_gallery.py` | Les 5 exemples | Liste fixe de noms autorisés ; `is_valid_glb_2` vérifie octet par octet : `glTF`, version 2, longueur totale, chunk JSON multiple de 4, `asset.version == "2.0"`. |
 | `category_service.py` | Règles des catégories | Slug en minuscules, chiffres et tirets (64 caractères max), libellé non vide (100 max), `require_active` pour les envois. |
-| `generation_service.py` | Orchestration | Machine à états, verrou `RLock` autour des lectures/écritures, masquage du jeton dans les erreurs, suppression (étape 23). |
+| `generation_service.py` | Orchestration | Machine à états, verrou `RLock` autour des lectures/écritures, masquage du jeton dans les erreurs, suppression (étape 23), renommage `rename_generation` (étape 25) et changement de catégorie `change_category` (étape 26). |
 
 ```python
 # backend/app/services/image_preparer.py, cœur du cadrage (extrait)
@@ -2539,7 +2573,7 @@ flowchart LR
 
 | Technique | Où (fichier : ligne) | Extrait réel | Ce que ça fait | 🔁 Équivalent | Sans elle |
 |---|---|---|---|---|---|
-| **Modules ES** (`import` / `export`) | `router.js` : 8-17 | `import * as createPage from "./pages/create.js?v=20261115-e1";` | Chaque fichier exporte ce qu'il partage ; le navigateur charge les dépendances | `import { X } from './x'` en TypeScript/Angular | Un seul gros fichier, ou des variables globales |
+| **Modules ES** (`import` / `export`) | `router.js` : 8-17 | `import * as createPage from "./pages/create.js?v=20261117-r2";` | Chaque fichier exporte ce qu'il partage ; le navigateur charge les dépendances | `import { X } from './x'` en TypeScript/Angular | Un seul gros fichier, ou des variables globales |
 | **`async` / `await` et `fetch`** | `api.js` : 24-34 | `const response = await fetch("/models", { method: "POST", body, ... });` | Écrit du code asynchrone comme du code séquentiel | `Observable` + `subscribe` d'Angular `HttpClient` | Des chaînes de `.then()` imbriquées |
 | **Littéraux de gabarit** | `model-detail.js` (fonction `integrationSnippet`) | `` `<iframe src="${baseUrl}/embed/${encodeURIComponent(publicId)}" ...>` `` | Chaîne multiligne avec `${...}` | Interpolation `{{ }}` des templates Angular | Concaténations `"..." + x + "..."` |
 | **Création du DOM** | `gallery.js` : 20-21 | `const article = document.createElement("article");` | Construit les éléments un par un ; le texte passe par `textContent` | Le template d'un composant Angular | `innerHTML` avec des données : risque d'injection de script |
@@ -2551,7 +2585,7 @@ flowchart LR
 | **Routage par `#`** | `router.js` : 42, 173 | `window.addEventListener("hashchange", renderRoute);` | Change de page sans recharger ; le serveur ne sert que `index.html` | `RouterModule` avec `useHash: true` | Un rechargement complet à chaque clic |
 | **Web Component** | `widget.js` : 10, 45 | `class Forma3DViewer extends HTMLElement { connectedCallback() {...} }` | Crée une vraie balise HTML `<forma3d-viewer>` | Angular Elements | Le client devrait copier une iframe et calculer l'adresse lui-même |
 | **Shadow DOM** | `widget.js` : 12 | `this.attachShadow({ mode: "open" })` | Isole le style du widget de celui du site | `ViewEncapsulation.ShadowDom` | Les styles de la boutique déformeraient le widget |
-| **Clés de cache `?v=`** | tous les imports | `"./api.js?v=20261115-e1"` | Changer la valeur force le navigateur à recharger le fichier | Empreinte dans le nom des fichiers d'un build Angular (`main.3f2a.js`) | L'ancienne version reste en cache (vécu : bouton « Supprimer » invisible avant Ctrl+F5, car la valeur n'avait pas changé) |
+| **Clés de cache `?v=`** | tous les imports | `"./api.js?v=20261117-r2"` | Changer la valeur force le navigateur à recharger le fichier | Empreinte dans le nom des fichiers d'un build Angular (`main.3f2a.js`) | L'ancienne version reste en cache (vécu : bouton « Supprimer » invisible avant Ctrl+F5, car la valeur n'avait pas changé) |
 | **Fonction immédiatement exécutée** | `widget.js` : 5 | `(() => { ... })();` | Aucune variable globale sur le site client | Portée d'un module | Conflit possible avec les variables de la boutique |
 
 ### 22.4 CSS

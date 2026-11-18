@@ -28,6 +28,8 @@ Dernière mise à jour : 17 novembre 2026.
 
 - Étape 26 : le bouton devient « ✎ Modifier » (nom et catégorie) ; route `PATCH /models/{id}/category` (catégorie active uniquement, 422 sinon). Cause du « Not Found » observé par l'étudiante : le serveur Uvicorn du port 8001 avait été démarré avant la récupération de l'étape 25 et gardait l'ancien code ; `dev.ps1` affiche désormais un avertissement quand il réutilise un serveur déjà lancé. Observé : `193 passed`. Clé de cache `20261117-r2`. Non vérifié dans le navigateur par l'assistant. Détails : `docs/etapes/etape-26.md`.
 
+- Documentation (18/11/2026) : `docs/COMPRENDRE-FORMA3D.md` intègre les étapes 25 et 26 (bouton « ✎ Modifier », nouvelle sous-partie 10.5 b, routes `PATCH /models/{id}/name` et `/category`, 193 tests, clé de cache `20261117-r2`) et le dépannage du « Not Found » causé par un ancien serveur (section 15).
+
 ## Avenant au cahier des charges v1.0
 
 Les Sprints 3 (comptes publics) et 4 (vitrine/catalogue public) sont retirés du périmètre. L'objectif prioritaire est un module 3D intégrable partout, composé d'une API avec clé et d'un widget ; le Studio est la console privée mono-propriétaire. Limite connue : le Studio n'a pas d'authentification, donc usage local ou démonstration uniquement ; ne pas l'exposer publiquement tel quel.
