@@ -81,3 +81,27 @@ Sur GitHub (à observer par l'étudiante après le push) :
 « Le job de tests est écrit une seule fois et réutilisé par la CI et la release : impossible qu'ils
 divergent. Dependabot surveille les dépendances sans effort. La protection de `main` rend obligatoire le
 passage par une PR verte, comme dans les grands projets open source. Le tout reste gratuit. »
+
+## 6. Premier retour de Dependabot : PR pytest 9 bloquée (22/11/2026)
+
+Le 21/11/2026, Dependabot a ouvert cinq PR. Quatre étaient vertes ; la PR #22 (pytest 8 → 9, version
+majeure) était rouge : trois tests échouaient avec
+`AttributeError: State object has no attribute 'generation_provider'`.
+
+**Cause.** `tests/test_health.py` et `tests/test_trellis_provider.py` remplaçaient le fournisseur par
+`monkeypatch.setattr(app.state, "generation_provider", ...)`. `app.state` (Starlette) range ses valeurs
+dans un dictionnaire interne `_state`, pas comme de vrais attributs. Avec pytest 9, `monkeypatch` ne
+retrouve pas l'ancienne valeur et **supprime** l'attribut à la fin du test : le premier test passe, les
+suivants échouent. Reproduit isolément le 22/11/2026 : pytest 8 → 5 tests réussis ; pytest 9 → `setattr`
+échoue au 2e passage, `setitem` réussit.
+
+**Correction (branche `fix/tests-pytest9`).** Les deux tests utilisent
+`monkeypatch.setitem(app.state._state, "generation_provider", ...)`, qui restaure correctement la valeur
+avec pytest 8 comme avec pytest 9. Aucun code de l'application ne change.
+
+**Vérification.** La CI de cette PR (pytest 8) doit rester verte ; après fusion, Dependabot rebase #22,
+dont la CI (pytest 9) doit passer au vert. La suite complète n'a pas été lancée en local (PostgreSQL de
+test non démarré).
+
+**Pour la soutenance.** « La CI a bloqué une mise à jour majeure qui cassait trois tests. J'ai trouvé la
+cause, je l'ai reproduite isolément et j'ai corrigé les tests. La PR Dependabot est ensuite redevenue verte. »

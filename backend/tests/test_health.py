@@ -33,8 +33,10 @@ def test_provider_health_endpoint_exposes_only_the_status(status: str, monkeypat
     """Prouve que /health/provider ne renvoie que le statut et un message, jamais l'adresse du serveur."""
     # La route lit app.state.generation_provider (TripoSR ou TRELLIS selon IMAGE3D_PROVIDER) :
     # on remplace cet objet-là pour que le test ne dépende pas du .env de la développeuse.
-    # monkeypatch (fixture pytest) : remplace un attribut le temps du test, puis le restaure automatiquement.
-    monkeypatch.setattr(main_module.app.state, "generation_provider", main_module.provider)
+    # monkeypatch (fixture pytest) : remplace une valeur le temps du test, puis la restaure automatiquement.
+    # app.state (Starlette) range ses valeurs dans le dictionnaire _state : setitem le remplace et le
+    # restaure correctement. setattr ne convient pas : pytest 9 supprimerait la valeur après le test.
+    monkeypatch.setitem(main_module.app.state._state, "generation_provider", main_module.provider)
     monkeypatch.setattr(main_module.provider, "health_status", lambda: status)
 
     response = client.get("/health/provider")
