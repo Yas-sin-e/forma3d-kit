@@ -1,6 +1,6 @@
 # Dépendances du backend, de ses tests locaux et de l'adaptateur vérifié à l'étape 3.
 # FastAPI : framework web du serveur (routes HTTP, validation, documentation /docs). Rôle de Spring Boot.
-fastapi>=0.147,<1.0
+fastapi>=0.164.0,<1.0
 # Uvicorn : serveur HTTP qui exécute l'application FastAPI. Rôle de Tomcat.
 uvicorn>=0.30,<1.0
 # httpx2 : client HTTP ; sert au contrôle de santé du fournisseur 3D (état du Space ou du serveur Gradio).
