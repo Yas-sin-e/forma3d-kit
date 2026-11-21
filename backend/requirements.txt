@@ -6,7 +6,7 @@ uvicorn>=0.30,<1.0
 # httpx2 : client HTTP ; sert au contrôle de santé du fournisseur 3D (état du Space ou du serveur Gradio).
 httpx2>=2.0,<3.0
 # pytest : lance les tests automatiques (backend/tests). Rôle de JUnit.
-pytest>=8.0,<9.0
+pytest>=9.2.0,<10.0
 # python-multipart : lit les formulaires avec fichier (envoi d'une photo ou d'un GLB).
 python-multipart>=0.0.20,<1.0
 # gradio_client : appelle les services d'IA Gradio (Space TRELLIS, serveur TripoSR) depuis Python.
