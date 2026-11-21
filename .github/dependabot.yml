@@ -1,0 +1,39 @@
+# Rôle : configuration de Dependabot (service gratuit de GitHub) qui surveille les dépendances du projet
+# et ouvre automatiquement une pull request quand une mise à jour ou un correctif de sécurité existe.
+# Exécution : par GitHub lui-même, chaque lundi ; aucune commande à lancer. Chaque PR ouverte passe par
+# la CI (ci.yml) comme n'importe quelle PR : on ne fusionne que si elle est verte.
+# Les PR de sécurité (alertes Dependabot) peuvent arriver à tout moment, en dehors de ce calendrier.
+version: 2
+
+updates:
+  # Actions GitHub utilisées dans .github/workflows/ (checkout, setup-python, docker/*…).
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    # Une seule PR qui regroupe toutes les actions : moins de bruit pour un projet individuel.
+    groups:
+      github-actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "ci"
+
+  # Dépendances Python du backend (backend/requirements.txt).
+  - package-ecosystem: pip
+    directory: "/backend"
+    schedule:
+      interval: weekly
+      day: monday
+    # Mises à jour mineures et correctifs regroupés ; une version majeure arrive dans sa propre PR,
+    # car elle peut casser l'API d'une bibliothèque et mérite une vérification séparée.
+    groups:
+      python-minor-patch:
+        update-types: ["minor", "patch"]
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore"
+
+# Image de base du Dockerfile (python:3.12-slim) volontairement NON surveillée : Dependabot proposerait
+# python:3.13-slim, ce qui changerait la version de production alignée sur la matrice de la CI.
+# Ce changement reste une décision manuelle.

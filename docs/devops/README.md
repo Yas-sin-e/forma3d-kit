@@ -23,7 +23,8 @@ Le code applicatif n'est pas noté : seule la chaîne DevOps l'est.
 | P8 | `docs/devops-final` | Documentation finale | — | Fait (PR à fusionner) | [FICHE-PROJET.md](FICHE-PROJET.md), [PREUVES.md](PREUVES.md), [QUIZ.md](QUIZ.md) |
 | P9 | — | Répétition de la soutenance | 4 | Scénario écrit ; à répéter | [SOUTENANCE.md](SOUTENANCE.md) |
 | B2, B3 | `ci/bonus-matrix-deploy` | Bonus : déploiement automatique sur tag, matrice Python 3.12/3.13 | +3 | Code écrit ; B3 à observer sur la PR, B2 à prouver par le tag `v1.2.0` | [GUIDE-BAREME.md](GUIDE-BAREME.md) §8 |
-| B1 | — | Bonus : protection de `main` | +1 | Décision de l'étudiante (dépôt public ou GitHub Education) | [GUIDE-BAREME.md](GUIDE-BAREME.md) §8 |
+| P10 | `ci/reusable-tests-dependabot` | Workflow de tests réutilisable, Dependabot, protection de `main` | B1 (+1) | Écrit, YAML validé en local ; exécution GitHub et règle de protection à observer | [phase-10.md](phase-10.md) |
+| B1 | — | Bonus : protection de `main` | +1 | Rulesets disponibles ; contrôles à ajouter après la PR de P10 (nouveaux noms `test / …`) | [phase-10.md](phase-10.md) §3 |
 
 ## Ordre de fusion des branches
 

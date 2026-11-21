@@ -19,67 +19,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Le job de tests est défini UNE seule fois dans reusable-tests.yml (aussi appelé par release.yml).
+  # Bonus B3, matrice de versions : 3.12 = version de l'image Docker (production) ;
+  # 3.13 = version suivante (compatibilité future). Rapport JUnit publié en artefact.
+  # Noms des contrôles affichés : « test / test (Python 3.12) » et « test / test (Python 3.13) ».
   test:
-    name: test (Python ${{ matrix.python-version }})
-    runs-on: ubuntu-latest
-    # Bonus B3, matrice de versions : le même job tourne une fois par version de Python.
-    # 3.12 = version de l'image Docker (production) ; 3.13 = version suivante (compatibilité future).
-    # fail-fast: false : si une version échoue, l'autre va quand même au bout, on voit les DEUX résultats.
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.12", "3.13"]
-    # Service container : un vrai PostgreSQL démarré à côté du job ; tous les tests en ont besoin.
-    # Valeurs fictives : cette base est jetable et n'existe que pendant le job.
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_USER: forma3d
-          POSTGRES_PASSWORD: ci-password
-          POSTGRES_DB: forma3d_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U forma3d -d forma3d_test"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
-    env:
-      # Comme scripts/dev.ps1 : aucun .env lu, aucun fournisseur 3D contacté pendant les tests.
-      PYTHON_DOTENV_DISABLED: "true"
-      HF_SPACE_ID: ""
-      TEST_DATABASE_URL: postgresql://forma3d:ci-password@localhost:5432/forma3d_test
-    steps:
-      - name: Récupérer le code
-        uses: actions/checkout@v7
-
-      - name: Installer Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v7
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: pip
-          cache-dependency-path: backend/requirements.txt
-
-      - name: Installer les dépendances
-        run: python -m pip install -r backend/requirements.txt
-
-      - name: Contrôler le dépôt (script de l'atelier 2)
-        run: ./scripts/check-project.sh
-
-      - name: Lancer les tests (PostgreSQL) avec rapport JUnit
-        working-directory: backend
-        run: python -m pytest -q --junitxml=report.xml
-
-      # if: always() : le rapport est publié MÊME si les tests échouent ; c'est là qu'il est utile.
-      - name: Publier le rapport de tests
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          # Un artefact par version de la matrice (deux artefacts du même nom entreraient en conflit).
-          name: rapport-tests-${{ matrix.python-version }}
-          path: backend/report.xml
-          if-no-files-found: warn
+    uses: ./.github/workflows/reusable-tests.yml
+    with:
+      python-versions: '["3.12", "3.13"]'
+      junit-report: true
 
   docker-build:
     name: docker-build

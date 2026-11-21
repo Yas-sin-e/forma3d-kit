@@ -1,0 +1,88 @@
+# Rôle : workflow RÉUTILISABLE qui contient le seul job « test » du projet (contrôle du dépôt + pytest
+# sur PostgreSQL). Il évite de recopier les mêmes étapes dans ci.yml et release.yml.
+# Exécution : jamais seul. GitHub le lance uniquement quand un autre workflow l'appelle avec
+#   uses: ./.github/workflows/reusable-tests.yml
+# Dans l'onglet Checks, ses jobs apparaissent sous le nom « <job appelant> / test (Python X.Y) ».
+name: Tests (réutilisable)
+
+on:
+  workflow_call:
+    inputs:
+      python-versions:
+        description: "Liste JSON des versions de Python à tester, ex. [\"3.12\", \"3.13\"]"
+        type: string
+        default: '["3.12"]'
+      strict:
+        description: "Passe --strict à check-project.sh (arbre de travail propre exigé)"
+        type: boolean
+        default: false
+      junit-report:
+        description: "Produit et publie le rapport JUnit des tests en artefact"
+        type: boolean
+        default: false
+
+# Moindre privilège : un workflow appelé ne peut jamais avoir plus de droits que son appelant ;
+# on le limite en plus explicitement à la lecture du dépôt.
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    # Matrice construite à partir de l'entrée : ci.yml teste 3.12 et 3.13 (bonus B3), release.yml 3.12.
+    # fail-fast: false : si une version échoue, l'autre va au bout, on voit les deux résultats.
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ${{ fromJSON(inputs.python-versions) }}
+    # Service container : un vrai PostgreSQL jetable démarré à côté du job (valeurs fictives).
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: forma3d
+          POSTGRES_PASSWORD: ci-password
+          POSTGRES_DB: forma3d_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U forma3d -d forma3d_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      # Comme scripts/dev.ps1 : aucun .env lu, aucun fournisseur 3D contacté pendant les tests.
+      PYTHON_DOTENV_DISABLED: "true"
+      HF_SPACE_ID: ""
+      TEST_DATABASE_URL: postgresql://forma3d:ci-password@localhost:5432/forma3d_test
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v7
+
+      - name: Installer Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Installer les dépendances
+        run: python -m pip install -r backend/requirements.txt
+
+      - name: Contrôler le dépôt (check-project.sh)
+        run: ./scripts/check-project.sh ${{ inputs.strict && '--strict' || '' }}
+
+      - name: Lancer les tests (PostgreSQL)
+        working-directory: backend
+        run: python -m pytest -q ${{ inputs.junit-report && '--junitxml=report.xml' || '' }}
+
+      # if: always() : le rapport est publié MÊME si les tests échouent ; c'est là qu'il est utile.
+      - name: Publier le rapport de tests
+        if: always() && inputs.junit-report
+        uses: actions/upload-artifact@v7
+        with:
+          # Un artefact par version de la matrice (deux artefacts du même nom entreraient en conflit).
+          name: rapport-tests-${{ matrix.python-version }}
+          path: backend/report.xml
+          if-no-files-found: warn

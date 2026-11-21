@@ -211,8 +211,9 @@ Observé le 16/11/2026 avec les images de GHCR (sorties dans `phase-07.md` §4b)
 2. activer GitHub Education (Pro gratuit pour les étudiants).
 
 Ensuite : *Settings → Rules → Rulesets → New branch ruleset* → cible `main` → cocher *Require a pull
-request before merging* et *Require status checks to pass* → ajouter les checks `test (Python 3.12)`,
-`test (Python 3.13)` et `docker-build`. **Preuve :** la PR #15 (rouge) affiche « Merging is blocked ».
+request before merging* et *Require status checks to pass* → ajouter les checks `test / test (Python 3.12)`,
+`test / test (Python 3.13)` et `docker-build` (noms depuis la phase P10, qui appelle le workflow
+réutilisable `reusable-tests.yml` ; ils n'apparaissent dans la liste qu'après une première exécution). **Preuve :** la PR #15 (rouge) affiche « Merging is blocked ».
 
 ### B2 — Déploiement automatique sur tag (+2)
 **Comment c'est fait :** dans `release.yml`, le job `deploy-staging` (`needs: publish`,
@@ -229,14 +230,15 @@ gh run watch
 Attendu : trois jobs verts, `test` → `publish` → `deploy-staging`, et une entrée dans *Deployments*.
 
 ### B3 — Matrice de versions (+1)
-**Comment c'est fait :** dans `ci.yml`, le job `test` a une `strategy.matrix` avec Python `3.12` et
+**Comment c'est fait :** dans `ci.yml`, le job `test` appelle `reusable-tests.yml` avec
+`python-versions: '["3.12", "3.13"]'` ; ce workflow a une `strategy.matrix` avec Python `3.12` et
 `3.13`, et `fail-fast: false` pour voir les deux résultats même si l'un échoue. Un artefact par version :
 `rapport-tests-3.12`, `rapport-tests-3.13`.
 
 **Résultats à expliquer :** 3.12 est la version de l'image Docker (celle qui tourne réellement) ; 3.13
 prouve que le code est prêt pour la version suivante. Si 3.13 échouait seule, on saurait que le problème
 vient d'une incompatibilité du langage ou d'une dépendance, pas du code métier.
-**Vérifier :** `gh pr checks <numéro de la PR>` → `test (Python 3.12)` et `test (Python 3.13)`.
+**Vérifier :** `gh pr checks <numéro de la PR>` → `test / test (Python 3.12)` et `test / test (Python 3.13)`.
 
 ---
 
