@@ -17,4 +17,4 @@ python-dotenv>=1.0,<2.0
 Pillow>=13.0.0,<14
 # psycopg : pilote PostgreSQL (projet DevOps), utilisé seulement si DATABASE_URL est renseignée.
 # [binary] embarque libpq précompilée : aucune compilation, image Docker légère.
-psycopg[binary]>=3.2,<4
+psycopg[binary]>=3.3.9,<4
