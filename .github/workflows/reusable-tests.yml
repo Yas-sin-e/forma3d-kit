@@ -46,13 +46,15 @@ jobs:
           POSTGRES_DB: forma3d_test
         ports:
           - 5432:5432 #ici le  Tu rends PostgreSQL accessible sur le port 5432 du runner ubunutu
+        # Options du contrôle de santé (les commentaires restent HORS du bloc « >- »,
+        # sinon ils casseraient le texte et le YAML deviendrait invalide) :
+        #   --health-interval 5s : fréquence de contrôle ;
+        #   --health-retries 10  : nombre de contrôles avant de considérer le service comme non sain.
         options: >-
           --health-cmd "pg_isready -U forma3d -d forma3d_test"
           --health-interval 5s
-#frequence de controle
           --health-timeout 3s
           --health-retries 10
-#10 : nombre de contrôles avant de considérer le service comme non sain.
     env:
       # Comme scripts/dev.ps1 : aucun .env lu, aucun fournisseur 3D contacté pendant les tests.
       PYTHON_DOTENV_DISABLED: "true"
