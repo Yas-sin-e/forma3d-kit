@@ -8,7 +8,7 @@ httpx2>=2.0,<3.0
 # pytest : lance les tests automatiques (backend/tests). Rôle de JUnit.
 pytest>=9.2.0,<10.0
 # python-multipart : lit les formulaires avec fichier (envoi d'une photo ou d'un GLB).
-python-multipart>=0.0.20,<1.0
+python-multipart>=0.0.34,<1.0
 # gradio_client : appelle les services d'IA Gradio (Space TRELLIS, serveur TripoSR) depuis Python.
 gradio_client>=2.7.2,<3.0
 # python-dotenv : charge backend/.env (configuration et secrets locaux) dans l'environnement.
