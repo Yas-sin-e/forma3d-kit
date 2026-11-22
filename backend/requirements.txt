@@ -12,7 +12,7 @@ python-multipart>=0.0.20,<1.0
 # gradio_client : appelle les services d'IA Gradio (Space TRELLIS, serveur TripoSR) depuis Python.
 gradio_client>=2.7.2,<3.0
 # python-dotenv : charge backend/.env (configuration et secrets locaux) dans l'environnement.
-python-dotenv>=1.0,<2.0
+python-dotenv>=1.2.4,<2.0
 # Pillow : traitement d'image ; prépare la copie carrée de la photo avant la génération.
 Pillow>=13.0.0,<14
 # psycopg : pilote PostgreSQL (projet DevOps), utilisé seulement si DATABASE_URL est renseignée.
