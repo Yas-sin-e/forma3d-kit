@@ -3,6 +3,7 @@
 Forma3D Studio est un module 3D intégrable dans tout site : son API expose des modèles avec une clé et son widget affiche les modèles activés. Le Studio est la console privée mono-propriétaire ; aucun catalogue public n'est prévu.
 
 ## Contraintes
+ 
 
 - Gratuit : aucun fournisseur payant, aucune carte bancaire et aucun abonnement.
 - Sans entraînement : uniquement des modèles pré-entraînés.
@@ -34,7 +35,7 @@ volumes. `docker compose down` arrête sans effacer ; `docker compose down -v` e
 PostgreSQL est la seule base de données. `scripts/dev.ps1` démarre lui-même le conteneur PostgreSQL (Docker Desktop requis) puis lance les tests et le serveur en local.
 
 Chaîne DevOps (contrôle, image, Compose, CI, release GHCR, staging, rollback) : voir
-[docs/devops/README.md](docs/devops/README.md) et la fiche d'une page
+[docs/devops/README.md](docs/devops/README.md) et la fiche d'une page...
 [docs/devops/FICHE-PROJET.md](docs/devops/FICHE-PROJET.md).
 
 ## Répertoires et documents
