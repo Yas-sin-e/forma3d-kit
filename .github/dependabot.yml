@@ -29,7 +29,10 @@ updates:
     # car elle peut casser l'API d'une bibliothèque et mérite une vérification séparée.
     groups:
       python-minor-patch:
-        update-types: ["minor", "patch"]
+        update-types: ["minor", "patch"]  #MAJOR.MINOR.PATCH  2.5.3 Le dernier chiffre change.
+                          #2.5.3 -> 2.5.4Cela correspond généralement à une correction de bug sans changement fonctionnel incompatible.
+                           # 2.5.3 -> 2.6.0Cela correspond généralement à l'ajout de fonctionnalités compatibles avec la version précédente.
+                            #2.5.3 -> 3.0.0 Cela peut introduire des changements incompatibles avec ton code existant.
     open-pull-requests-limit: 5
     commit-message:
       prefix: "chore"

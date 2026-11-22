@@ -9,12 +9,13 @@ name: Release
 
 on:
   push:
-    tags: ["v*.*.*"]
+    tags: ["v*.*.*"]  #  surveilles les tags Git. Un tag est une étiquette associée à un commit précis. Commit C  <---- v1.2.0
+    #git tag -a v1.2.0 -m "Release 1.2.0" git push origin v1.2.0
 
 # Moindre privilège : lire le code et écrire UNIQUEMENT dans les paquets (GHCR) de ce dépôt.
 permissions:
-  contents: read
-  packages: write
+  contents: read # droit de lire le dépôt GitHub .récupérer le code pour construire l'image
+  packages: write #publier une image dans GitHub Container Registry.
 
 env:
   IMAGE_NAME: ghcr.io/yas-sin-e/forma3d
@@ -28,7 +29,7 @@ jobs:
       python-versions: '["3.12"]'
       strict: true
 
-  publish:
+  publish:  #construire et de publier l'image Docker
     name: publish
     runs-on: ubuntu-latest
     needs: test
@@ -49,17 +50,18 @@ jobs:
       # Calcule le tag (= nom du tag Git, ex. v1.0.0) et les labels OCI de traçabilité :
       # source (dépôt), revision (commit), version.
       - name: Métadonnées de l'image
-        id: meta
-        uses: docker/metadata-action@v6
+        id: meta #réutiliser les résultats de cette étape plus tard
+        uses: docker/metadata-action@v6 #générer automatiquement les tags et les labels de ton image en fonction du contexte GitHub.
         with:
           images: ${{ env.IMAGE_NAME }}
           # latest=false : on ne publie JAMAIS de tag « latest » (il bouge à chaque version, donc
           # il n'est pas immuable) ; seul le tag de version exact existe.
-          flavor: |
+          flavor: |  # contrôle notamment certains comportements automatiques des tags.
             latest=false
           tags: |
             type=ref,event=tag
-          labels: |
+          #Tag Git : v1.2.0  img: ghcr.io/yas-sin-e/forma3d:v1.2.0 l'image reprenne automatiquement le tag Git
+          labels: |  #information descriptive attachée à une image.
             org.opencontainers.image.title=forma3d
             org.opencontainers.image.description=API Forma3D Studio (FastAPI + Studio + widget)
 
@@ -97,8 +99,8 @@ jobs:
       # Même procédure que sur le poste : modèle de configuration (valeurs fictives) + version par IMAGE_TAG.
       - name: Mettre en service l'image du tag (sans reconstruire)
         run: |
-          cp .env.staging.example .env.staging
-          echo "IMAGE_TAG=${{ github.ref_name }}" > .env.deploy
+          cp .env.staging.example .env.staging  #Tu fabriques un fichier de configuration de staging à partir du modèle fourni
+          echo "IMAGE_TAG=${{ github.ref_name }}" > .env.deploy #transmettre au déploiement la version exacte qui vient d'être publiée
           docker compose -p forma3d-staging -f compose.staging.yaml --env-file .env.deploy pull api
           docker compose -p forma3d-staging -f compose.staging.yaml --env-file .env.deploy up -d
 
@@ -107,7 +109,7 @@ jobs:
         run: ./scripts/wait-healthy.sh
 
       - name: Journaux en cas d'échec
-        if: failure()
+        if: failure() #xécuter cette étape lorsqu'une étape précédente du job est en échec.
         run: docker compose -p forma3d-staging -f compose.staging.yaml --env-file .env.deploy logs --tail=50
 
       - name: Résumé

@@ -4,6 +4,7 @@
 # « docker-build » ne démarre pas : on ne construit jamais une image à partir d'un code qui échoue.
 name: CI
 
+ #Les déclencheurs
 on:
   pull_request:
   push:
@@ -14,9 +15,12 @@ permissions:
   contents: read
 
 # Une nouvelle exécution sur la même branche annule la précédente (économise les minutes gratuites).
+# 4 La gestion des exécutions
+
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.ref }} # github.ref est une valeur fournie par GitHub qui représente la référence associée à l'événement.
+  #refs/heads/main
+  cancel-in-progress: true #Si une nouvelle exécution arrive dans le même groupe, une exécution précédente en cours peut être annulée.
 
 jobs:
   # Le job de tests est défini UNE seule fois dans reusable-tests.yml (aussi appelé par release.yml).
@@ -34,6 +38,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     # L'application exige PostgreSQL : le test de fumée a besoin d'une base, comme en production.
+
+    #le runner est indépendant de celui du workflow réutilisable.
+    #Il ne possède pas automatiquement le conteneur PostgreSQL et les fichiers générés par les tests du job précédent.
+    #tester l'application lorsqu'elle fonctionne réellement dans son image Docker.
     services:
       postgres:
         image: postgres:17-alpine
@@ -51,7 +59,9 @@ jobs:
     steps:
       - name: Récupérer le code
         uses: actions/checkout@v7
-
+      #Docker : outil de conteneurisation.
+      #BuildKit : moteur de construction.
+      #Buildx : interface qui utilise BuildKit pour construire les images.
       - name: Préparer Buildx
         uses: docker/setup-buildx-action@v4
 
@@ -61,15 +71,20 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
-          push: false
-          load: true
+#          Docker utilise le contenu du contexte pour construire l'image,
+#          en tenant compte du Dockerfile et des fichiers exclus par .dockerignore.
+          push: false #ne pas publier l'image sur un registre.
+          load: true #charger l'image construite dans le moteur Docker local du runner
           tags: forma3d:ci
 
       # Test de fumée : l'image démarre-t-elle vraiment et répond-elle sur /health ?
       - name: Test de fumée /health
-        run: |
-          # --network host : le conteneur joint la base du service sur localhost:5432 du runner,
+        run: |  # | permet d'écrire les commandes sur plusieurs lignes.
+          # --network host : le conteneur joint la base du service sur localhost:5432 du runner 	
+          #Utilise le réseau de l'hôte sur ce runner Linux.,
+          
           # et l'API répond sur localhost:8080 sans publication de port.
+          
           docker run -d --name smoke --network host \
             -e DATABASE_URL=postgresql://forma3d:ci-password@localhost:5432/forma3d \
             forma3d:ci
@@ -80,3 +95,5 @@ jobs:
           echo "image non saine" >&2
           docker logs smoke >&2
           exit 1
+          
+          #>&2 signifie que tu rediriges la sortie vers le flux d'erreur standard.

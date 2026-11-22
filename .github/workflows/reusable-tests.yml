@@ -6,36 +6,36 @@
 name: Tests (réutilisable)
 
 on:
-  workflow_call:
-    inputs:
+  workflow_call: # ce workflow peut appaler par un autre workflow
+    inputs: #les parametre:d'entrer
       python-versions:
-        description: "Liste JSON des versions de Python à tester, ex. [\"3.12\", \"3.13\"]"
+        description: "Liste JSON des versions de Python à tester, ex. [\"3.12\", \"3.13\"]" #le description expliquer ce que le parmatre attend,et distiner aux devoplleur
         type: string
         default: '["3.12"]'
-      strict:
+      strict: #permet de decider si le controle de dipot doit etre strict ?
         description: "Passe --strict à check-project.sh (arbre de travail propre exigé)"
         type: boolean
         default: false
-      junit-report:
+      junit-report: #genere le fichier XML aavec le resulat de test ,mais dans le relese pas besoin de publier ce rapport
         description: "Produit et publie le rapport JUnit des tests en artefact"
         type: boolean
         default: false
 
 # Moindre privilège : un workflow appelé ne peut jamais avoir plus de droits que son appelant ;
 # on le limite en plus explicitement à la lecture du dépôt.
-permissions:
-  contents: read
+permissions: #ici on definit les autorisation du jeton github ACTIION
+  contents: read # CONTNETN LE contenu de depot ,read :autroiser  le lecture suele
 
 jobs:
   test:
-    name: test (Python ${{ matrix.python-version }})
+    name: test (Python ${{ matrix.python-version }}) #test (Python 3.12)
     runs-on: ubuntu-latest
     # Matrice construite à partir de l'entrée : ci.yml teste 3.12 et 3.13 (bonus B3), release.yml 3.12.
     # fail-fast: false : si une version échoue, l'autre va au bout, on voit les deux résultats.
     strategy:
       fail-fast: false
-      matrix:
-        python-version: ${{ fromJSON(inputs.python-versions) }}
+      matrix: #plusieurs exécutions du même job
+        python-version: ${{ fromJSON(inputs.python-versions) }}  #le fromJSON convertit le JSON transmis en objet ou tableau que les expressions GitHub Actions peuvent utiliser.
     # Service container : un vrai PostgreSQL jetable démarré à côté du job (valeurs fictives).
     services:
       postgres:
@@ -45,12 +45,14 @@ jobs:
           POSTGRES_PASSWORD: ci-password
           POSTGRES_DB: forma3d_test
         ports:
-          - 5432:5432
+          - 5432:5432 #ici le  Tu rends PostgreSQL accessible sur le port 5432 du runner ubunutu
         options: >-
           --health-cmd "pg_isready -U forma3d -d forma3d_test"
           --health-interval 5s
+#frequence de controle
           --health-timeout 3s
           --health-retries 10
+#10 : nombre de contrôles avant de considérer le service comme non sain.
     env:
       # Comme scripts/dev.ps1 : aucun .env lu, aucun fournisseur 3D contacté pendant les tests.
       PYTHON_DOTENV_DISABLED: "true"
@@ -58,13 +60,13 @@ jobs:
       TEST_DATABASE_URL: postgresql://forma3d:ci-password@localhost:5432/forma3d_test
     steps:
       - name: Récupérer le code
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7 #récupérer les fichiers de ton dépôt dans le runner.
 
       - name: Installer Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@v7 #préparer Python sur le runner.
         with:
           python-version: ${{ matrix.python-version }}
-          cache: pip
+          cache: pip #Sans cache, le pipeline pourrait télécharger de nouveau les mêmes bibliothèques à chaque exécution
           cache-dependency-path: backend/requirements.txt
 
       - name: Installer les dépendances
@@ -79,10 +81,10 @@ jobs:
 
       # if: always() : le rapport est publié MÊME si les tests échouent ; c'est là qu'il est utile.
       - name: Publier le rapport de tests
-        if: always() && inputs.junit-report
+        if: always() && inputs.junit-report #Cette fonction demande à GitHub d'exécuter l'étape même si une étape précédente a échoué
         uses: actions/upload-artifact@v7
         with:
           # Un artefact par version de la matrice (deux artefacts du même nom entreraient en conflit).
-          name: rapport-tests-${{ matrix.python-version }}
+          name: rapport-tests-${{ matrix.python-version }} #rapport-tests-3.12
           path: backend/report.xml
           if-no-files-found: warn
