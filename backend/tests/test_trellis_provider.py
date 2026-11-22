@@ -175,7 +175,8 @@ def test_health_route_explains_trellis_offline_without_colab_wording(monkeypatch
 
     offline = TrellisSpaceProvider(Settings(image3d_provider="trellis"))
     monkeypatch.setattr(offline, "health_status", lambda: "OFFLINE")
-    monkeypatch.setattr(app.state, "generation_provider", offline)
+    # setitem sur app.state._state (et non setattr) : la valeur d'origine est bien restaurée avec pytest 8 et 9.
+    monkeypatch.setitem(app.state._state, "generation_provider", offline)
     body = TestClient(app).get("/health/provider").json()
     assert body["status"] == "OFFLINE"
     assert "TRELLIS" in body["message"] and "Colab" not in body["message"]
