@@ -24,6 +24,10 @@ Dernière mise à jour : 17 novembre 2026.
 - Correctif P10 (22/11/2026, branche `fix/tests-pytest9`) : la PR Dependabot #22 (pytest 9) échouait car `monkeypatch.setattr(app.state, …)` supprime la valeur après le test avec pytest 9 ; deux tests passent à `monkeypatch.setitem(app.state._state, …)`. Cause reproduite isolément ; **CI GitHub à observer**. Détails : `docs/devops/phase-10.md` §6.
 - **Reste à faire par l'étudiante :** pousser les branches et fusionner les PR dans l'ordre de `docs/devops/README.md`, observer la CI verte puis rouge, taguer et pousser `v1.0.0`, `v1.1.0`, `v1.1.1`, rejouer staging et rollback avec les images GHCR, remplir les ⏳ de `PREUVES.md`. Bonus B1–B3 non commencés.
 
+## Ajout du 23 novembre 2026
+
+- Documentation : nouveau dossier `docs/explications/` (15 fiches numérotées, sur le modèle du dossier `explications` du projet e_commerce) qui explique chaque fichier du backend, du frontend et des tests, dans l'ordre du parcours d'une photo, avec de vrais extraits du code. Le fournisseur TripoSR (`huggingface.py`) est seulement cité, à la demande de l'étudiante. Aucun code modifié ; fiches listées dans `docs/STRUCTURE.md`.
+
 ## Ajout du 17 novembre 2026
 
 - Étape 25 : bouton « ✎ Renommer » sur la fiche d'un modèle enregistré (formulaire en ligne, Entrée enregistre, Échap annule) et route `PATCH /models/{id}/name`. Seule la colonne `filename` change (extension d'origine gardée), sans migration ; GLB, photo et UUID public inchangés. Observé : `189 passed` sur la base PostgreSQL de test. Clé de cache frontend passée à `20261117-r1`. Bouton non vérifié visuellement dans le navigateur par l'assistant. Détails : `docs/etapes/etape-25.md`.
