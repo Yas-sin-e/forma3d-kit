@@ -3,31 +3,52 @@
  * Exécution : router.js monte cette page sur #/accueil (page par défaut après connexion).
  * Les chiffres viennent des routes existantes (galerie, clés API, catégories) ; rien n'est inventé.
  */
+// Importe les trois listes utilisées pour les compteurs.
 import { listApiKeys, listCategories, listGalleryModels } from "../api.js?v=20261117-r2";
+// Importe l'état partagé (santé du serveur 3D).
 import { appState } from "../state.js?v=20261117-r2";
+// Importe la description des exemples et le test « modèle enregistré ».
 import { exampleDescription, isSavedModel } from "../format.js?v=20261117-r2";
+// Importe la fabrication d'une carte de modèle.
 import { createModelCard } from "../views/gallery.js?v=20261117-r2";
+// Importe le dessin du cube (état vide).
 import { emptyCubeIllustration } from "../views/illustrations.js?v=20261117-r2";
+// Importe la correction d'apparence des GLB.
 import { watchProductAppearance } from "../views/model-appearance.js?v=20261117-r2";
 
+// Titre de l'onglet.
 export const title = "Accueil";
 
+// Tracés SVG des icônes, par nom.
 const icons = {
+  // Étincelles (créer).
   sparkle: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z"/><path d="M19 15l.7 2.3L22 18l-2.3.7L19 21l-.7-2.3L16 18l2.3-.7L19 15Z"/>',
+  // Flèche vers le haut (importer).
   upload: '<path d="M12 16V4m0 0-4 4m4-4 4 4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>',
+  // Clé (clés API).
   key: '<circle cx="8" cy="15" r="4"/><path d="m10.8 12.2 8.7-8.7M16 7l3 3M18.5 4.5l2 2"/>',
+  // Livre (guide).
   book: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5v-15Z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20"/>',
+  // Cube (modèles).
   cube: '<path d="m12 2 9 5v10l-9 5-9-5V7l9-5Z"/><path d="m3.5 7.3 8.5 4.9 8.5-4.9M12 12.2V22"/>',
+  // Étiquette (catégories).
   tag: '<path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9Z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
 };
 
 // Renvoie le dessin SVG d'une icône à partir de son nom.
 function icon(name) {
+  // Enveloppe le tracé dans une balise <svg> ignorée par les lecteurs d'écran.
   return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name]}</svg>`;
 }
 
 // Retourne le HTML de l'accueil (bandeau, compteurs, modèles récents, exemples, raccourcis).
 export function render() {
+  // Le gabarit ci-dessous contient, dans l'ordre :
+  // - le bandeau : état du serveur 3D, titre, accroche, boutons « Créer » et « Voir les exemples », viewer 3D décoratif ;
+  // - trois compteurs (modèles enregistrés, clés actives, catégories) avec un lien chacun ;
+  // - « Vos modèles récents » : grille de trois cartes, ou état vide illustré ;
+  // - « Exemples du catalogue » : bande de cartes ;
+  // - quatre raccourcis (créer, importer un GLB, clés API, guide) et la zone d'erreur.
   return `
     <section class="page-shell dashboard-page" aria-labelledby="page-title">
       <header class="hero">
@@ -82,29 +103,46 @@ export function render() {
 
 // Branche l'accueil : charge les compteurs et les cartes, suit l'état du serveur 3D.
 export function mount() {
+  // Pastille d'état du bandeau.
   const heroStatus = document.querySelector("#hero-status");
+  // Texte de cette pastille.
   const heroLabel = document.querySelector("#hero-status-label");
+  // Viewer décoratif du bandeau.
   const heroViewer = document.querySelector("#hero-viewer");
+  // Grille des modèles récents.
   const recentGrid = document.querySelector("#recent-grid");
+  // État vide des modèles récents.
   const recentEmpty = document.querySelector("#recent-empty");
+  // Bande des exemples.
   const strip = document.querySelector("#examples-strip");
+  // Zone d'erreur.
   const errorBox = document.querySelector("#dashboard-error");
+  // Fonction qui ouvre la fiche d'un modèle.
   const openModel = (model) => { window.location.hash = `#/modeles/${encodeURIComponent(model.id)}`; };
 
   // Met à jour le bandeau « Serveur 3D en ligne / hors ligne ».
   function updateHealth(event) {
+    // État reçu par l'événement, sinon celui de l'état partagé.
     const health = event?.detail ?? appState.providerHealth;
+    // Vrai si le serveur est en ligne.
     const online = health?.status === "ONLINE";
+    // data-status : le CSS choisit la couleur.
     heroStatus.dataset.status = online ? "online" : "offline";
+    // Texte de la pastille.
     heroLabel.textContent = online ? "Serveur 3D en ligne · création disponible" : "Serveur 3D hors ligne · exemples disponibles";
   }
 
   // Affiche des cartes grises animées (« squelettes ») pendant le chargement.
   function skeletons(target, total) {
+    // Remplace le contenu de la zone par plusieurs blocs...
     target.replaceChildren(...Array.from({ length: total }, () => {
+      // ...chaque bloc...
       const card = document.createElement("div");
+      // ...a le style « squelette »...
       card.className = "model-card skeleton-card";
+      // ...est ignoré par les lecteurs d'écran...
       card.setAttribute("aria-hidden", "true");
+      // ...et est renvoyé.
       return card;
     }));
   }
@@ -112,51 +150,88 @@ export function mount() {
   // Charge en parallèle modèles, clés et catégories.
   // Promise.allSettled attend toutes les requêtes, même si l'une échoue : chaque compteur s'affiche seul.
   async function load() {
+    // Trois squelettes pour les modèles récents.
     skeletons(recentGrid, 3);
+    // Cinq squelettes pour les exemples.
     skeletons(strip, 5);
+    // Lance les trois demandes et attend toutes les réponses...
     const [galleryResult, keysResult, categoriesResult] = await Promise.allSettled([
+      // ...galerie...
       listGalleryModels(),
+      // ...clés API...
       listApiKeys(),
+      // ...catégories.
       listCategories(),
     ]);
+    // Catégories reçues, ou liste vide.
     const categories = categoriesResult.status === "fulfilled" ? categoriesResult.value.items ?? [] : [];
+    // Compteur des catégories (« — » en cas d'échec).
     document.querySelector("#stat-categories").textContent = categoriesResult.status === "fulfilled" ? String(categories.length) : "—";
+    // Compteur des clés actives...
     document.querySelector("#stat-keys").textContent = keysResult.status === "fulfilled"
+      // ...nombre de clés non révoquées...
       ? String((keysResult.value.items ?? []).filter((key) => !key.revoked).length)
+      // ...ou « — » en cas d'échec.
       : "—";
 
+    // Galerie indisponible...
     if (galleryResult.status !== "fulfilled") {
+      // ...vide les modèles récents...
       recentGrid.replaceChildren();
+      // ...vide les exemples...
       strip.replaceChildren();
+      // ...compteur inconnu...
       document.querySelector("#stat-models").textContent = "—";
+      // ...message d'erreur...
       errorBox.textContent = "Impossible de charger les modèles pour le moment. Vérifiez que le serveur Forma3D est lancé.";
+      // ...affiché...
       errorBox.hidden = false;
+      // ...et arrêt.
       return;
     }
+    // Modèles reçus.
     const items = galleryResult.value.items ?? [];
+    // Modèles enregistrés...
     const saved = items.filter(isSavedModel)
+      // ...triés du plus récent au plus ancien.
       .sort((a, b) => String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")));
+    // Exemples du catalogue.
     const examples = items.filter((model) => !isSavedModel(model));
+    // Compteur des modèles enregistrés.
     document.querySelector("#stat-models").textContent = String(saved.length);
 
+    // État vide visible seulement s'il n'y a aucun modèle.
     recentEmpty.hidden = saved.length > 0;
+    // Grille masquée s'il n'y a aucun modèle.
     recentGrid.hidden = saved.length === 0;
+    // Affiche les trois plus récents.
     recentGrid.replaceChildren(...saved.slice(0, 3).map((model) => createModelCard(model, { categories, onOpen: openModel })));
 
+    // Affiche les exemples...
     strip.replaceChildren(...examples.map((model) => createModelCard(model, {
+      // ...catégories...
       categories,
+      // ...ouverture de la fiche...
       onOpen: openModel,
+      // ...description sous chaque carte.
       description: exampleDescription,
     })));
 
     // Le visuel du héros montre un vrai modèle du catalogue (le premier exemple disponible).
+    // Premier exemple, sinon premier modèle enregistré.
     const heroModel = examples[0] ?? saved[0];
+    // Branche la correction d'apparence.
     watchProductAppearance(heroViewer);
+    // Charge ce modèle dans le viewer du bandeau.
     if (heroModel) heroViewer.src = heroModel.model_url;
   }
 
+  // Écoute les changements d'état du serveur 3D.
   window.addEventListener("forma3d:health", updateHealth);
+  // Affiche l'état actuel.
   updateHealth();
+  // Lance le chargement.
   void load();
+  // Fonction de nettoyage appelée par router.js en quittant la page.
   return () => window.removeEventListener("forma3d:health", updateHealth);
 }

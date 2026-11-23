@@ -4,8 +4,18 @@
  * Refonte : scène soignée (dégradé, grille en perspective, halo), squelette de chargement,
  * bascule Vue 3D / Photo source / Comparer, éclairage plus flatteur et note discrète.
  */
+// Importe le dessin du cube affiché quand la scène est vide.
 import { emptyCubeIllustration } from "../views/illustrations.js?v=20261117-r2";
 
+// Balisage exporté (texte HTML entre accents graves). Il contient, dans l'ordre :
+// - l'en-tête du panneau : titre « Aperçu du modèle », badge d'origine, bascule Vue 3D / Photo source / Comparer ;
+// - le bouton « Aperçu d'un fichier GLB » et son champ de fichier caché, puis le lien Télécharger ;
+// - la scène : grille décorative, état vide (cube), squelette de chargement ;
+// - la balise <model-viewer> avec ses réglages (gestes, éclairage neutre, ombre, exposition, rotation) et le bouton AR ;
+// - la photo source dans la scène, et sa vignette cliquable pour l'agrandir ;
+// - la barre d'outils : rotation, déplacement, zoom, rotation auto, plein écran, réinitialisation ;
+// - l'aide sur les gestes, la note « la géométrie est une estimation » et la zone lue par les lecteurs d'écran ;
+// - la fenêtre <dialog> de la photo agrandie, fermée par un formulaire method="dialog".
 export const viewerMarkup = `
   <section class="panel viewer-panel" aria-labelledby="viewer-title">
     <div class="viewer-heading">

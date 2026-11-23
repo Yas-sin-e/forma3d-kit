@@ -5,133 +5,215 @@
  * Refonte : les couleurs d'origine sont conservées ; ajout d'une échelle d'espacement,
  * d'ombres de survol et des animations d'entrée (page-enter, elegant-spin, shimmer).
  */
+/* :root = l'élément <html> ; on y déclare les variables CSS (--nom) utilisables partout. */
 :root {
+  /* Indique au navigateur un thème sombre (barres de défilement, champs natifs sombres). */
   color-scheme: dark;
+  /* Police : Inter si elle est installée, sinon la police système. */
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* Interdit au navigateur de fabriquer un faux gras ou un faux italique. */
   font-synthesis: none;
+  /* Privilégie la lisibilité (crénage, ligatures). */
   text-rendering: optimizeLegibility;
+  /* Lissage des caractères sur macOS. */
   -webkit-font-smoothing: antialiased;
 
   /* Couleurs (inchangées) */
+  /* Fond de la page. */
   --page: #0E1218;
+  /* Fond des panneaux. */
   --surface: #161C26;
+  /* Fond d'un élément surélevé (menu, carte au survol). */
   --surface-raised: #1C2430;
+  /* Fond doux (champs, zones secondaires). */
   --surface-soft: #202A37;
+  /* Fond de la scène 3D. */
   --stage: #121923;
+  /* Couleur du texte principal. */
   --ink: #F1F5F9;
+  /* Texte secondaire. */
   --muted: #A9B4C4;
+  /* Texte discret (aides, mentions). */
   --subtle: #7F8C9E;
+  /* Couleur d'accent (turquoise). */
   --accent: #2DD4BF;
+  /* Texte posé sur l'accent. */
   --accent-ink: #0E1218;
+  /* Avertissement (jaune). */
   --warning: #FBBF24;
+  /* Danger (rouge). */
   --danger: #F87171;
+  /* Succès (vert). */
   --success: #4ADE80;
+  /* Bordures. */
   --line: #303B49;
+  /* Bordures marquées. */
   --line-strong: #465365;
+  /* Contour du focus clavier. */
   --focus: #2DD4BF;
 
   /* Teintes dérivées de l'accent, pour les fonds discrets et les halos */
+  /* Accent très transparent (fond discret). */
   --accent-soft: rgb(45 212 191 / 8%);
+  /* Accent encore plus transparent. */
   --accent-softer: rgb(45 212 191 / 4%);
+  /* Halo lumineux de l'accent. */
   --accent-glow: rgb(45 212 191 / 30%);
+  /* Fond discret « danger ». */
   --danger-soft: rgb(248 113 113 / 10%);
+  /* Fond discret « avertissement ». */
   --warning-soft: rgb(251 191 36 / 10%);
+  /* Fond discret « succès ». */
   --success-soft: rgb(74 222 128 / 10%);
 
   /* Échelle d'espacement (multiples de 4 px) */
+  /* Espacement 1 : 4 px. */
   --space-1: 4px;
+  /* Espacement 2 : 8 px. */
   --space-2: 8px;
+  /* Espacement 3 : 12 px. */
   --space-3: 12px;
+  /* Espacement 4 : 16 px. */
   --space-4: 16px;
+  /* Espacement 5 : 20 px. */
   --space-5: 20px;
+  /* Espacement 6 : 24 px. */
   --space-6: 24px;
+  /* Espacement 7 : 32 px. */
   --space-7: 32px;
+  /* Espacement 8 : 48 px. */
   --space-8: 48px;
+  /* Espacement 9 : 64 px. */
   --space-9: 64px;
+  /* Écart entre les sections. */
   --section-gap: 32px;
+  /* Marge intérieure des panneaux. */
   --panel-padding: 28px;
+  /* Largeur maximale du contenu. */
   --content-width: 1200px;
+  /* Hauteur de l'en-tête. */
   --header-height: 64px;
 
   /* Rayons, ombres et mouvements */
+  /* Arrondi des cartes. */
   --radius-card: 16px;
+  /* Arrondi des champs et boutons. */
   --radius-control: 11px;
+  /* Arrondi « pilule » (complètement rond). */
   --radius-pill: 999px;
+  /* Ombre des panneaux. */
   --shadow-panel: 0 18px 55px rgb(0 0 0 / 18%);
+  /* Ombre au survol. */
   --shadow-hover: 0 20px 60px rgb(0 0 0 / 30%);
+  /* Transition rapide (150 ms). */
   --motion-fast: 150ms ease-out;
+  /* Transition moyenne (250 ms) avec une courbe douce. */
   --motion-medium: 250ms cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
+/* Sélecteur universel : s'applique à tous les éléments. */
 * {
+  /* La largeur inclut la bordure et la marge intérieure (calculs plus simples). */
   box-sizing: border-box;
 }
 
 /* Règles globales : page, typographie, liens, boutons et focus clavier visible (accessibilité). */
 html {
+  /* Largeur minimale de la page (petit téléphone). */
   min-width: 360px;
+  /* Hauteur minimale : tout l'écran. */
   min-height: 100%;
+  /* Défilement doux vers les ancres. */
   scroll-behavior: smooth;
+  /* Fond de la page. */
   background: var(--page);
 }
 
 body {
+  /* Largeur minimale. */
   min-width: 360px;
+  /* Hauteur minimale : tout l'écran. */
   min-height: 100vh;
+  /* Supprime la marge par défaut du navigateur. */
   margin: 0;
+  /* Disposition flexible... */
   display: flex;
+  /* ...en colonne (en-tête, contenu, pied de page). */
   flex-direction: column;
+  /* Couleur du texte. */
   color: var(--ink);
+  /* Fond composé de deux halos turquoise et de la couleur de page : */
   background:
+    /* halo en haut à droite... */
     radial-gradient(ellipse at 75% -20%, rgb(45 212 191 / 7%), transparent 43rem),
+    /* ...halo en bas à gauche... */
     radial-gradient(ellipse at -10% 110%, rgb(45 212 191 / 4%), transparent 38rem),
+    /* ...couleur de fond. */
     var(--page);
+  /* Taille de base du texte. */
   font-size: 16px;
+  /* Interligne. */
   line-height: 1.55;
 }
 
+/* Titres et paragraphes... */
 h1,
 h2,
 h3,
 h4,
 p {
+  /* ...sans marge par défaut. */
   margin: 0;
 }
 
+/* Grands titres... */
 h1,
 h2,
 h3 {
+  /* ...lettres légèrement resserrées... */
   letter-spacing: -0.02em;
+  /* ...interligne serré. */
   line-height: 1.2;
 }
 
+/* Éléments de formulaire et liens... */
 button,
 input,
 select,
 textarea,
 a {
+  /* ...reprennent la police du parent. */
   font: inherit;
 }
 
+/* Boutons, liens et champs... */
 button,
 a,
 input {
+  /* ...sans surbrillance bleue au toucher (mobile). */
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Boutons... */
 button {
+  /* ...couleur de texte héritée. */
   color: inherit;
 }
 
+/* Liens... */
 a {
+  /* ...couleur de texte héritée. */
   color: inherit;
 }
 
+/* Code... */
 code,
 pre {
+  /* ...police à chasse fixe. */
   font-family: ui-monospace, "Cascadia Code", "SFMono-Regular", Consolas, monospace;
 }
 
+/* Focus clavier sur les éléments interactifs... */
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
@@ -139,61 +221,97 @@ select:focus-visible,
 textarea:focus-visible,
 summary:focus-visible,
 label:focus-within {
+  /* ...contour turquoise de 3 px... */
   outline: 3px solid var(--focus);
+  /* ...décalé de 3 px. */
   outline-offset: 3px;
 }
 
+/* Texte sélectionné à la souris... */
 ::selection {
+  /* ...texte sombre... */
   color: var(--accent-ink);
+  /* ...sur fond turquoise. */
   background: var(--accent);
 }
 
+/* Attribut HTML hidden... */
 [hidden] {
+  /* ...toujours masqué, même si une autre règle met display (d'où !important). */
   display: none !important;
 }
 
 /* !important : ces éléments (ex. champs fichier cachés) ne doivent jamais reprendre la taille des styles de champs. */
+/* Classe qui cache visuellement un élément tout en le laissant lisible par les lecteurs d'écran : */
 .visually-hidden {
+  /* retiré du flux... */
   position: absolute !important;
+  /* ...1 px de large... */
   width: 1px !important;
+  /* ...1 px de haut... */
   height: 1px !important;
+  /* ...sans marge intérieure... */
   padding: 0 !important;
+  /* ...décalé... */
   margin: -1px !important;
+  /* ...contenu coupé... */
   overflow: hidden !important;
+  /* ...sans bordure... */
   border: 0 !important;
+  /* ...zone visible nulle (ancienne syntaxe)... */
   clip: rect(0, 0, 0, 0);
+  /* ...texte sur une seule ligne... */
   white-space: nowrap;
+  /* ...zone visible nulle (syntaxe moderne). */
   clip-path: inset(50%);
 }
 
 /* Animations partagées */
+/* Animation d'entrée d'une page... */
 @keyframes page-enter {
+  /* ...départ : transparente et 12 px plus bas... */
   from { opacity: 0; transform: translateY(12px); }
+  /* ...arrivée : opaque et à sa place. */
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Animation de rotation... */
 @keyframes elegant-spin {
+  /* ...de 0°... */
   0% { transform: rotate(0deg); }
+  /* ...à 360°. */
   100% { transform: rotate(360deg); }
 }
 
+/* Animation de reflet des squelettes... */
 @keyframes shimmer {
+  /* ...le dégradé part de la gauche... */
   0% { background-position: -400px 0; }
+  /* ...et va vers la droite. */
   100% { background-position: 400px 0; }
 }
 
+/* Animation de pulsation d'une pastille d'état... */
 @keyframes pulse-dot {
+  /* ...au début et à la fin : pas de halo... */
   0%, 100% { box-shadow: 0 0 0 0 currentColor; }
+  /* ...au milieu : halo qui s'élargit en disparaissant. */
   50% { box-shadow: 0 0 0 4px transparent; }
 }
 
+/* Si l'utilisateur a demandé moins d'animations dans son système... */
 @media (prefers-reduced-motion: reduce) {
+  /* ...pour tous les éléments et pseudo-éléments... */
   *,
   *::before,
   *::after {
+    /* ...pas de défilement animé... */
     scroll-behavior: auto !important;
+    /* ...animations quasi instantanées... */
     animation-duration: 0.01ms !important;
+    /* ...jouées une seule fois... */
     animation-iteration-count: 1 !important;
+    /* ...transitions quasi instantanées. */
     transition-duration: 0.01ms !important;
   }
 }

@@ -23,6 +23,7 @@
 
 /* ========== 1. Coque ========== */
 
+/* Lien « Aller au contenu » : caché hors de l'écran tant qu'il n'a pas le focus. */
 .skip-link {
   position: absolute;
   top: -48px;
@@ -36,10 +37,12 @@
   text-decoration: none;
 }
 
+/* Au focus clavier, le lien redevient visible. */
 .skip-link:focus {
   top: var(--space-3);
 }
 
+/* En-tête du site : barre fixe en haut avec logo, menu et outils. */
 .site-header {
   position: sticky;
   top: 0;
@@ -54,6 +57,7 @@
   backdrop-filter: blur(14px);
 }
 
+/* Logo cliquable : icône et nom alignés. */
 .brand {
   display: inline-flex;
   align-items: center;
@@ -64,6 +68,7 @@
   text-decoration: none;
 }
 
+/* Carré turquoise qui contient l'icône du logo. */
 .brand-mark {
   display: grid;
   width: 34px;
@@ -75,16 +80,19 @@
   background: var(--accent-soft);
 }
 
+/* Taille du dessin SVG du logo. */
 .brand-mark svg {
   width: 20px;
   height: 20px;
 }
 
+/* Mot « Studio » plus léger que « Forma3D ». */
 .brand-light {
   color: var(--muted);
   font-weight: 500;
 }
 
+/* Menu principal : liens alignés horizontalement. */
 .header-nav {
   display: flex;
   align-items: center;
@@ -92,6 +100,7 @@
   flex: 1;
 }
 
+/* Lien du menu et titre du menu Administration : même apparence. */
 .nav-link,
 .nav-group > summary {
   display: inline-flex;
@@ -108,6 +117,7 @@
   transition: color var(--motion-fast), background-color var(--motion-fast);
 }
 
+/* Taille des icônes du menu. */
 .nav-link svg,
 .nav-group > summary svg {
   width: 17px;
@@ -115,12 +125,14 @@
   flex-shrink: 0;
 }
 
+/* Survol d'un lien du menu. */
 .nav-link:hover,
 .nav-group > summary:hover {
   color: var(--ink);
   background: rgb(255 255 255 / 4%);
 }
 
+/* Lien de la page en cours (aria-current) et menu Administration actif. */
 .nav-link[aria-current="page"],
 .nav-group[data-active="true"] > summary {
   position: relative;
@@ -128,6 +140,7 @@
   background: var(--accent-soft);
 }
 
+/* Petite barre turquoise sous le lien actif. */
 .nav-link[aria-current="page"]::after,
 .nav-group[data-active="true"] > summary::after {
   content: "";
@@ -140,28 +153,34 @@
   background: var(--accent);
 }
 
+/* Menu Administration : sert de repère pour le menu déroulant. */
 .nav-group {
   position: relative;
 }
 
+/* Titre cliquable du menu Administration. */
 .nav-group > summary {
   list-style: none;
 }
 
+/* Masque le triangle natif de <summary> (Safari, Chrome). */
 .nav-group > summary::-webkit-details-marker {
   display: none;
 }
 
+/* Flèche du menu déroulant. */
 .nav-chevron {
   width: 14px !important;
   height: 14px !important;
   transition: transform var(--motion-fast);
 }
 
+/* Menu ouvert : la flèche pivote. */
 .nav-group[open] .nav-chevron {
   transform: rotate(180deg);
 }
 
+/* Liste déroulante sous « Administration ». */
 .nav-dropdown {
   position: absolute;
   top: calc(100% + var(--space-2));
@@ -177,15 +196,18 @@
   animation: page-enter 0.18s ease-out;
 }
 
+/* Liens du menu déroulant : disposés en ligne avec icône et texte. */
 .nav-dropdown .nav-link {
   justify-content: flex-start;
   min-height: 42px;
 }
 
+/* Pas de barre « page active » dans le menu déroulant. */
 .nav-dropdown .nav-link[aria-current="page"]::after {
   display: none;
 }
 
+/* Petite aide grise sous chaque lien du menu déroulant. */
 .nav-dropdown-hint {
   display: block;
   color: var(--subtle);
@@ -193,6 +215,7 @@
   font-weight: 450;
 }
 
+/* Zone d'outils à droite de l'en-tête (badge serveur, déconnexion). */
 .header-tools {
   display: flex;
   align-items: center;
@@ -200,6 +223,7 @@
   margin-left: auto;
 }
 
+/* Badge « Serveur 3D » de l'en-tête et pastille de l'accueil : pilule avec pastille. */
 .provider-badge,
 .hero-status {
   display: inline-flex;
@@ -216,6 +240,7 @@
   white-space: nowrap;
 }
 
+/* Pastille de couleur du badge (rouge par défaut). */
 .status-dot {
   width: 8px;
   height: 8px;
@@ -225,24 +250,28 @@
   background: currentColor;
 }
 
+/* Serveur en ligne : texte vert. */
 .provider-badge[data-status="online"],
 .hero-status[data-status="online"] {
   border-color: rgb(74 222 128 / 35%);
   color: var(--ink);
 }
 
+/* Serveur en ligne : pastille verte. */
 .provider-badge[data-status="online"] .status-dot,
 .hero-status[data-status="online"] .status-dot {
   color: var(--success);
   animation: pulse-dot 2.4s ease-in-out infinite;
 }
 
+/* Vérification en cours : pastille jaune qui pulse. */
 .provider-badge[data-status="checking"] .status-dot,
 .hero-status[data-status="checking"] .status-dot,
 .provider-badge[data-status="unconfigured"] .status-dot {
   color: var(--warning);
 }
 
+/* Bouton de déconnexion. */
 .logout-button {
   display: inline-flex;
   align-items: center;
@@ -259,16 +288,19 @@
   transition: color var(--motion-fast), border-color var(--motion-fast);
 }
 
+/* Taille de l'icône de déconnexion. */
 .logout-button svg {
   width: 16px;
   height: 16px;
 }
 
+/* Survol du bouton de déconnexion. */
 .logout-button:hover {
   border-color: var(--line);
   color: var(--ink);
 }
 
+/* Bouton « menu » (trois barres), caché sur grand écran. */
 .menu-toggle {
   display: none;
   width: 42px;
@@ -281,6 +313,7 @@
   cursor: pointer;
 }
 
+/* Chacune des trois barres du bouton menu. */
 .menu-toggle span {
   display: block;
   width: 18px;
@@ -291,6 +324,7 @@
 }
 
 /* Écran de connexion : la coque de navigation est masquée. */
+/* Non connectée : menu, outils et bouton menu masqués. */
 body[data-auth="guest"] .header-nav,
 body[data-auth="guest"] .header-tools,
 body[data-auth="guest"] .menu-toggle,
@@ -298,12 +332,14 @@ body[data-auth="guest"] .site-footer {
   display: none;
 }
 
+/* Non connectée : en-tête simplifié. */
 body[data-auth="guest"] .site-header {
   border-bottom-color: transparent;
   background: transparent;
   backdrop-filter: none;
 }
 
+/* Pied de page. */
 .site-footer {
   display: flex;
   flex-wrap: wrap;
@@ -317,6 +353,7 @@ body[data-auth="guest"] .site-header {
   font-size: 0.82rem;
 }
 
+/* Liens du pied de page. */
 .footer-links {
   display: flex;
   flex-wrap: wrap;
@@ -324,32 +361,38 @@ body[data-auth="guest"] .site-header {
   gap: var(--space-2) var(--space-5);
 }
 
+/* Nom et version en gras. */
 .footer-links strong {
   color: var(--muted);
   font-weight: 650;
 }
 
+/* Liens du pied de page en gris. */
 .footer-links a {
   text-decoration: none;
   transition: color var(--motion-fast);
 }
 
+/* Survol d'un lien du pied de page. */
 .footer-links a:hover {
   color: var(--accent);
 }
 
 /* ========== 2. Mise en page commune ========== */
 
+/* Zone principale : prend toute la hauteur disponible. */
 main#app {
   flex: 1;
   width: 100%;
   outline: none;
 }
 
+/* Page cachée par le routeur (page Créer gardée en mémoire). */
 .route-page[hidden] {
   display: none;
 }
 
+/* Conteneur d'une page : largeur limitée, centré, animation d'entrée. */
 .page-shell {
   width: min(100% - 2 * var(--space-7), var(--content-width));
   margin: 0 auto;
@@ -357,10 +400,12 @@ main#app {
   animation: page-enter 0.3s ease-out;
 }
 
+/* Introduction en haut d'une page. */
 .page-intro {
   margin-bottom: var(--section-gap);
 }
 
+/* Sur-titre en petites capitales turquoise. */
 .eyebrow {
   margin-bottom: var(--space-2);
   color: var(--accent);
@@ -370,6 +415,7 @@ main#app {
   text-transform: uppercase;
 }
 
+/* Titre principal de la page. */
 .page-title {
   margin-bottom: var(--space-4);
   font-size: clamp(1.8rem, 2.6vw, 2.35rem);
@@ -377,12 +423,14 @@ main#app {
   outline: none;
 }
 
+/* Phrase d'accroche sous le titre. */
 .page-lead {
   max-width: 64ch;
   color: var(--muted);
   font-size: 1.02rem;
 }
 
+/* Panneau : fond, bordure, arrondi et ombre. */
 .panel {
   padding: var(--panel-padding);
   border: 1px solid var(--line);
@@ -391,6 +439,7 @@ main#app {
   box-shadow: var(--shadow-panel);
 }
 
+/* Titres de niveau 2 des panneaux et sections. */
 .panel h2,
 .section-header h2 {
   margin-bottom: var(--space-2);
@@ -399,10 +448,12 @@ main#app {
 }
 
 /* Espacement vertical entre panneaux empilés (pas dans les grilles à colonnes). */
+/* Espace entre deux panneaux successifs. */
 .page-shell > .panel + .panel {
   margin-top: var(--section-gap);
 }
 
+/* En-tête de section : titre à gauche, action à droite. */
 .section-header,
 .gallery-heading {
   display: flex;
@@ -413,12 +464,14 @@ main#app {
   margin-bottom: var(--space-5);
 }
 
+/* Texte secondaire sous les titres de section. */
 .section-header p,
 .gallery-copy {
   color: var(--muted);
   font-size: 0.92rem;
 }
 
+/* Compteur affiché en pilule (« 3 modèles »). */
 .gallery-count {
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-pill);
@@ -428,6 +481,7 @@ main#app {
   font-weight: 650;
 }
 
+/* Liens texte (retour, « Tout voir »). */
 .back-link,
 .text-link {
   display: inline-flex;
@@ -439,22 +493,26 @@ main#app {
   text-decoration: none;
 }
 
+/* Lien « ← Retour » : espace en dessous. */
 .back-link {
   margin-bottom: var(--space-5);
 }
 
+/* Survol des liens texte. */
 .back-link:hover,
 .text-link:hover {
   text-decoration: underline;
   text-underline-offset: 4px;
 }
 
+/* Mot mis en couleur d'accent dans un titre. */
 .text-accent {
   color: var(--accent);
 }
 
 /* ========== 3. Boutons, liens et champs ========== */
 
+/* Bouton de base : forme, espacement, transition. */
 .button {
   display: inline-flex;
   align-items: center;
@@ -472,25 +530,30 @@ main#app {
   transition: transform var(--motion-fast), background-color var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast), color var(--motion-fast);
 }
 
+/* Survol d'un bouton actif : léger soulèvement. */
 .button:hover:not(:disabled) {
   transform: translateY(-1px);
 }
 
+/* Bouton désactivé : grisé, curseur interdit. */
 .button:disabled {
   cursor: not-allowed;
   opacity: 0.5;
 }
 
+/* Bouton principal : fond turquoise. */
 .button-primary {
   color: var(--accent-ink);
   background: var(--accent);
 }
 
+/* Survol du bouton principal : halo. */
 .button-primary:hover:not(:disabled) {
   background: #5EEAD4;
   box-shadow: 0 8px 28px var(--accent-glow);
 }
 
+/* Bouton secondaire et bouton de téléchargement : contour. */
 .button-secondary,
 .button-download {
   border-color: var(--line-strong);
@@ -498,44 +561,52 @@ main#app {
   background: var(--surface-soft);
 }
 
+/* Survol du bouton secondaire. */
 .button-secondary:hover:not(:disabled),
 .button-download:hover:not(:disabled) {
   border-color: var(--accent);
   color: var(--accent);
 }
 
+/* Bouton fantôme : transparent. */
 .button-ghost {
   border-color: var(--line);
   color: var(--ink);
   background: transparent;
 }
 
+/* Survol du bouton fantôme. */
 .button-ghost:hover {
   border-color: var(--line-strong);
   background: rgb(255 255 255 / 4%);
 }
 
+/* Bouton danger : texte et bordure rouges. */
 .button-danger {
   border-color: rgb(248 113 113 / 40%);
   color: var(--danger);
   background: transparent;
 }
 
+/* Survol du bouton danger. */
 .button-danger:hover:not(:disabled) {
   background: var(--danger-soft);
 }
 
+/* Bouton danger plein : fond rouge (confirmation). */
 .button-danger-solid {
   color: #1F0A0A;
   background: var(--danger);
 }
 
+/* Grand bouton (accueil, état vide). */
 .button-large {
   min-height: 52px;
   padding: 0 var(--space-6);
   font-size: 1rem;
 }
 
+/* Bouton icône carré (commandes de caméra). */
 .icon-button {
   display: inline-grid;
   width: 36px;
@@ -551,11 +622,13 @@ main#app {
   transition: color var(--motion-fast), background-color var(--motion-fast);
 }
 
+/* Survol d'un bouton icône. */
 .icon-button:hover {
   color: var(--ink);
   background: rgb(255 255 255 / 6%);
 }
 
+/* Étiquettes des champs de formulaire. */
 .field-label,
 .category-field label,
 .model-import-panel label,
@@ -568,6 +641,7 @@ main#app {
   font-weight: 650;
 }
 
+/* Champs de saisie et listes déroulantes : apparence commune. */
 input[type="text"],
 input[type="password"],
 input:not([type]),
@@ -584,6 +658,7 @@ textarea,
   transition: border-color var(--motion-fast), box-shadow var(--motion-fast);
 }
 
+/* Champ de choix de fichier. */
 input[type="file"] {
   width: 100%;
   padding: var(--space-3);
@@ -593,11 +668,13 @@ input[type="file"] {
   background: var(--stage);
 }
 
+/* Zone de texte multiligne redimensionnable verticalement. */
 textarea {
   padding: var(--space-3) var(--space-4);
   resize: vertical;
 }
 
+/* Champ qui a le focus : bordure turquoise. */
 input:focus,
 select:focus,
 textarea:focus {
@@ -606,10 +683,12 @@ textarea:focus {
   outline: none;
 }
 
+/* Texte d'exemple (placeholder) en gris. */
 input::placeholder {
   color: var(--subtle);
 }
 
+/* Rangée de boutons d'un formulaire. */
 .form-actions {
   display: flex;
   flex-wrap: wrap;
@@ -619,6 +698,7 @@ input::placeholder {
 
 /* ========== 4. Connexion ========== */
 
+/* Écran de connexion : centré sur toute la hauteur. */
 .login-screen {
   display: grid;
   min-height: calc(100vh - var(--header-height) - 40px);
@@ -627,6 +707,7 @@ input::placeholder {
   animation: page-enter 0.4s ease-out;
 }
 
+/* Carte de connexion. */
 .login-card {
   position: relative;
   width: min(100%, 420px);
@@ -638,6 +719,7 @@ input::placeholder {
   text-align: center;
 }
 
+/* Liseré turquoise décoratif en haut de la carte. */
 .login-card::before {
   content: "";
   position: absolute;
@@ -648,6 +730,7 @@ input::placeholder {
   filter: blur(24px);
 }
 
+/* Logo de la carte de connexion. */
 .login-logo {
   display: inline-grid;
   width: 64px;
@@ -661,34 +744,41 @@ input::placeholder {
   box-shadow: 0 0 40px rgb(45 212 191 / 18%);
 }
 
+/* Taille du dessin du logo. */
 .login-logo svg {
   width: 34px;
   height: 34px;
 }
 
+/* Titre de la carte de connexion. */
 .login-card .page-title {
   margin-bottom: var(--space-3);
   font-size: 1.9rem;
 }
 
+/* Texte d'introduction de la connexion. */
 .login-lead {
   margin-bottom: var(--space-7);
   color: var(--muted);
 }
 
+/* Formulaire de connexion : éléments empilés. */
 .login-form {
   text-align: left;
 }
 
+/* Champ mot de passe : sert de repère pour le bouton Afficher. */
 .password-field {
   position: relative;
 }
 
+/* Place pour le bouton Afficher à droite du champ. */
 .password-field input {
   min-height: 50px;
   padding-right: 96px;
 }
 
+/* Bouton Afficher / Masquer placé dans le champ. */
 .password-toggle {
   position: absolute;
   top: 50%;
@@ -705,6 +795,7 @@ input::placeholder {
   transform: translateY(-50%);
 }
 
+/* Message d'erreur de connexion en rouge. */
 .login-error {
   margin-top: var(--space-3);
   padding: var(--space-3) var(--space-4);
@@ -715,6 +806,7 @@ input::placeholder {
   font-size: 0.88rem;
 }
 
+/* Bouton « Accéder au Studio » pleine largeur. */
 .login-submit {
   width: 100%;
   min-height: 50px;
@@ -722,6 +814,7 @@ input::placeholder {
   box-shadow: 0 0 20px rgb(45 212 191 / 30%);
 }
 
+/* Note discrète sous la carte de connexion. */
 .login-note {
   margin-top: var(--space-6);
   color: var(--subtle);
@@ -730,6 +823,7 @@ input::placeholder {
 
 /* ========== 5. Accueil ========== */
 
+/* Bandeau de l'accueil : texte à gauche, viewer à droite. */
 .hero {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
@@ -746,10 +840,12 @@ input::placeholder {
     linear-gradient(135deg, rgb(28 36 48 / 80%), rgb(18 25 35 / 95%));
 }
 
+/* Pastille d'état du bandeau : espace en dessous. */
 .hero-status {
   margin-bottom: var(--space-6);
 }
 
+/* Grand titre du bandeau. */
 .hero-title {
   margin-bottom: var(--space-5);
   font-size: clamp(2.2rem, 4.4vw, 3.6rem);
@@ -758,6 +854,7 @@ input::placeholder {
   line-height: 1.05;
 }
 
+/* Accroche du bandeau. */
 .hero-lead {
   max-width: 46ch;
   margin-bottom: var(--space-7);
@@ -765,21 +862,25 @@ input::placeholder {
   font-size: 1.15rem;
 }
 
+/* Boutons du bandeau. */
 .hero-actions {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
 }
 
+/* Halo autour du bouton principal du bandeau. */
 .hero-actions .button-primary {
   box-shadow: 0 0 20px rgb(45 212 191 / 30%);
 }
 
+/* Zone du viewer du bandeau. */
 .hero-visual {
   position: relative;
   height: 340px;
 }
 
+/* Halo lumineux derrière le viewer du bandeau. */
 .hero-visual::before {
   content: "";
   position: absolute;
@@ -789,6 +890,7 @@ input::placeholder {
   filter: blur(20px);
 }
 
+/* Viewer 3D du bandeau. */
 .hero-viewer {
   position: relative;
   width: 100%;
@@ -797,6 +899,7 @@ input::placeholder {
   --poster-color: transparent;
 }
 
+/* Grille des trois compteurs. */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -804,6 +907,7 @@ input::placeholder {
   margin-bottom: var(--section-gap);
 }
 
+/* Carte d'un compteur. */
 .stat-card {
   display: flex;
   align-items: center;
@@ -815,11 +919,13 @@ input::placeholder {
   transition: border-color var(--motion-fast), transform var(--motion-fast);
 }
 
+/* Survol d'une carte de compteur. */
 .stat-card:hover {
   border-color: var(--line-strong);
   transform: translateY(-2px);
 }
 
+/* Icône d'un compteur ou d'un raccourci. */
 .stat-icon,
 .shortcut-icon {
   display: grid;
@@ -832,12 +938,14 @@ input::placeholder {
   background: var(--accent-soft);
 }
 
+/* Taille de ces icônes. */
 .stat-icon svg,
 .shortcut-icon svg {
   width: 22px;
   height: 22px;
 }
 
+/* Valeur d'un compteur en grand. */
 .stat-value {
   font-size: 1.9rem;
   font-weight: 780;
@@ -845,11 +953,13 @@ input::placeholder {
   line-height: 1.1;
 }
 
+/* Libellé d'un compteur. */
 .stat-label {
   color: var(--muted);
   font-size: 0.86rem;
 }
 
+/* Lien d'action d'un compteur. */
 .stat-link {
   margin-left: auto;
   color: var(--accent);
@@ -858,25 +968,30 @@ input::placeholder {
   text-decoration: none;
 }
 
+/* Section de l'accueil. */
 .dashboard-section {
   margin-bottom: var(--section-gap);
   padding-top: var(--space-2);
 }
 
+/* Espace entre deux sections de l'accueil. */
 .dashboard-section + .dashboard-section {
   margin-top: var(--space-8);
 }
 
+/* Grille de cartes. */
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: var(--space-6);
 }
 
+/* Grille de trois colonnes. */
 .card-grid-3 {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+/* Bande horizontale défilante de cartes (exemples). */
 .card-strip {
   display: grid;
   grid-auto-columns: minmax(230px, 1fr);
@@ -889,16 +1004,19 @@ input::placeholder {
   scrollbar-color: var(--line-strong) transparent;
 }
 
+/* Largeur fixe de chaque carte de la bande. */
 .card-strip > * {
   scroll-snap-align: start;
 }
 
+/* Grille des raccourcis. */
 .shortcut-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-5);
 }
 
+/* Carte de raccourci. */
 .shortcut-card {
   display: grid;
   gap: var(--space-1);
@@ -910,25 +1028,30 @@ input::placeholder {
   transition: transform var(--motion-medium), border-color var(--motion-medium), box-shadow var(--motion-medium);
 }
 
+/* Icône d'un raccourci. */
 .shortcut-card .shortcut-icon {
   margin-bottom: var(--space-3);
 }
 
+/* Titre d'un raccourci. */
 .shortcut-card strong {
   font-size: 1rem;
 }
 
+/* Description d'un raccourci. */
 .shortcut-card span:last-child {
   color: var(--muted);
   font-size: 0.86rem;
 }
 
+/* Survol d'un raccourci. */
 .shortcut-card:hover {
   border-color: rgb(45 212 191 / 45%);
   box-shadow: var(--shadow-hover);
   transform: translateY(-4px);
 }
 
+/* Messages d'erreur et message de galerie : encadré. */
 .dashboard-error,
 .detail-error,
 .gallery-message {
@@ -939,6 +1062,7 @@ input::placeholder {
   background: var(--surface);
 }
 
+/* Messages d'erreur : couleurs rouges. */
 .dashboard-error,
 .detail-error {
   border-color: rgb(248 113 113 / 35%);
@@ -948,6 +1072,7 @@ input::placeholder {
 
 /* ========== 6. Cartes de modèles, filtres et états vides ========== */
 
+/* Ligne des filtres de catégorie. */
 .filter-list {
   display: flex;
   flex-wrap: wrap;
@@ -955,6 +1080,7 @@ input::placeholder {
   margin-bottom: var(--space-6);
 }
 
+/* Bouton de filtre en pilule. */
 .filter-chip {
   display: inline-flex;
   align-items: center;
@@ -971,17 +1097,20 @@ input::placeholder {
   transition: border-color var(--motion-fast), color var(--motion-fast), background-color var(--motion-fast);
 }
 
+/* Survol d'un filtre. */
 .filter-chip:hover {
   border-color: var(--line-strong);
   color: var(--ink);
 }
 
+/* Filtre sélectionné : turquoise. */
 .filter-chip[aria-pressed="true"] {
   border-color: rgb(45 212 191 / 55%);
   color: var(--accent);
   background: var(--accent-soft);
 }
 
+/* Compteur dans un filtre. */
 .filter-count {
   min-width: 24px;
   padding: 1px var(--space-2);
@@ -992,17 +1121,20 @@ input::placeholder {
   text-align: center;
 }
 
+/* Compteur du filtre sélectionné. */
 .filter-chip[aria-pressed="true"] .filter-count {
   color: var(--accent-ink);
   background: var(--accent);
 }
 
+/* Grille des cartes de modèles (colonnes automatiques). */
 .gallery-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: var(--space-6);
 }
 
+/* Carte de modèle. */
 .model-card {
   display: flex;
   flex-direction: column;
@@ -1013,12 +1145,14 @@ input::placeholder {
   transition: transform var(--motion-medium), box-shadow var(--motion-medium), border-color var(--motion-medium);
 }
 
+/* Survol d'une carte : soulèvement et ombre. */
 .model-card:hover {
   border-color: rgb(45 212 191 / 40%);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   transform: translateY(-4px) scale(1.01);
 }
 
+/* Bouton qui couvre toute la carte. */
 .model-card-open {
   display: flex;
   flex: 1;
@@ -1031,10 +1165,12 @@ input::placeholder {
   cursor: pointer;
 }
 
+/* Focus clavier sur la carte : contour intérieur. */
 .model-card-open:focus-visible {
   outline-offset: -3px;
 }
 
+/* Zone d'aperçu 3D de la carte. */
 .model-card-preview {
   position: relative;
   aspect-ratio: 4 / 3;
@@ -1043,6 +1179,7 @@ input::placeholder {
     linear-gradient(180deg, #18212D, var(--stage));
 }
 
+/* Mini viewer qui remplit l'aperçu. */
 .model-card-preview model-viewer {
   width: 100%;
   height: 100%;
@@ -1052,6 +1189,7 @@ input::placeholder {
   --poster-color: transparent;
 }
 
+/* Badge de provenance sur l'aperçu. */
 .source-badge {
   position: absolute;
   top: var(--space-3);
@@ -1067,22 +1205,26 @@ input::placeholder {
   letter-spacing: 0.02em;
 }
 
+/* Badge « Généré » : turquoise. */
 .source-badge[data-origin="generated"] {
   border-color: rgb(45 212 191 / 45%);
   color: var(--accent);
 }
 
+/* Badge « Importé » : jaune. */
 .source-badge[data-origin="imported"] {
   border-color: rgb(251 191 36 / 40%);
   color: var(--warning);
 }
 
+/* Zone de texte de la carte. */
 .model-card-content {
   display: grid;
   gap: var(--space-1);
   padding: var(--space-4) var(--space-5) var(--space-5);
 }
 
+/* Nom du modèle, coupé avec « … » s'il est trop long. */
 .model-card-content h3 {
   overflow: hidden;
   font-size: 1rem;
@@ -1091,11 +1233,13 @@ input::placeholder {
   white-space: nowrap;
 }
 
+/* Ligne d'informations de la carte. */
 .model-card-meta {
   color: var(--subtle);
   font-size: 0.8rem;
 }
 
+/* Description courte de la carte. */
 .model-card-description {
   margin-top: var(--space-2);
   color: var(--muted);
@@ -1103,10 +1247,12 @@ input::placeholder {
   line-height: 1.45;
 }
 
+/* Bouton d'action sous la carte. */
 .model-card-action {
   margin: 0 var(--space-5) var(--space-5);
 }
 
+/* Carte squelette : dégradé animé pendant le chargement. */
 .skeleton-card {
   min-height: 280px;
   border-color: transparent;
@@ -1115,15 +1261,18 @@ input::placeholder {
   animation: shimmer 1.4s linear infinite;
 }
 
+/* Pas d'effet de survol sur un squelette. */
 .skeleton-card:hover {
   box-shadow: none;
   transform: none;
 }
 
+/* Message de galerie dans le panneau de bibliothèque. */
 .library-panel .gallery-message {
   text-align: center;
 }
 
+/* État vide illustré. */
 .empty-panel,
 .library-empty-actions {
   display: grid;
@@ -1136,26 +1285,31 @@ input::placeholder {
   text-align: center;
 }
 
+/* Titre de l'état vide. */
 .empty-panel h3,
 .library-empty-actions h3 {
   font-size: 1.25rem;
 }
 
+/* Texte de l'état vide. */
 .empty-panel p,
 .library-empty-actions p {
   max-width: 48ch;
   color: var(--muted);
 }
 
+/* Bouton ou actions de l'état vide. */
 .empty-panel .button,
 .library-empty-actions .form-actions {
   margin-top: var(--space-3);
 }
 
+/* Actions de l'état vide centrées. */
 .library-empty-actions .form-actions {
   justify-content: center;
 }
 
+/* Illustration du cube vide. */
 .empty-illustration {
   width: 150px;
   height: auto;
@@ -1163,6 +1317,7 @@ input::placeholder {
   color: var(--ink);
 }
 
+/* Panneau d'import ou d'ajout d'un modèle. */
 .model-import-panel {
   margin-bottom: var(--space-6);
   padding: var(--space-6);
@@ -1172,24 +1327,28 @@ input::placeholder {
   box-shadow: none;
 }
 
+/* Titres de ce panneau. */
 .model-import-panel h2,
 .model-import-panel h3 {
   margin-bottom: var(--space-2);
   font-size: 1.1rem;
 }
 
+/* Texte explicatif de ce panneau. */
 .model-import-panel > p {
   margin-bottom: var(--space-5);
   color: var(--muted);
   font-size: 0.9rem;
 }
 
+/* Grille des champs d'import (3 colonnes). */
 .import-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-4);
 }
 
+/* Message de résultat du panneau. */
 .model-import-panel [role="status"] {
   min-height: 1.4em;
   margin-top: var(--space-3);
@@ -1197,20 +1356,24 @@ input::placeholder {
   font-size: 0.9rem;
 }
 
+/* Lien dans ce message. */
 .model-import-panel [role="status"] a {
   color: var(--accent);
 }
 
 /* ========== 7. Page Créer ========== */
 
+/* Introduction de la page Créer plus compacte. */
 .create-page .page-intro {
   margin-bottom: var(--space-6);
 }
 
+/* Titre de la page Créer. */
 .create-page .page-title {
   margin-bottom: var(--space-2);
 }
 
+/* Espace de travail en deux colonnes (photo / viewer). */
 .workspace {
   display: grid;
   grid-template-columns: minmax(340px, 2fr) minmax(0, 3fr);
@@ -1218,22 +1381,26 @@ input::placeholder {
   gap: var(--space-6);
 }
 
+/* Panneau du formulaire photo. */
 .upload-panel {
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
 }
 
+/* Titre du formulaire. */
 .section-heading h2 {
   margin-bottom: var(--space-1);
   font-size: 1.15rem;
 }
 
+/* Texte sous le titre du formulaire. */
 .section-heading p {
   color: var(--muted);
   font-size: 0.9rem;
 }
 
+/* Zone de dépôt de la photo (bordure en pointillés). */
 .drop-zone {
   position: relative;
   display: grid;
@@ -1253,16 +1420,19 @@ input::placeholder {
   transition: border-color var(--motion-fast), background-color var(--motion-fast), transform var(--motion-fast);
 }
 
+/* Survol ou glisser d'un fichier : bordure turquoise. */
 .drop-zone:hover,
 .drop-zone.is-dragging {
   border-color: var(--accent);
   background-color: rgb(45 212 191 / 6%);
 }
 
+/* Fichier en cours de glisser : fond turquoise léger. */
 .drop-zone.is-dragging {
   transform: scale(1.01);
 }
 
+/* Icône « + » de la zone de dépôt. */
 .drop-icon {
   display: grid;
   width: 64px;
@@ -1279,15 +1449,18 @@ input::placeholder {
   transition: transform var(--motion-medium);
 }
 
+/* Survol : l'icône « + » s'agrandit. */
 .drop-zone:hover .drop-icon {
   transform: scale(1.08) rotate(90deg);
 }
 
+/* Titre de la zone de dépôt. */
 .drop-title {
   font-size: 1.05rem;
   font-weight: 700;
 }
 
+/* Textes secondaires de la zone de dépôt. */
 .drop-divider,
 .file-name,
 .format-note {
@@ -1295,6 +1468,7 @@ input::placeholder {
   font-size: 0.82rem;
 }
 
+/* Nom du fichier choisi, coupé s'il est trop long. */
 .file-name {
   max-width: 100%;
   overflow: hidden;
@@ -1302,6 +1476,7 @@ input::placeholder {
   white-space: nowrap;
 }
 
+/* Aperçu de la photo qui remplit la zone. */
 .drop-preview {
   position: absolute;
   inset: 0;
@@ -1312,18 +1487,21 @@ input::placeholder {
   background: var(--stage);
 }
 
+/* Photo choisie : masque l'icône et les textes. */
 .drop-zone.has-photo .drop-icon,
 .drop-zone.has-photo .drop-title,
 .drop-zone.has-photo .drop-divider {
   visibility: hidden;
 }
 
+/* Photo choisie : bouton et nom passent au premier plan. */
 .drop-zone.has-photo .button,
 .drop-zone.has-photo .file-name {
   position: relative;
   z-index: 1;
 }
 
+/* Photo choisie : nom du fichier sur un fond sombre. */
 .drop-zone.has-photo .file-name {
   padding: 2px var(--space-3);
   border-radius: var(--radius-pill);
@@ -1331,15 +1509,18 @@ input::placeholder {
   background: rgb(14 18 24 / 80%);
 }
 
+/* Photo choisie : bordure pleine. */
 .drop-zone.has-photo {
   align-content: end;
 }
 
+/* Note de confidentialité. */
 .privacy-note {
   color: var(--subtle);
   font-size: 0.8rem;
 }
 
+/* Message d'erreur de l'envoi. */
 .upload-feedback {
   padding: var(--space-3) var(--space-4);
   border: 1px solid rgb(248 113 113 / 35%);
@@ -1349,6 +1530,7 @@ input::placeholder {
   font-size: 0.88rem;
 }
 
+/* Note « serveur 3D hors ligne ». */
 .service-unavailable-note {
   display: flex;
   align-items: center;
@@ -1363,27 +1545,32 @@ input::placeholder {
   font-weight: 600;
 }
 
+/* Lien de cette note. */
 .service-unavailable-note a {
   color: var(--accent);
   white-space: nowrap;
 }
 
+/* Texte qui explique l'état du bouton Créer. */
 .submit-reason {
   color: var(--muted);
   font-size: 0.84rem;
   text-align: center;
 }
 
+/* Bouton Créer pleine largeur. */
 .submit-button {
   width: 100%;
   min-height: 52px;
   font-size: 1rem;
 }
 
+/* Bouton Créer actif : halo. */
 .submit-button:not(:disabled) {
   box-shadow: 0 0 20px rgba(45, 212, 191, 0.3);
 }
 
+/* Génération en cours : petit cercle qui tourne avant le texte. */
 .submit-button[aria-busy="true"] .button-label::before {
   content: "";
   display: inline-block;
@@ -1397,6 +1584,7 @@ input::placeholder {
   animation: elegant-spin 0.8s linear infinite;
 }
 
+/* Zone des conseils et détails techniques. */
 .create-help {
   display: grid;
   gap: var(--space-2);
@@ -1405,11 +1593,13 @@ input::placeholder {
   border-top: 1px solid var(--line);
 }
 
+/* Blocs repliables (conseils, détails). */
 .photo-guidance,
 .technical-details {
   border-radius: var(--radius-control);
 }
 
+/* Titre cliquable d'un bloc repliable. */
 .photo-guidance summary,
 .technical-details summary {
   display: flex;
@@ -1425,11 +1615,13 @@ input::placeholder {
   cursor: pointer;
 }
 
+/* Masque le triangle natif. */
 .photo-guidance summary::-webkit-details-marker,
 .technical-details summary::-webkit-details-marker {
   display: none;
 }
 
+/* Signe « + » à droite du titre. */
 .photo-guidance summary::after,
 .technical-details summary::after {
   content: "+";
@@ -1437,17 +1629,20 @@ input::placeholder {
   font-size: 1.1rem;
 }
 
+/* Bloc ouvert : le « + » devient « − ». */
 .photo-guidance[open] summary::after,
 .technical-details[open] summary::after {
   content: "−";
 }
 
+/* Survol du titre d'un bloc repliable. */
 .photo-guidance summary:hover,
 .technical-details summary:hover {
   color: var(--ink);
   background: rgb(255 255 255 / 4%);
 }
 
+/* Liste des conseils photo. */
 .photo-guidance-content ul {
   display: grid;
   gap: var(--space-2);
@@ -1457,12 +1652,14 @@ input::placeholder {
   font-size: 0.86rem;
 }
 
+/* Paragraphes des détails techniques. */
 .technical-details p {
   margin: var(--space-2) var(--space-3);
   color: var(--subtle);
   font-size: 0.82rem;
 }
 
+/* Colonne du viewer de la page Créer. */
 .create-viewer-column {
   display: flex;
   min-width: 0;
@@ -1470,6 +1667,7 @@ input::placeholder {
 
 /* ========== 8. Viewer 3D ========== */
 
+/* Panneau du viewer. */
 .viewer-panel {
   display: flex;
   flex: 1;
@@ -1478,6 +1676,7 @@ input::placeholder {
   padding: var(--space-6);
 }
 
+/* En-tête du viewer : titre et actions. */
 .viewer-heading {
   display: flex;
   flex-wrap: wrap;
@@ -1487,15 +1686,18 @@ input::placeholder {
   margin-bottom: var(--space-4);
 }
 
+/* Titre du viewer. */
 .viewer-heading h2 {
   margin: 0;
   font-size: 1.15rem;
 }
 
+/* Sur-titre du viewer. */
 .viewer-eyebrow {
   margin-bottom: var(--space-1);
 }
 
+/* Actions du viewer (badge, bascule, boutons). */
 .viewer-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1503,12 +1705,14 @@ input::placeholder {
   gap: var(--space-2);
 }
 
+/* Boutons des actions du viewer, plus petits. */
 .viewer-actions .button {
   min-height: 36px;
   padding: 0 var(--space-4);
   font-size: 0.84rem;
 }
 
+/* Badge d'origine du modèle. */
 .origin-badge {
   padding: 4px var(--space-3);
   border: 1px solid rgb(45 212 191 / 40%);
@@ -1519,6 +1723,7 @@ input::placeholder {
   font-weight: 700;
 }
 
+/* Bascule Vue 3D / Photo / Comparer. */
 .view-toggle {
   display: inline-flex;
   padding: 3px;
@@ -1527,6 +1732,7 @@ input::placeholder {
   background: var(--stage);
 }
 
+/* Bouton de la bascule. */
 .view-toggle button {
   min-height: 30px;
   padding: 0 var(--space-3);
@@ -1540,11 +1746,13 @@ input::placeholder {
   transition: color var(--motion-fast), background-color var(--motion-fast);
 }
 
+/* Mode choisi : fond turquoise. */
 .view-toggle button[aria-pressed="true"] {
   color: var(--accent-ink);
   background: var(--accent);
 }
 
+/* Conteneur de la scène. */
 .viewer-comparison {
   display: flex;
   flex: 1;
@@ -1552,6 +1760,7 @@ input::placeholder {
 }
 
 /* Scène : dégradé radial, grille en perspective et halo derrière le modèle. */
+/* Scène 3D (page Créer et fiche) : fond en dégradé. */
 .viewer-stage,
 .detail-stage {
   position: relative;
@@ -1564,6 +1773,7 @@ input::placeholder {
     radial-gradient(ellipse at 50% 40%, #1B2836 0%, var(--stage) 62%, #0D131B 100%);
 }
 
+/* Grille décorative en perspective au sol de la scène. */
 .stage-grid {
   position: absolute;
   right: -30%;
@@ -1580,6 +1790,7 @@ input::placeholder {
   pointer-events: none;
 }
 
+/* Halo lumineux décoratif dans la scène. */
 .viewer-stage::after,
 .detail-stage::after {
   content: "";
@@ -1594,6 +1805,7 @@ input::placeholder {
   transform: translateX(-50%);
 }
 
+/* Composant <model-viewer> : bloc pleine taille, fond transparent. */
 model-viewer {
   display: block;
   width: 100%;
@@ -1603,6 +1815,7 @@ model-viewer {
   --progress-bar-height: 2px;
 }
 
+/* Viewer dans la scène : au-dessus des décors. */
 .viewer-stage model-viewer,
 .detail-stage model-viewer {
   position: absolute;
@@ -1616,6 +1829,7 @@ model-viewer {
   filter: contrast(1.05) saturate(1.1);
 }
 
+/* Squelette de chargement du viewer. */
 .viewer-skeleton {
   position: absolute;
   inset: 0;
@@ -1629,6 +1843,7 @@ model-viewer {
   pointer-events: none;
 }
 
+/* Cercle qui tourne dans le squelette. */
 .viewer-skeleton::before {
   content: "";
   width: 44px;
@@ -1639,6 +1854,7 @@ model-viewer {
   animation: elegant-spin 0.9s cubic-bezier(0.5, 0.1, 0.5, 0.9) infinite;
 }
 
+/* État vide de la scène, centré. */
 .empty-state {
   position: absolute;
   inset: 0;
@@ -1651,21 +1867,25 @@ model-viewer {
   text-align: center;
 }
 
+/* Illustration de l'état vide. */
 .empty-state .empty-illustration {
   width: 120px;
   opacity: 0.9;
 }
 
+/* Titre de l'état vide. */
 .empty-state h3 {
   font-size: 1.15rem;
 }
 
+/* Texte de l'état vide. */
 .empty-state p {
   max-width: 36ch;
   color: var(--muted);
   font-size: 0.9rem;
 }
 
+/* Bouton de réalité augmentée en bas de la scène. */
 .ar-button {
   position: absolute;
   right: var(--space-4);
@@ -1680,6 +1900,7 @@ model-viewer {
   cursor: pointer;
 }
 
+/* Vignette de la photo source en bas à gauche. */
 .source-photo-preview {
   position: absolute;
   top: var(--space-4);
@@ -1688,6 +1909,7 @@ model-viewer {
   margin: 0;
 }
 
+/* Bouton de la vignette. */
 .source-photo-trigger {
   position: relative;
   display: block;
@@ -1701,6 +1923,7 @@ model-viewer {
   cursor: zoom-in;
 }
 
+/* Image de la vignette. */
 .source-photo-trigger img {
   display: block;
   width: 100%;
@@ -1708,6 +1931,7 @@ model-viewer {
   object-fit: cover;
 }
 
+/* Mention « Agrandir » sur la vignette. */
 .source-photo-trigger span {
   position: absolute;
   right: 0;
@@ -1721,6 +1945,7 @@ model-viewer {
 }
 
 /* Mode « Photo source » ou « Comparer » de la scène */
+/* Photo source dans la scène. */
 .stage-photo {
   position: absolute;
   inset: 0;
@@ -1731,6 +1956,7 @@ model-viewer {
   background: var(--stage);
 }
 
+/* Image de cette photo, sans déformation. */
 .stage-photo img {
   /* Taille imposée + object-fit : la photo (souvent très grande) tient entière dans la scène. */
   display: block;
@@ -1741,23 +1967,27 @@ model-viewer {
   object-fit: contain;
 }
 
+/* Mode Comparer : la photo occupe la moitié gauche. */
 .viewer-stage[data-view="compare"] .stage-photo,
 .detail-stage[data-view="compare"] .stage-photo {
   left: 50%;
   border-left: 1px solid var(--line);
 }
 
+/* Mode Comparer : le viewer occupe la moitié droite. */
 .viewer-stage[data-view="compare"] model-viewer,
 .detail-stage[data-view="compare"] model-viewer {
   right: 50%;
 }
 
+/* Repère de la barre d'outils sous la scène. */
 .viewer-toolbar-anchor {
   display: flex;
   justify-content: center;
   margin-top: var(--space-4);
 }
 
+/* Barre d'outils de la caméra. */
 .viewer-toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -1769,11 +1999,13 @@ model-viewer {
   background: var(--surface-raised);
 }
 
+/* Groupe de boutons de la barre. */
 .camera-group {
   display: flex;
   gap: 2px;
 }
 
+/* Séparateur vertical. */
 .toolbar-divider {
   width: 1px;
   height: 22px;
@@ -1781,10 +2013,12 @@ model-viewer {
   background: var(--line);
 }
 
+/* Espace qui pousse les boutons texte à droite. */
 .toolbar-spacer {
   width: var(--space-2);
 }
 
+/* Bouton texte de la barre (rotation, plein écran...). */
 .toolbar-text-button {
   min-height: 36px;
   padding: 0 var(--space-3);
@@ -1797,16 +2031,19 @@ model-viewer {
   cursor: pointer;
 }
 
+/* Survol d'un bouton texte. */
 .toolbar-text-button:hover {
   color: var(--ink);
   background: rgb(255 255 255 / 6%);
 }
 
+/* Bouton texte enfoncé (rotation active). */
 .toolbar-text-button[aria-pressed="true"] {
   color: var(--accent);
   background: var(--accent-soft);
 }
 
+/* Aide sur les gestes. */
 .stage-hint {
   margin-top: var(--space-3);
   color: var(--subtle);
@@ -1814,6 +2051,7 @@ model-viewer {
   text-align: center;
 }
 
+/* Note sous la scène (« la géométrie est une estimation »). */
 .stage-footnote {
   display: flex;
   align-items: center;
@@ -1825,6 +2063,7 @@ model-viewer {
   text-align: center;
 }
 
+/* Pastille « i » de cette note. */
 .stage-footnote .note-mark {
   display: inline-grid;
   width: 16px;
@@ -1837,6 +2076,7 @@ model-viewer {
   font-weight: 700;
 }
 
+/* Zone lue par les lecteurs d'écran, discrète. */
 .viewer-announcement {
   min-height: 0;
   color: var(--muted);
@@ -1844,10 +2084,12 @@ model-viewer {
   text-align: center;
 }
 
+/* Masquée quand elle est vide. */
 .viewer-announcement:not(:empty) {
   margin-top: var(--space-2);
 }
 
+/* Fenêtre de la photo agrandie. */
 .source-photo-dialog {
   width: min(92vw, 760px);
   padding: var(--space-6);
@@ -1858,12 +2100,14 @@ model-viewer {
   box-shadow: var(--shadow-hover);
 }
 
+/* Fond assombri derrière les fenêtres modales. */
 .source-photo-dialog::backdrop,
 .confirm-dialog::backdrop {
   background: rgb(5 8 12 / 72%);
   backdrop-filter: blur(4px);
 }
 
+/* En-tête de la fenêtre de la photo. */
 .source-photo-dialog-heading {
   display: flex;
   align-items: center;
@@ -1871,14 +2115,17 @@ model-viewer {
   margin-bottom: var(--space-4);
 }
 
+/* Titre de cette fenêtre. */
 .source-photo-dialog-heading h2 {
   font-size: 1.1rem;
 }
 
+/* Formulaire du bouton fermer. */
 .source-photo-dialog-heading form {
   margin: 0;
 }
 
+/* Photo agrandie, sans déformation. */
 .source-photo-dialog > img {
   display: block;
   width: 100%;
@@ -1890,11 +2137,13 @@ model-viewer {
 
 /* ========== 9. Suivi de création ========== */
 
+/* Panneau de suivi de création. */
 .progress-panel {
   margin-top: var(--space-6);
   padding: var(--space-6) var(--panel-padding);
 }
 
+/* Contenu du suivi : étapes à gauche, état à droite. */
 .progress-content {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(260px, 1fr);
@@ -1903,19 +2152,23 @@ model-viewer {
 }
 
 /* min-width: 0 autorise la piste à rétrécir ; sur mobile, seules les étapes défilent horizontalement. */
+/* Les colonnes peuvent rétrécir sans déborder. */
 .progress-content > * {
   min-width: 0;
 }
 
+/* Titre du suivi. */
 .progress-title-row h2 {
   margin-bottom: var(--space-5);
   font-size: 1.05rem;
 }
 
+/* Défilement horizontal des étapes sur petit écran. */
 .progress-scroll {
   overflow-x: auto;
 }
 
+/* Liste des 5 étapes en grille. */
 .progress-steps {
   position: relative;
   display: grid;
@@ -1926,6 +2179,7 @@ model-viewer {
   list-style: none;
 }
 
+/* Une étape. */
 .progress-step {
   position: relative;
   display: grid;
@@ -1937,6 +2191,7 @@ model-viewer {
   text-align: center;
 }
 
+/* Trait qui relie une étape à la suivante. */
 .progress-step:not(:last-child)::after {
   content: "";
   position: absolute;
@@ -1948,6 +2203,7 @@ model-viewer {
   background: var(--line);
 }
 
+/* Pastille numérotée d'une étape. */
 .step-marker {
   position: relative;
   z-index: 1;
@@ -1964,40 +2220,48 @@ model-viewer {
   transition: border-color var(--motion-medium), background-color var(--motion-medium), color var(--motion-medium);
 }
 
+/* Étape active : texte clair. */
 .progress-step[data-state="active"] {
   color: var(--ink);
 }
 
+/* Étape active : pastille turquoise avec halo. */
 .progress-step[data-state="active"] .step-marker {
   border-color: var(--accent);
   color: var(--accent);
   box-shadow: 0 0 0 5px var(--accent-soft);
 }
 
+/* Étape faite : texte normal. */
 .progress-step[data-state="complete"] {
   color: var(--muted);
 }
 
+/* Étape faite : pastille verte. */
 .progress-step[data-state="complete"] .step-marker {
   border-color: var(--accent);
   color: var(--accent-ink);
   background: var(--accent);
 }
 
+/* Étape faite : trait vert vers la suivante. */
 .progress-step[data-state="complete"]:not(:last-child)::after {
   background: var(--accent);
 }
 
+/* Étape en erreur : texte rouge. */
 .progress-step[data-state="error"] {
   color: var(--danger);
 }
 
+/* Étape en erreur : pastille rouge. */
 .progress-step[data-state="error"] .step-marker {
   border-color: var(--danger);
   color: var(--danger);
   background: var(--danger-soft);
 }
 
+/* Zone d'état du suivi. */
 .progress-output {
   display: grid;
   gap: var(--space-3);
@@ -2005,21 +2269,25 @@ model-viewer {
   border-left: 1px solid var(--line);
 }
 
+/* Indicateur d'activité et textes de l'état. */
 .progress-meta {
   display: flex;
   align-items: flex-start;
   gap: var(--space-3);
 }
 
+/* Titre de l'état. */
 .progress-live p:first-child {
   font-weight: 700;
 }
 
+/* Détail de l'état. */
 .progress-live p + p {
   color: var(--muted);
   font-size: 0.86rem;
 }
 
+/* Indicateur d'activité (cercle). */
 .activity-indicator {
   width: 18px;
   height: 18px;
@@ -2029,6 +2297,7 @@ model-viewer {
   border-radius: 50%;
 }
 
+/* Envoi, attente ou création : le cercle tourne. */
 .progress-panel[data-status="SENDING"] .activity-indicator,
 .progress-panel[data-status="PENDING"] .activity-indicator,
 .progress-panel[data-status="RUNNING"] .activity-indicator {
@@ -2037,29 +2306,35 @@ model-viewer {
   animation: elegant-spin 0.9s linear infinite;
 }
 
+/* Terminé : cercle vert. */
 .progress-panel[data-status="DONE"] .activity-indicator {
   border-color: var(--success);
   background: var(--success);
 }
 
+/* Échec : cercle rouge. */
 .progress-panel[data-status="FAILED"] .activity-indicator {
   border-color: var(--danger);
 }
 
+/* Échec : titre en rouge. */
 .progress-panel[data-status="FAILED"] #progress-summary {
   color: var(--danger);
 }
 
+/* Terminé : titre en vert. */
 .progress-panel[data-status="DONE"] #progress-summary {
   color: var(--success);
 }
 
+/* Temps écoulé et note sur le délai. */
 .elapsed-time,
 .timing-note {
   color: var(--subtle);
   font-size: 0.8rem;
 }
 
+/* Avertissement de préparation photo. */
 .image-preparation-warning {
   padding: var(--space-3) var(--space-4);
   border: 1px solid rgb(251 191 36 / 35%);
@@ -2069,6 +2344,7 @@ model-viewer {
   font-size: 0.84rem;
 }
 
+/* Bouton Réessayer et lien vers la fiche. */
 .retry-button,
 .detail-result-link {
   justify-self: start;
@@ -2076,6 +2352,7 @@ model-viewer {
 
 /* ========== 10. Fiche modèle et intégration guidée ========== */
 
+/* Fiche : viewer à gauche, informations à droite. */
 .detail-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.7fr) minmax(320px, 1fr);
@@ -2083,6 +2360,7 @@ model-viewer {
   gap: var(--space-6);
 }
 
+/* Panneau du viewer de la fiche. */
 .detail-viewer-panel {
   display: flex;
   flex-direction: column;
@@ -2090,6 +2368,7 @@ model-viewer {
   padding: var(--space-6);
 }
 
+/* En-tête du viewer de la fiche. */
 .detail-viewer-heading {
   display: flex;
   flex-wrap: wrap;
@@ -2098,15 +2377,18 @@ model-viewer {
   gap: var(--space-3);
 }
 
+/* Titre du viewer de la fiche. */
 .detail-viewer-heading h2 {
   margin: 0;
   font-size: 1.05rem;
 }
 
+/* Scène de la fiche : hauteur minimale. */
 .detail-stage {
   min-height: 520px;
 }
 
+/* Message de la scène de la fiche. */
 .detail-empty {
   position: absolute;
   inset: 0;
@@ -2116,20 +2398,24 @@ model-viewer {
   color: var(--muted);
 }
 
+/* Panneau des informations. */
 .detail-information {
   display: grid;
   gap: var(--space-5);
 }
 
+/* Titre des informations. */
 .detail-information h2 {
   font-size: 1.3rem;
 }
 
+/* Liste des faits (état, catégorie...). */
 .detail-facts {
   display: grid;
   margin: 0;
 }
 
+/* Ligne d'un fait : libellé et valeur. */
 .detail-facts div {
   display: flex;
   justify-content: space-between;
@@ -2138,15 +2424,18 @@ model-viewer {
   border-bottom: 1px solid var(--line);
 }
 
+/* Dernière ligne sans séparateur. */
 .detail-facts div:last-child {
   border-bottom: 0;
 }
 
+/* Libellé d'un fait. */
 .detail-facts dt {
   color: var(--subtle);
   font-size: 0.86rem;
 }
 
+/* Valeur d'un fait. */
 .detail-facts dd {
   margin: 0;
   font-size: 0.9rem;
@@ -2154,11 +2443,13 @@ model-viewer {
   text-align: right;
 }
 
+/* Bouton de téléchargement pleine largeur. */
 .detail-download {
   width: 100%;
 }
 
 /* Renommage d'un modèle : bouton discret à côté du nom, formulaire en ligne. */
+/* Ligne du nom et du bouton Modifier. */
 .detail-name-row {
   display: flex;
   align-items: center;
@@ -2166,26 +2457,31 @@ model-viewer {
   gap: var(--space-3);
 }
 
+/* Nom du modèle, coupé s'il est trop long. */
 .detail-name-row h2 {
   min-width: 0;
   overflow-wrap: anywhere;
 }
 
+/* Bouton Modifier. */
 .detail-rename {
   flex-shrink: 0;
   font-size: 0.85rem;
 }
 
+/* Formulaire de modification. */
 .detail-rename-form {
   display: grid;
   gap: var(--space-2);
 }
 
+/* Boutons du formulaire de modification. */
 .detail-rename-actions {
   display: flex;
   gap: var(--space-2);
 }
 
+/* Message du formulaire de modification. */
 .detail-rename-feedback {
   min-height: 1.25em;
   margin: var(--space-2) 0 0;
@@ -2194,11 +2490,13 @@ model-viewer {
 }
 
 /* Suppression d'un modèle : action secondaire et rouge, placée sous le téléchargement. */
+/* Bouton Supprimer. */
 .detail-delete {
   width: 100%;
   margin-top: var(--space-3);
 }
 
+/* Message de suppression. */
 .detail-delete-feedback {
   min-height: 1.25em;
   margin: var(--space-2) 0 0;
@@ -2206,14 +2504,17 @@ model-viewer {
   color: var(--danger);
 }
 
+/* Guide d'intégration de la fiche. */
 .integration-guide {
   margin-top: var(--section-gap);
 }
 
+/* En-tête du guide. */
 .integration-guide > .section-header {
   margin-bottom: var(--space-6);
 }
 
+/* Liste des 4 étapes. */
 .guide-steps {
   display: grid;
   gap: var(--space-4);
@@ -2222,6 +2523,7 @@ model-viewer {
   list-style: none;
 }
 
+/* Une étape du guide. */
 .guide-step {
   display: grid;
   grid-template-columns: 40px minmax(0, 1fr);
@@ -2233,14 +2535,17 @@ model-viewer {
   transition: opacity var(--motion-medium), border-color var(--motion-medium);
 }
 
+/* Étape verrouillée : estompée. */
 .guide-step[data-locked="true"] {
   opacity: 0.45;
 }
 
+/* Étape verrouillée : contrôles non cliquables. */
 .guide-step[data-locked="true"] .guide-step-body > :not(h3):not(p) {
   pointer-events: none;
 }
 
+/* Numéro d'une étape. */
 .guide-step-number {
   display: grid;
   width: 36px;
@@ -2252,28 +2557,33 @@ model-viewer {
   font-weight: 750;
 }
 
+/* Étape faite : numéro turquoise. */
 .guide-step[data-done="true"] .guide-step-number {
   color: var(--accent-ink);
   background: var(--accent);
 }
 
+/* Titre d'une étape. */
 .guide-step-body h3 {
   margin-bottom: var(--space-1);
   font-size: 1rem;
 }
 
+/* Texte d'une étape. */
 .guide-step-body > p {
   margin-bottom: var(--space-4);
   color: var(--muted);
   font-size: 0.88rem;
 }
 
+/* Ligne de l'interrupteur. */
 .switch-row {
   display: flex;
   align-items: center;
   gap: var(--space-4);
 }
 
+/* Interrupteur (fond de la glissière). */
 .switch {
   position: relative;
   width: 52px;
@@ -2287,6 +2597,7 @@ model-viewer {
   transition: background-color var(--motion-medium), border-color var(--motion-medium);
 }
 
+/* Bouton rond de l'interrupteur. */
 .switch::after {
   content: "";
   position: absolute;
@@ -2299,31 +2610,37 @@ model-viewer {
   transition: transform var(--motion-medium), background-color var(--motion-medium);
 }
 
+/* Interrupteur activé : fond turquoise. */
 .switch[aria-checked="true"] {
   border-color: var(--accent);
   background: var(--accent);
 }
 
+/* Interrupteur activé : bouton à droite. */
 .switch[aria-checked="true"]::after {
   background: var(--accent-ink);
   transform: translateX(22px);
 }
 
+/* Interrupteur désactivé pendant une requête. */
 .switch:disabled {
   cursor: progress;
   opacity: 0.6;
 }
 
+/* Libellé de l'interrupteur. */
 .switch-label {
   font-size: 0.9rem;
   font-weight: 650;
 }
 
+/* Texte d'état de l'interrupteur. */
 .switch-status {
   color: var(--muted);
   font-size: 0.84rem;
 }
 
+/* Rangée d'onglets. */
 .tabs {
   display: inline-flex;
   gap: var(--space-1);
@@ -2333,6 +2650,7 @@ model-viewer {
   background: var(--stage);
 }
 
+/* Un onglet. */
 .tab {
   min-height: 36px;
   padding: 0 var(--space-4);
@@ -2345,12 +2663,14 @@ model-viewer {
   cursor: pointer;
 }
 
+/* Onglet sélectionné. */
 .tab[aria-selected="true"] {
   color: var(--ink);
   background: var(--surface-soft);
   box-shadow: inset 0 0 0 1px var(--line-strong);
 }
 
+/* Bloc de code. */
 .code-block {
   position: relative;
   overflow: hidden;
@@ -2359,6 +2679,7 @@ model-viewer {
   background: #0A0E14;
 }
 
+/* En-tête du bloc de code. */
 .code-block-header {
   display: flex;
   align-items: center;
@@ -2373,6 +2694,7 @@ model-viewer {
   text-transform: uppercase;
 }
 
+/* Code avec défilement horizontal. */
 .code-block pre {
   margin: 0;
   padding: var(--space-4);
@@ -2385,6 +2707,7 @@ model-viewer {
   overflow-wrap: anywhere;
 }
 
+/* Bouton Copier. */
 .copy-button {
   min-height: 30px;
   padding: 0 var(--space-3);
@@ -2399,16 +2722,19 @@ model-viewer {
   cursor: pointer;
 }
 
+/* Survol du bouton Copier. */
 .copy-button:hover {
   border-color: var(--accent);
   color: var(--accent);
 }
 
+/* Bouton Copier après une copie réussie : vert. */
 .copy-button[data-copied="true"] {
   border-color: var(--success);
   color: var(--success);
 }
 
+/* Faux cadre de navigateur autour de l'aperçu. */
 .browser-frame {
   overflow: hidden;
   border: 1px solid var(--line-strong);
@@ -2416,6 +2742,7 @@ model-viewer {
   background: #F8FAFC;
 }
 
+/* Barre du faux navigateur. */
 .browser-bar {
   display: flex;
   align-items: center;
@@ -2424,6 +2751,7 @@ model-viewer {
   background: #E2E8F0;
 }
 
+/* Trois ronds décoratifs de la barre. */
 .browser-bar span {
   width: 10px;
   height: 10px;
@@ -2431,6 +2759,7 @@ model-viewer {
   background: #CBD5E1;
 }
 
+/* Adresse affichée dans la barre. */
 .browser-bar code {
   flex: 1;
   margin-left: var(--space-2);
@@ -2444,6 +2773,7 @@ model-viewer {
   white-space: nowrap;
 }
 
+/* Iframe d'aperçu. */
 .browser-frame iframe {
   display: block;
   width: 100%;
@@ -2452,6 +2782,7 @@ model-viewer {
   background: #FFFFFF;
 }
 
+/* Message après copie. */
 .guide-feedback {
   min-height: 1.3em;
   margin-top: var(--space-2);
@@ -2460,6 +2791,7 @@ model-viewer {
 }
 
 /* Guide d'intégration (#/guide) */
+/* Sommaire du guide en deux colonnes. */
 .guide-toc ol {
   display: flex;
   flex-wrap: wrap;
@@ -2469,22 +2801,26 @@ model-viewer {
   color: var(--muted);
 }
 
+/* Liens du sommaire. */
 .guide-toc a {
   color: var(--accent);
   font-weight: 600;
   text-decoration: none;
 }
 
+/* Section du guide. */
 .guide-section {
   display: grid;
   gap: var(--space-4);
 }
 
+/* Textes et listes du guide. */
 .guide-section p,
 .guide-list {
   color: var(--muted);
 }
 
+/* Listes du guide. */
 .guide-list {
   display: grid;
   gap: var(--space-2);
@@ -2492,18 +2828,21 @@ model-viewer {
   padding-left: var(--space-6);
 }
 
+/* Code dans le texte du guide. */
 .guide-section code,
 .page-lead code {
   color: var(--ink);
   font-size: 0.88em;
 }
 
+/* Code dans un bloc : sans fond supplémentaire. */
 .guide-section .code-block code {
   color: inherit;
 }
 
 /* ========== 11. Clés API ========== */
 
+/* Mode d'emploi en 4 cartes (page Clés API). */
 .steps-guide {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -2514,6 +2853,7 @@ model-viewer {
   counter-reset: guide;
 }
 
+/* Carte d'une étape du mode d'emploi. */
 .guide-card {
   position: relative;
   padding: var(--space-5);
@@ -2523,6 +2863,7 @@ model-viewer {
   counter-increment: guide;
 }
 
+/* Numéro automatique de la carte (compteur CSS). */
 .guide-card::before {
   content: counter(guide);
   display: grid;
@@ -2537,6 +2878,7 @@ model-viewer {
   font-weight: 800;
 }
 
+/* Flèche entre deux cartes. */
 .guide-card:not(:last-child)::after {
   content: "→";
   position: absolute;
@@ -2546,32 +2888,38 @@ model-viewer {
   color: var(--subtle);
 }
 
+/* Titre d'une carte. */
 .guide-card strong {
   display: block;
   margin-bottom: var(--space-1);
   font-size: 0.95rem;
 }
 
+/* Texte d'une carte. */
 .guide-card span {
   color: var(--muted);
   font-size: 0.84rem;
 }
 
+/* Code dans une carte. */
 .guide-card code {
   color: var(--accent);
   font-size: 0.8rem;
 }
 
+/* Note sur l'usage de l'API. */
 .api-note {
   margin-top: var(--space-4);
   color: var(--subtle);
   font-size: 0.82rem;
 }
 
+/* Code dans cette note. */
 .api-note code {
   color: var(--muted);
 }
 
+/* Formulaire de création de clé. */
 .api-key-create-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -2579,15 +2927,18 @@ model-viewer {
   gap: var(--space-3) var(--space-4);
 }
 
+/* Étiquette de ce formulaire. */
 .api-key-create-form label {
   grid-column: 1 / -1;
   margin-bottom: 0;
 }
 
+/* Bouton de ce formulaire. */
 .api-key-create-form .button {
   min-height: 46px;
 }
 
+/* Messages des pages Clés API et Catégories. */
 .api-key-feedback,
 .category-feedback {
   margin-top: var(--space-4);
@@ -2599,12 +2950,14 @@ model-viewer {
   font-size: 0.88rem;
 }
 
+/* Message d'erreur des catégories en rouge. */
 .category-feedback[data-kind="error"] {
   border-color: rgb(248 113 113 / 35%);
   color: var(--danger);
   background: var(--danger-soft);
 }
 
+/* Zone qui affiche le secret d'une nouvelle clé. */
 .api-key-reveal {
   margin-top: var(--space-5);
   padding: var(--space-5);
@@ -2613,24 +2966,28 @@ model-viewer {
   background: var(--warning-soft);
 }
 
+/* Titre de cette zone. */
 .api-key-reveal h3 {
   margin-bottom: var(--space-2);
   color: var(--warning);
   font-size: 1rem;
 }
 
+/* Texte de cette zone. */
 .api-key-reveal p {
   margin-bottom: var(--space-4);
   color: var(--muted);
   font-size: 0.88rem;
 }
 
+/* Ligne du secret et du bouton Copier. */
 .api-key-secret-row {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
 }
 
+/* Secret affiché, coupé sur plusieurs lignes si besoin. */
 .api-key-secret {
   flex: 1;
   min-width: 0;
@@ -2643,12 +3000,14 @@ model-viewer {
   font-size: 0.86rem;
 }
 
+/* Liste des clés. */
 .api-key-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: var(--space-4);
 }
 
+/* Carte d'une clé. */
 .api-key-card {
   display: grid;
   gap: var(--space-3);
@@ -2659,14 +3018,17 @@ model-viewer {
   transition: border-color var(--motion-fast);
 }
 
+/* Survol d'une carte de clé. */
 .api-key-card:hover {
   border-color: var(--line-strong);
 }
 
+/* Clé révoquée : estompée. */
 .api-key-card.is-revoked {
   opacity: 0.65;
 }
 
+/* Haut de la carte : nom et statut. */
 .api-key-card-top {
   display: flex;
   align-items: center;
@@ -2674,6 +3036,7 @@ model-viewer {
   gap: var(--space-3);
 }
 
+/* Nom de la clé. */
 .api-key-card h3 {
   overflow: hidden;
   font-size: 1rem;
@@ -2681,6 +3044,7 @@ model-viewer {
   white-space: nowrap;
 }
 
+/* Préfixe de la clé. */
 .api-key-card code {
   justify-self: start;
   padding: 2px var(--space-2);
@@ -2690,17 +3054,20 @@ model-viewer {
   font-size: 0.8rem;
 }
 
+/* Date de création. */
 .api-key-meta {
   color: var(--subtle);
   font-size: 0.8rem;
 }
 
+/* Bouton de la carte de clé. */
 .api-key-card .button {
   justify-self: start;
   min-height: 36px;
   font-size: 0.84rem;
 }
 
+/* Badge de statut (Active). */
 .status-badge {
   display: inline-flex;
   align-items: center;
@@ -2714,6 +3081,7 @@ model-viewer {
   font-weight: 700;
 }
 
+/* Point coloré devant le statut. */
 .status-badge::before {
   content: "";
   width: 6px;
@@ -2722,12 +3090,14 @@ model-viewer {
   background: currentColor;
 }
 
+/* Statut Révoquée ou Désactivée : gris. */
 .status-badge.is-revoked,
 .status-badge.is-inactive {
   color: var(--subtle);
   background: var(--surface-soft);
 }
 
+/* Messages « liste vide » des clés et catégories. */
 .api-key-empty,
 .category-empty {
   grid-column: 1 / -1;
@@ -2740,6 +3110,7 @@ model-viewer {
 
 /* ========== 12. Catégories ========== */
 
+/* Formulaire de création de catégorie. */
 .category-create-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -2748,6 +3119,7 @@ model-viewer {
   margin-bottom: var(--space-2);
 }
 
+/* Libellé de ce formulaire. */
 .category-create-form label span {
   display: block;
   margin-bottom: var(--space-2);
@@ -2755,16 +3127,19 @@ model-viewer {
   font-weight: 650;
 }
 
+/* Bouton de ce formulaire. */
 .category-create-form .button {
   min-height: 46px;
 }
 
+/* Liste des catégories. */
 .category-list {
   display: grid;
   gap: var(--space-3);
   margin-top: var(--space-6);
 }
 
+/* Ligne d'une catégorie. */
 .category-admin-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -2776,10 +3151,12 @@ model-viewer {
   background: var(--surface);
 }
 
+/* Catégorie désactivée : estompée. */
 .category-admin-row.is-inactive {
   opacity: 0.7;
 }
 
+/* Partie principale de la ligne. */
 .category-row-main {
   display: flex;
   flex-wrap: wrap;
@@ -2788,6 +3165,7 @@ model-viewer {
   min-width: 0;
 }
 
+/* Formulaire de renommage d'une catégorie. */
 .category-edit-form {
   display: flex;
   flex: 1;
@@ -2795,14 +3173,17 @@ model-viewer {
   min-width: 220px;
 }
 
+/* Champ du nom de la catégorie. */
 .category-edit-form input {
   min-height: 40px;
 }
 
+/* Bouton Renommer. */
 .category-edit-form .button {
   min-height: 40px;
 }
 
+/* Badge du nombre de modèles. */
 .category-count-badge {
   padding: 2px var(--space-3);
   border-radius: var(--radius-pill);
@@ -2813,11 +3194,13 @@ model-viewer {
   white-space: nowrap;
 }
 
+/* Boutons d'action d'une catégorie. */
 .category-admin-actions {
   display: flex;
   gap: var(--space-2);
 }
 
+/* Boutons d'action plus compacts. */
 .category-admin-actions .button {
   min-height: 40px;
   padding: 0 var(--space-4);
@@ -2826,6 +3209,7 @@ model-viewer {
 
 /* ========== 13. Fenêtres modales ========== */
 
+/* Fenêtre de confirmation. */
 .confirm-dialog {
   width: min(92vw, 440px);
   padding: var(--space-7);
@@ -2836,20 +3220,24 @@ model-viewer {
   box-shadow: 0 30px 90px rgb(0 0 0 / 50%);
 }
 
+/* Fenêtre ouverte : animation d'apparition. */
 .confirm-dialog[open] {
   animation: page-enter 0.2s ease-out;
 }
 
+/* Titre de la fenêtre de confirmation. */
 .confirm-dialog h2 {
   margin-bottom: var(--space-3);
   font-size: 1.2rem;
 }
 
+/* Texte de la fenêtre de confirmation. */
 .confirm-dialog p {
   color: var(--muted);
   font-size: 0.94rem;
 }
 
+/* Boutons de la fenêtre de confirmation. */
 .confirm-dialog-actions {
   display: flex;
   justify-content: flex-end;
@@ -2860,50 +3248,63 @@ model-viewer {
 /* ========== 14. Adaptations écran ========== */
 
 /* Écrans larges mais bas (portables 1366×768) : la scène reste visible sans défilement. */
+/* Grand écran peu haut (portable) : scènes et zones plus basses. */
 @media (min-width: 1024px) and (max-height: 850px) {
+  /* Scène de la page Créer moins haute. */
   .viewer-stage {
     min-height: 380px;
   }
 
+  /* Zone de dépôt moins haute. */
   .drop-zone {
     min-height: 200px;
   }
 
+  /* Scène de la fiche moins haute. */
   .detail-stage {
     min-height: 440px;
   }
 
+  /* Moins d'espace en haut de page. */
   .page-shell {
     padding-top: var(--space-6);
   }
 }
 
+/* Écran moyen (jusqu'à 1180 px) : en-tête plus compact. */
 @media (max-width: 1180px) {
+  /* En-tête : espacements réduits. */
   .site-header {
     gap: var(--space-4);
     padding: 0 var(--space-5);
   }
 
+  /* Liens du menu plus serrés. */
   .nav-link,
   .nav-group > summary {
     padding: 0 var(--space-2);
   }
 
+  /* Texte du badge serveur masqué (seule la pastille reste). */
   .provider-badge #provider-label {
     font-size: 0.74rem;
   }
 }
 
+/* Tablette et mobile (jusqu'à 1023 px) : menu repliable et colonnes empilées. */
 @media (max-width: 1023px) {
+  /* Variables : marges réduites. */
   :root {
     --panel-padding: 24px;
     --section-gap: 28px;
   }
 
+  /* Bouton menu visible. */
   .menu-toggle {
     display: block;
   }
 
+  /* Menu principal en panneau déroulant sous l'en-tête, caché par défaut. */
   .header-nav {
     position: absolute;
     top: 100%;
@@ -2918,21 +3319,25 @@ model-viewer {
     background: rgb(14 18 24 / 97%);
   }
 
+  /* Menu ouvert : visible. */
   .header-nav.is-open {
     display: flex;
   }
 
+  /* Liens du menu en pleine largeur. */
   .nav-link,
   .nav-group > summary {
     min-height: 46px;
     padding: 0 var(--space-3);
   }
 
+  /* Pas de barre « page active » dans le menu mobile. */
   .nav-link[aria-current="page"]::after,
   .nav-group[data-active="true"] > summary::after {
     display: none;
   }
 
+  /* Menu Administration affiché dans le flux, sans flotter. */
   .nav-dropdown {
     position: static;
     margin: var(--space-1) 0 0 var(--space-5);
@@ -2943,48 +3348,58 @@ model-viewer {
   }
 
   /* Mobile : logo à gauche, puis badge, déconnexion et bouton menu groupés à droite. */
+  /* Outils poussés à droite. */
   .header-tools {
     margin-left: auto;
   }
 
+  /* Bouton menu placé après les outils. */
   .menu-toggle {
     order: 3;
     margin-left: 0;
   }
 
+  /* Bandeau de l'accueil sur une seule colonne. */
   .hero {
     grid-template-columns: 1fr;
     gap: var(--space-6);
     padding: var(--space-7);
   }
 
+  /* Viewer du bandeau plus bas. */
   .hero-visual {
     height: 260px;
   }
 
+  /* Raccourcis et mode d'emploi sur deux colonnes. */
   .shortcut-grid,
   .steps-guide {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  /* Pas de flèche entre les cartes du mode d'emploi. */
   .guide-card:not(:last-child)::after {
     display: none;
   }
 
+  /* Grille de trois colonnes réduite à deux. */
   .card-grid-3 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  /* Créer et fiche : colonnes empilées. */
   .workspace,
   .detail-layout {
     grid-template-columns: 1fr;
   }
 
+  /* Suivi : colonnes empilées. */
   .progress-content {
     grid-template-columns: 1fr;
     gap: var(--space-5);
   }
 
+  /* Zone d'état du suivi : séparateur en haut. */
   .progress-output {
     padding-top: var(--space-5);
     padding-left: 0;
@@ -2992,42 +3407,52 @@ model-viewer {
     border-left: 0;
   }
 
+  /* Scène de la page Créer : hauteur adaptée. */
   .viewer-stage {
     min-height: 400px;
   }
 }
 
+/* Téléphone (jusqu'à 640 px) : tout sur une colonne. */
 @media (max-width: 640px) {
+  /* Variables : marges encore réduites. */
   :root {
     --panel-padding: 20px;
     --section-gap: 24px;
   }
 
+  /* Page : marges latérales réduites. */
   .page-shell {
     width: min(100% - 2 * var(--space-4), var(--content-width));
     padding-top: var(--space-6);
   }
 
+  /* En-tête : marges réduites. */
   .site-header {
     padding: 0 var(--space-4);
   }
 
+  /* Nom du produit masqué (seule l'icône du logo reste). */
   .brand > span:last-child {
     display: none;
   }
 
+  /* Texte du badge serveur masqué. */
   .provider-badge #provider-label {
     display: none;
   }
 
+  /* Texte « Déconnexion » masqué (seule l'icône reste). */
   .logout-button span {
     display: none;
   }
 
+  /* Bandeau plus compact. */
   .hero {
     padding: var(--space-6);
   }
 
+  /* Toutes les grilles sur une seule colonne. */
   .stats-grid,
   .shortcut-grid,
   .steps-guide,
@@ -3036,21 +3461,25 @@ model-viewer {
     grid-template-columns: 1fr;
   }
 
+  /* Étapes du suivi : largeur minimale pour défiler. */
   .progress-steps {
     grid-template-columns: repeat(5, 112px);
   }
 
+  /* Formulaires et lignes de catégorie empilés. */
   .api-key-create-form,
   .category-create-form,
   .category-admin-row {
     grid-template-columns: 1fr;
   }
 
+  /* Scènes plus basses. */
   .viewer-stage,
   .detail-stage {
     min-height: 340px;
   }
 
+  /* Mode Comparer sur mobile : photo en haut. */
   .viewer-stage[data-view="compare"] .stage-photo,
   .detail-stage[data-view="compare"] .stage-photo {
     top: 50%;
@@ -3059,12 +3488,14 @@ model-viewer {
     border-left: 0;
   }
 
+  /* Mode Comparer sur mobile : viewer en bas. */
   .viewer-stage[data-view="compare"] model-viewer,
   .detail-stage[data-view="compare"] model-viewer {
     right: 0;
     bottom: 50%;
   }
 
+  /* Pied de page centré et empilé. */
   .site-footer {
     padding: var(--space-5) var(--space-4);
   }

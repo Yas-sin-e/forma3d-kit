@@ -4,11 +4,14 @@
  * Le dossier docs/ n'est pas servi par FastAPI : cette page rend le guide réellement accessible.
  * Toute modification du contrat doit être reportée dans les deux fichiers.
  */
+// Titre de l'onglet.
 export const title = "Guide d’intégration";
 
 // Fabrique un bloc de code avec bouton « Copier » ; < > & sont échappés pour s'afficher comme du texte.
 function codeBlock(label, code) {
+  // Remplace & puis < puis > par leurs entités HTML (l'ordre évite de doubler les &).
   const escaped = code.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  // Renvoie le bloc : en-tête (libellé + bouton Copier) et le code dans <pre><code>.
   return `
     <div class="code-block">
       <div class="code-block-header"><span>${label}</span><button class="copy-button" type="button" data-copy-code>Copier</button></div>
@@ -18,7 +21,16 @@ function codeBlock(label, code) {
 
 // Retourne le HTML du guide d'intégration ; les exemples utilisent l'adresse réelle du serveur.
 export function render() {
+  // Adresse réelle du serveur (ex. http://localhost:8080), utilisée dans les exemples.
   const base = window.location.origin;
+  // Le gabarit ci-dessous contient, dans l'ordre :
+  // - l'introduction du guide et un sommaire avec des ancres vers chaque section ;
+  // - 1. créer une clé API (copiée une seule fois, à garder côté serveur) ;
+  // - 2. envoyer une photo avec curl (POST /api/v1/models, réponse 202) ;
+  // - 3. suivre l'état et télécharger le GLB avec curl ;
+  // - 4. activer l'intégration puis coller l'iframe ou le widget <forma3d-viewer> ;
+  // - 5. quotas, erreurs et origines autorisées (EMBED_ALLOWED_ORIGINS, API_CORS_ORIGINS) ;
+  // - 6. sécurité et limites du prototype.
   return `
     <section class="page-shell guide-page" aria-labelledby="page-title">
       <div class="page-intro"><p class="eyebrow">Documentation</p><h1 class="page-title" id="page-title" tabindex="-1">Guide d’intégration</h1><p class="page-lead">Connectez une boutique à Forma3D : envoi d’une photo par l’API, suivi, activation du modèle, puis affichage par iframe ou par la balise <code>&lt;forma3d-viewer&gt;</code>.</p></div>
@@ -88,15 +100,25 @@ export function render() {
 
 // Branche les boutons « Copier » des blocs de code (navigator.clipboard).
 export function mount() {
+  // Pour chaque bouton « Copier »...
   document.querySelectorAll("[data-copy-code]").forEach((button) => {
+    // ...au clic...
     button.addEventListener("click", async () => {
+      // ...lit le texte du code du même bloc...
       const code = button.closest(".code-block").querySelector("code").textContent;
+      // ...essaie...
       try {
+        // ...de le copier dans le presse-papiers...
         await navigator.clipboard.writeText(code);
+        // ...confirme sur le bouton...
         button.textContent = "Copié ✓";
+        // ...marque l'état « copié » (style CSS)...
         button.dataset.copied = "true";
+        // ...et remet le texte d'origine après 1,8 seconde.
         window.setTimeout(() => { button.textContent = "Copier"; button.dataset.copied = "false"; }, 1800);
+      // Copie refusée par le navigateur...
       } catch {
+        // ...message sur le bouton.
         button.textContent = "Copie indisponible";
       }
     });
