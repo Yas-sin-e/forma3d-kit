@@ -3,15 +3,26 @@
  * Exécution : router.js monte la grille sur #/modeles ; #/modeles?import=1 ouvre directement l'import GLB.
  * Refonte : état vide illustré avec appel à l'action, cartes animées, filtres avec compteurs.
  */
+// Importe l'import d'un GLB et la liste des catégories.
 import { importGlbModel, listCategories } from "../api.js?v=20261117-r2";
+// Importe la galerie.
 import { setupGallery } from "../views/gallery.js?v=20261117-r2";
+// Importe le dessin du cube (état vide).
 import { emptyCubeIllustration } from "../views/illustrations.js?v=20261117-r2";
 
+// Titre de l'onglet.
 export const title = "Mes modèles";
+// Expression régulière d'un UUID (modèle enregistré).
 const generationIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 // Retourne le HTML de la page Mes modèles (bouton d'import, galerie).
 export function render() {
+  // Le gabarit ci-dessous contient, dans l'ordre :
+  // - l'introduction et le bouton « Importer un modèle (.glb) » ;
+  // - le panneau caché d'import : fichier .glb, titre, catégorie, boutons et message ;
+  // - l'en-tête de la galerie avec son compteur ;
+  // - l'état vide illustré avec deux actions (créer à partir d'une photo, importer) ;
+  // - les filtres, la grille des cartes et le message d'état.
   return `
     <section class="page-shell gallery-page" aria-labelledby="page-title">
       <div class="page-intro section-header">
@@ -49,59 +60,108 @@ export function render() {
 // Branche Mes modèles : galerie des modèles enregistrés et import d'un GLB (POST /models/import).
 // #/modeles?import=1 ouvre directement le formulaire.
 export function mount(route) {
+  // Panneau d'import.
   const panel = document.querySelector("#model-import-panel");
+  // Formulaire d'import.
   const form = document.querySelector("#model-import-form");
+  // Champ du fichier.
   const fileInput = document.querySelector("#import-file");
+  // Champ du titre.
   const titleInput = document.querySelector("#import-title-field");
+  // Liste des catégories.
   const categorySelect = document.querySelector("#import-category");
+  // Message du formulaire.
   const feedback = document.querySelector("#model-import-feedback");
+  // Fonction qui ouvre le panneau d'import :
   const openImport = () => {
+    // le rend visible...
     panel.hidden = false;
+    // ...fait défiler jusqu'à lui...
     panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    // ...et place le focus sur le choix du fichier.
     fileInput.focus({ preventScroll: true });
   };
+  // Bouton du haut : ouvre l'import.
   document.querySelector("#open-model-import").addEventListener("click", openImport);
+  // Bouton de l'état vide : ouvre l'import.
   document.querySelector("#empty-import-button").addEventListener("click", openImport);
+  // Bouton Annuler : masque le panneau.
   document.querySelector("#cancel-model-import").addEventListener("click", () => { panel.hidden = true; });
+  // Quand un fichier est choisi...
   fileInput.addEventListener("change", () => {
+    // ...premier fichier...
     const file = fileInput.files?.[0];
+    // ...si le titre n'a pas été modifié à la main...
     if (file && !titleInput.dataset.edited) {
+      // ...propose un titre tiré du nom du fichier.
       titleInput.value = file.name.replace(/\.glb$/i, "").replace(/[._-]+/g, " ").trim();
     }
   });
+  // Dès que le titre est saisi, on ne le remplace plus.
   titleInput.addEventListener("input", () => { titleInput.dataset.edited = "true"; });
+  // Branche la galerie...
   const gallery = setupGallery(
+    // ...clic sur une carte : ouvre sa fiche...
     (model) => { window.location.hash = `#/modeles/${encodeURIComponent(model.id)}`; },
+    // ...options :
     {
+      // garde seulement les modèles enregistrés (UUID)...
       filter: (model) => generationIdPattern.test(model.id),
+      // ...message si vide...
       emptyMessage: "Vous n’avez pas encore de modèle enregistré.",
+      // ...message si aucun résultat.
       noMatchMessage: "Aucun modèle dans cette catégorie.",
     },
   );
+  // Charge les catégories, puis...
   void listCategories().then((response) => {
+    // ...liste reçue...
     const categories = response.items ?? [];
+    // ...transmise à la galerie...
     gallery.setCategories(categories);
+    // ...option vide en premier...
     categorySelect.replaceChildren(new Option("Choisir une catégorie", ""));
+    // ...une option par catégorie.
     categories.forEach((category) => categorySelect.add(new Option(category.label, category.slug)));
+  // Échec : option d'indisponibilité.
   }).catch(() => { categorySelect.replaceChildren(new Option("Catégories indisponibles", "")); });
+  // À l'envoi du formulaire...
   form.addEventListener("submit", async (event) => {
+    // ...empêche le rechargement...
     event.preventDefault();
+    // ...message d'attente...
     feedback.textContent = "Import du modèle…";
+    // ...bouton d'envoi...
     const submit = form.querySelector("button[type=submit]");
+    // ...désactivé...
     submit.disabled = true;
+    // ...essaie...
     try {
+      // ...d'importer le fichier...
       const result = await importGlbModel(fileInput.files[0], titleInput.value, categorySelect.value);
+      // ...message de succès...
       feedback.replaceChildren(document.createTextNode("Modèle importé et enregistré dans Mes modèles. "));
+      // ...lien vers la fiche...
       const detailLink = document.createElement("a");
+      // ...adresse de la fiche...
       detailLink.href = `#/modeles/${encodeURIComponent(result.id)}`;
+      // ...texte du lien...
       detailLink.textContent = "Ouvrir sa fiche";
+      // ...ajouté au message...
       feedback.append(detailLink);
+      // ...vide le formulaire...
       form.reset();
+      // ...le titre redevient automatique...
       titleInput.dataset.edited = "";
+      // ...et recharge la galerie.
       await gallery.reload();
+    // Erreur...
     } catch (error) {
+      // ...message affiché.
       feedback.textContent = error.message;
+    // Dans tous les cas...
     } finally {
+      // ...réactive le bouton.
       submit.disabled = false;
     }
   });

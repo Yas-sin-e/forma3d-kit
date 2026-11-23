@@ -2,7 +2,9 @@
  * Rôle : fournit les illustrations SVG inline réutilisées (cube 3D des états vides).
  * Exécution : importé par l'accueil, Mes modèles et le viewer ; renvoie du balisage statique.
  */
+// Fonction exportée qui renvoie le dessin SVG d'un cube (état vide).
 export function emptyCubeIllustration() {
+  // Renvoie le balisage SVG écrit entre accents graves (gabarit de texte).
   return `
     <svg class="empty-illustration" viewBox="0 0 160 140" fill="none" aria-hidden="true">
       <ellipse cx="80" cy="122" rx="52" ry="9" fill="currentColor" opacity="0.08"/>

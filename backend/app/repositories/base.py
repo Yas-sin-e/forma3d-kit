@@ -2,77 +2,96 @@
 # Exécution : les services dépendent de cette interface pour lire et modifier l'historique.
 """Interface de dépôt utilisée par le service de génération."""
 
+# datetime : type de l'instant « maintenant » passé aux fonctions de quota.
 from datetime import datetime
 # typing.Protocol (standard) : interface du dépôt. Les services dépendent de ce contrat, pas de la base
 # (patron Repository) : on pourrait écrire une version PostgreSQL sans toucher aux services.
 from typing import Protocol
 
+# Objets métier (dataclasses) échangés entre le dépôt et les services.
 from app.models import APIKeyRecord, CategoryRecord, GenerationRecord
 
 
+# Erreur métier : slug déjà pris ou suppression refusée (la route répond 409).
 class CategoryConflictError(Exception):
     """Conflit d'unicité ou suppression interdite pour une catégorie."""
 
 
+# Erreur métier : catégorie inexistante (la route répond 404).
 class CategoryNotFoundError(Exception):
     """Catégorie demandée introuvable."""
 
 
+# Cas particulier de conflit : la catégorie est encore utilisée par des générations.
 class CategoryInUseError(CategoryConflictError):
     """Une génération référence encore cette catégorie."""
 
 
+# Contrat du dépôt : toute classe qui possède ces méthodes convient.
 class GenerationRepository(Protocol):
     """Contrat minimal pour les générations visibles dans l'application."""
 
+    # Prépare la base au démarrage.
     def initialize(self) -> None:
         """Crée le schéma et les catégories initiales, puis ferme les tâches périmées."""
         ...
 
+    # Enregistre une génération (création ou mise à jour).
     def save_generation(self, record: GenerationRecord) -> None:
         """Insère ou met à jour une génération et ses métadonnées."""
         ...
 
+    # Lit une génération par son identifiant interne.
     def get_generation(self, generation_id: str) -> GenerationRecord | None:
         """Retourne une génération par son identifiant, ou None si elle est inconnue."""
         ...
 
+    # Lit une génération par son UUID public (site client).
     def get_generation_by_public_id(self, public_id: str) -> GenerationRecord | None:
         """Retourne une génération par UUID public, ou None si elle n'existe pas."""
         ...
 
+    # Active ou désactive l'intégration publique d'un modèle.
     def set_embed_enabled(self, generation_id: str, enabled: bool) -> GenerationRecord | None:
         """Active ou désactive l'intégration d'un modèle terminé."""
         ...
 
+    # Change le nom affiché d'un modèle.
     def rename_generation(self, generation_id: str, filename: str) -> GenerationRecord | None:
         """Remplace le nom de fichier affiché d'une génération ; None si elle est inconnue."""
         ...
 
+    # Change la catégorie d'un modèle.
     def set_generation_category(self, generation_id: str, category_slug: str) -> GenerationRecord | None:
         """Rattache une génération à une autre catégorie ; None si elle est inconnue."""
         ...
 
+    # Supprime une génération ; renvoie vrai si une ligne a été supprimée.
     def delete_generation(self, generation_id: str) -> bool:
         """Supprime la ligne d'une génération ; renvoie False si elle est inconnue."""
         ...
 
+    # Liste les modèles terminés pour la galerie.
     def list_completed_generations(self) -> list[GenerationRecord]:
         """Retourne les générations terminées, de la plus récente à la plus ancienne."""
         ...
 
+    # Lit une catégorie par son slug.
     def get_category(self, slug: str, include_inactive: bool = False) -> CategoryRecord | None:
         """Retourne une catégorie par slug, éventuellement inactive."""
         ...
 
+    # Liste les catégories (actives, ou toutes pour la gestion).
     def list_categories(self, include_inactive: bool = False) -> list[CategoryRecord]:
         """Liste les catégories actives ou l'ensemble demandé par l'administration."""
         ...
 
+    # Crée une catégorie.
     def create_category(self, slug: str, label: str) -> CategoryRecord:
         """Crée une catégorie ; l'adaptateur signale un slug déjà utilisé."""
         ...
 
+    # Modifie une catégorie ; l'étoile oblige à nommer les arguments suivants.
     def update_category(
         self,
         current_slug: str,
@@ -84,36 +103,44 @@ class GenerationRepository(Protocol):
         """Modifie le slug, le libellé ou l'état sans détacher les générations."""
         ...
 
+    # Supprime une catégorie si elle n'est pas utilisée.
     def delete_category(self, slug: str) -> None:
         """Supprime une catégorie inutilisée et refuse si une génération la référence."""
         ...
 
 
+    # Enregistre une nouvelle clé API (métadonnées et empreinte).
     def create_api_key(self, record: APIKeyRecord) -> APIKeyRecord:
         """Enregistre les métadonnées et l'empreinte d'une clé, jamais sa valeur."""
         ...
 
+    # Liste toutes les clés API.
     def list_api_keys(self) -> list[APIKeyRecord]:
         """Liste les métadonnées de toutes les clés, y compris révoquées."""
         ...
 
+    # Cherche les clés actives qui ont ce préfixe.
     def find_api_keys_by_prefix(self, prefix: str) -> list[APIKeyRecord]:
         """Trouve les empreintes candidates à comparer en temps constant."""
         ...
 
+    # Révoque une clé.
     def revoke_api_key(self, key_id: str) -> APIKeyRecord | None:
         """Révoque une clé existante et retourne ses métadonnées."""
         ...
 
+    # Supprime définitivement une clé déjà révoquée.
     def delete_revoked_api_key(self, key_id: str) -> str:
         """Supprime une clé déjà révoquée et ses compteurs ; renvoie « deleted », « active » ou « not_found »."""
         ...
 
 
+    # Compte une requête dans la limite par minute ; None = acceptée.
     def consume_api_rate_limit(self, key_id: str, rate_limit_per_minute: int, now: datetime) -> str | None:
         """Consomme une requête dans la fenêtre de débit ou retourne son motif de refus."""
         ...
 
+    # Compte une création dans le quota du jour ; None = acceptée.
     def consume_api_daily_quota(self, key_id: str, daily_limit: int, now: datetime) -> str | None:
         """Consomme un quota de création UTC ou retourne son motif de refus."""
         ...
