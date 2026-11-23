@@ -180,6 +180,22 @@ Mis à jour le 11 novembre 2026. Le Sprint 2 est terminé ; les Sprints 3 et 4 s
 |---|---|---|---|
 | `docs/` | Regroupe l'état, la structure et les guides | Sépare les explications du code exécutable | Tout au long du projet |
 | `docs/etapes/` | Contient un guide par étape de chaque sprint | Permet de comprendre l'évolution sans mélanger les étapes | Pour apprendre et préparer la soutenance |
+| `docs/explications/` | Explique le code actuel fichier par fichier, en 15 fiches numérotées à lire dans l'ordre (TripoSR cité sans détail) | Complète `docs/etapes/` (historique) par une lecture du code tel qu'il est, avec de vrais extraits | Pour comprendre tout le code avant la soutenance |
+| `docs/explications/00_LIRE_EN_PREMIER.md` | Sommaire, projet en une phrase, chemin d'une photo, carte du code et les trois couches | Donne l'ordre de lecture et la vue d'ensemble | En premier |
+| `docs/explications/01_idee_generale.md` | Problème, solution, contraintes, contrats (interfaces), états et portes d'entrée | Justifie les grands choix avant le code | Avant les étapes |
+| `docs/explications/02_etape1_demarrage_config.md` | Explique `requirements.txt`, les `__init__.py`, `main.py` et `config.py` | Le démarrage relie tous les autres fichiers | Pour comprendre le point d'entrée |
+| `docs/explications/03_etape2_objets_metier_schemas.md` | Explique `models.py` et `schemas.py` | Sépare objets internes et JSON public | Pour comprendre les données échangées |
+| `docs/explications/04_etape3_photo_et_fichiers.md` | Explique `upload_validator.py`, `image_preparer.py`, `storage/base.py` et `local_storage.py` | Montre les contrôles de la photo et l'écriture sûre des fichiers | Pour expliquer l'envoi d'une photo |
+| `docs/explications/05_etape4_generation_3d.md` | Explique `generation_service.py`, `providers/base.py`, `trellis.py` et `glb_finisher.py` | Le cœur du parcours photo → GLB | Pour expliquer la génération |
+| `docs/explications/06_etape5_base_postgresql.md` | Explique `repositories/base.py`, `factory.py` et `postgres_repository.py` | Montre tables, migrations, requêtes paramétrées et verrous | Pour expliquer la persistance |
+| `docs/explications/07_etape6_routes_studio.md` | Explique `routers/models.py`, `routers/categories.py`, `category_service.py` et `demo_gallery.py` | Relie chaque adresse HTTP du Studio à son rôle et à ses erreurs | Pour expliquer l'API du Studio |
+| `docs/explications/08_etape7_connexion_et_cles_api.md` | Explique `routers/auth.py`, `owner_auth.py`, `routers/api_keys.py` et `api_key_service.py` | Détaille session signée, limite d'essais et clés hachées | Pour la partie sécurité |
+| `docs/explications/09_etape8_api_externe_embed_widget.md` | Explique `routers/api_v1.py`, `routers/embed.py` et `frontend/widget.js` | Montre les trois façons d'intégrer et leurs protections | Pour la partie intégration |
+| `docs/explications/10_etape9_frontend_socle.md` | Explique `index.html`, `css/`, `main.js`, `router.js`, `api.js`, `auth.js`, `state.js` et `format.js` | Donne le socle commun de toutes les pages | Pour comprendre le frontend |
+| `docs/explications/11_etape10_pages_et_vues.md` | Explique chaque fichier de `js/pages/` et de `js/views/` | Relie chaque écran à ses appels API | Pour présenter les écrans |
+| `docs/explications/12_etape11_tests.md` | Explique `conftest.py`, `pg_support.py` et le rôle de chaque fichier de test | Montre comment le projet est vérifié sans réseau | Pour expliquer les tests |
+| `docs/explications/13_lancer_le_projet.md` | Commandes de lancement et de test, badge du serveur 3D, dépannage | Rend la démonstration reproductible | Avant une démonstration |
+| `docs/explications/14_questions_pour_la_soutenance.md` | Questions probables du jury et réponses courtes | Révision orale | La veille de la soutenance |
 | `docs/ETAT.md` | Résume les sprints, les étapes prouvées et les points encore ouverts | Distingue les preuves passées du travail non réalisé | Au début et à la fin d'une session |
 | `docs/STRUCTURE.md` | Explique chaque élément du dépôt | Aide l'étudiante à défendre les choix | À chaque ajout ou changement de structure |
 | `docs/STOCKAGE.md` | Explique la persistance (historique SQLite, remplacé par PostgreSQL le 16/11/2026), migration d'origine, imports et copie de modèles | Rend les choix de persistance et la provenance présentables à la soutenance | À chaque évolution de la bibliothèque |
