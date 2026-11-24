@@ -281,6 +281,7 @@ Le registre des métadonnées, les empreintes de clés, les quotas journaliers e
 | `docs/devops/phase-07.md` | Compte rendu de P7 : panne v1.1.0 (port 8000), retour arrière, v1.1.1, prévention | Justifie le point 7 du barème | Pour la preuve du point 7 et en soutenance |
 | `docs/devops/INCIDENT-v1.1.0.md` | Compte rendu d'incident en cinq lignes (quoi, quand, action, durée, prévention) | Format exigé par le cahier ; lu en soutenance | Après l'incident et en soutenance |
 | `docs/devops/FICHE-PROJET.md` | Fiche d'une page : architecture, briques, version en service, déroulé du rollback | Résumé à montrer en premier au jury | En soutenance (minute 1) |
+| `docs/devops/FICHE.md` | Fiche projet au format demandé (architecture, chaîne CI/CD avec liens des exécutions, version en service, retour arrière) | Reprend le modèle de fiche fourni, rempli uniquement avec des preuves observées | À rendre avec le projet et en soutenance |
 | `docs/devops/PREUVES.md` | Tableau des preuves par point du barème : observées ✅ ou à produire ⏳ | Sépare honnêtement le vérifié de ce qui reste à faire | Pendant la préparation du rendu |
 | `docs/devops/QUIZ.md` | Questions probables des ateliers 1 à 5 et réponses appuyées sur le projet | Révision orale | Avant la soutenance |
 | `docs/devops/SOUTENANCE.md` | Scénario minuté de 10 minutes, préparation, commandes de secours (P9) | Démonstration répétée et sans dépendance réseau | La veille et le jour de la soutenance |
