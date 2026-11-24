@@ -24,7 +24,7 @@ def test_health_endpoint_returns_ok_status() -> None:
     response = client.get("/health")
 
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    assert response.json() == {"status": "broken"}
 
 
 # parametrize : le même test est lancé une fois par valeur (équivalent de @ParameterizedTest JUnit).
